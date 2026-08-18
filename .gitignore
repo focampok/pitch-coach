@@ -1,0 +1,23 @@
+# dependencias
+node_modules/
+
+# build de Next.js
+.next/
+out/
+
+# variables de entorno (nunca se comitean)
+.env
+.env.local
+.env*.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# sistema operativo / editor
+.DS_Store
+*.pem
+
+# Railway (si genera archivos locales de config)
+.railway/
