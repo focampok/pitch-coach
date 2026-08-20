@@ -24,8 +24,8 @@ Builders, emprendedores, estudiantes y profesionales que necesitan preparar un p
 
 ## 4. Experiencia principal (loop del usuario)
 
-1. El usuario elige el **tipo de pitch**: capital / educación / innovación / tecnología.
-2. Presiona grabar y **pitchea en voz alta** frente al micrófono.
+1. El usuario elige el **tipo de pitch** (capital / educación / innovación / tecnología) y la **duración máxima** de su pitch, mediante presets de 1 a 7 minutos (en incrementos de 1 minuto).
+2. Presiona grabar y **pitchea en voz alta** frente al micrófono. La grabación se **corta automáticamente** al alcanzar la duración máxima seleccionada.
 3. El sistema **transcribe el audio a texto** en tiempo real (o al finalizar la grabación).
 4. El sistema analiza la transcripción:
    - Detecta **muletillas** (conteo por palabra/frase).
@@ -78,7 +78,18 @@ Cada tipo de pitch tiene una lista fija de 4-5 puntos que la IA busca en la tran
 
 > Nota: estas rúbricas van **hardcodeadas** en el MVP. No hay edición ni entrenamiento de rúbricas custom.
 
-## 7. Detección de muletillas
+## 7. Duración máxima del pitch
+
+El usuario selecciona la duración máxima antes de grabar, mediante presets fijos: **1, 2, 3, 4, 5, 6 o 7 minutos**. No se acepta un valor libre/personalizado en el MVP — solo estos presets.
+
+- La grabación **se corta automáticamente** al llegar al límite seleccionado (deteniendo el reconocimiento de voz / grabación de audio).
+- El tiempo usado (duración real del pitch vs. duración máxima seleccionada) **se incluye como contexto en la evaluación del LLM**, no es solo un cronómetro visual. Ejemplos de feedback que esto habilita:
+  - El usuario se quedó sin tiempo antes de cubrir un punto clave de la rúbrica (ej. "se te acabó el tiempo antes de mencionar el ask de capital").
+  - El usuario terminó muy por debajo del tiempo disponible, sugiriendo que el pitch podría desarrollarse con más profundidad.
+  - El usuario administró bien el tiempo y cubrió todos los puntos de la rúbrica dentro del límite.
+- El dashboard visual debe mostrar el tiempo transcurrido vs. el máximo seleccionado (ej. barra de progreso o conteo regresivo durante la grabación).
+
+## 8. Detección de muletillas
 
 No requiere IA — se resuelve con matching simple (regex / keyword count) sobre la transcripción.
 
@@ -95,16 +106,17 @@ Lista inicial de muletillas a detectar (ajustable durante pruebas con la propia 
 
 El sistema cuenta ocurrencias por muletilla y las presenta en el dashboard (ej. "dijiste 'eeee' 12 veces").
 
-## 8. MVP — Alcance dentro
+## 9. MVP — Alcance dentro
 
 El prototipo debe demostrar el ciclo completo:
 
-**tipo de pitch → grabación de voz → transcripción → análisis (muletillas + rúbrica) → veredicto hablado + dashboard visual**
+**tipo de pitch + duración máxima → grabación de voz (con corte automático) → transcripción → análisis (muletillas + rúbrica + manejo del tiempo) → veredicto hablado + dashboard visual**
 
 Debe incluir:
 
 - [ ] Selector de tipo de pitch (4 opciones fijas).
-- [ ] Grabación de audio desde el micrófono del navegador.
+- [ ] Selector de duración máxima (presets de 1 a 7 minutos).
+- [ ] Grabación de audio desde el micrófono del navegador, con corte automático al alcanzar la duración máxima seleccionada.
 - [ ] Transcripción de voz a texto (Web Speech API).
 - [ ] Detección de muletillas por conteo simple.
 - [ ] Evaluación de contenido contra la rúbrica del tipo elegido, vía LLM (Gemini), devolviendo JSON estructurado.
@@ -112,7 +124,7 @@ Debe incluir:
 - [ ] Dashboard visual con: transcripción completa, muletillas resaltadas con conteo, puntos de rúbrica cumplidos/faltantes, score numérico o visual.
 - [ ] Sesión anónima, sin login — un intento completo funcional de punta a punta.
 
-## 9. Fuera del alcance
+## 10. Fuera del alcance
 
 Explícitamente no se construye en este MVP:
 
@@ -124,7 +136,7 @@ Explícitamente no se construye en este MVP:
 - Integración con n8n (se evaluó y se descartó: no aporta valor claro a un flujo lineal de 12h).
 - Backend separado (NestJS u otro) — todo corre en un solo proyecto Next.js con API routes.
 
-## 10. Qué debe demostrar la demo
+## 11. Qué debe demostrar la demo
 
 Al finalizar una sesión corta, debe ser evidente que:
 
@@ -134,12 +146,12 @@ Al finalizar una sesión corta, debe ser evidente que:
 - La evaluación de rúbrica identificó puntos concretos cubiertos y faltantes del pitch real del usuario.
 - El veredicto hablado y el dashboard visual coinciden y se refuerzan.
 
-## 11. Uso de patrocinadores (orgánico)
+## 12. Uso de patrocinadores (orgánico)
 
 - **Exa o Tavily** (opcional, si el tiempo lo permite): cuando la rúbrica detecta que el usuario no dio un dato concreto (ej. "el mercado es grande" sin cifra), el sistema busca en vivo una estadística real relacionada al tema del pitch y la sugiere como mejora en el dashboard. No es parte del loop crítico — es un enriquecimiento opcional.
 - **n8n**: descartado para el MVP. No hay un flujo de orquestación multi-paso que lo justifique en 12 horas.
 
-## 12. Stack técnico
+## 13. Stack técnico
 
 ### Frontend + Backend (proyecto único)
 - **Next.js** (React) con **API routes** — un solo proyecto, un solo deploy. Las API routes corren server-side, ocultando la API key de Gemini del cliente.
@@ -147,6 +159,9 @@ Al finalizar una sesión corta, debe ser evidente que:
 
 ### Voz → Texto (STT)
 - **Web Speech API** (`SpeechRecognition`) nativa del navegador — gratis, sin dependencias externas. Funciona en Chrome/Chromium (disponible en Linux Mint).
+- **Requisito crítico de navegador**: `SpeechRecognition` solo tiene soporte confiable en navegadores basados en Chromium (Chrome, Chromium, Edge). **Brave no lo soporta** (decisión deliberada de privacidad del navegador) y **Firefox lo tiene deshabilitado por defecto** detrás de una flag. El desarrollo y la demo del hackathon deben hacerse en Chromium o Chrome — instalar con `sudo apt install chromium` en Linux Mint si no está disponible.
+- Requiere conexión a internet activa (el reconocimiento de Chrome procesa el audio en servidores de Google) — riesgo a considerar si el wifi del venue falla.
+- El componente `GrabadorVoz.tsx` debe detectar si el navegador no soporta `SpeechRecognition` y mostrar un mensaje claro en vez de fallar silenciosamente.
 - **Fallback** (si la precisión falla en pruebas con acento/velocidad): Whisper API de OpenAI, llamada server-side con el audio grabado como blob. *(Nota: esto tendría costo — evaluar solo si Web Speech API falla de forma crítica en las pruebas previas al evento).*
 
 ### Análisis de contenido (LLM)
@@ -186,11 +201,11 @@ Al finalizar una sesión corta, debe ser evidente que:
 ### Costos totales del proyecto
 - $0 adicionales fuera del plan Railway Hobby ya existente.
 
-## 13. Orden de construcción sugerido (12 horas)
+## 14. Orden de construcción sugerido (12 horas)
 
 1. Setup del proyecto Next.js + primer deploy en Railway ("hola mundo" funcionando en producción desde el inicio).
 2. Grabación de audio + transcripción con Web Speech API → mostrar texto en pantalla.
-3. Conexión a Gemini API con una rúbrica hardcodeada (solo un tipo de pitch) → validar el JSON de respuesta antes de invertir en UI.
+3. Conexión a Gemini API con una rúbrica hardcodeada (solo un tipo de pitch), pasando también la duración máxima seleccionada y el tiempo real que tomó el pitch como contexto del prompt desde el inicio → validar el JSON de respuesta antes de invertir en UI.
 4. Detección de muletillas → integrar al output del análisis.
 5. TTS nativo leyendo el veredicto corto → validar reproducción por bocina Bluetooth.
 6. Dashboard visual (transcripción, muletillas resaltadas, rúbrica, score).
@@ -198,7 +213,7 @@ Al finalizar una sesión corta, debe ser evidente que:
 8. *(Si sobra tiempo)* Segundo intento en la misma sesión con comparación simple.
 9. *(Si sobra tiempo)* Voz más natural (ElevenLabs/OpenAI TTS) y/o enriquecimiento con Exa/Tavily.
 
-## 14. Corte de emergencia (si el tiempo aprieta)
+## 15. Corte de emergencia (si el tiempo aprieta)
 
 Si a mitad del evento el tiempo se complica, el corte más seguro es:
 
@@ -206,7 +221,7 @@ Si a mitad del evento el tiempo se complica, el corte más seguro es:
 - Priorizar que el **loop completo funcione de punta a punta** (voz → análisis → voz + dashboard) antes que agregar más tipos de pitch o rúbricas.
 - Un producto que hace una sola cosa bien, funcionando en vivo, vence a uno que promete cuatro y falla en la demo.
 
-## 15. Entorno de desarrollo
+## 16. Entorno de desarrollo
 
 - **SO**: Linux Mint (nativo).
 - **Editor/Agentes**: Roo Code y Claude Code, con acceso al codebase del proyecto.
