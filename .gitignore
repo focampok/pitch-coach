@@ -5,6 +5,9 @@ node_modules/
 .next/
 out/
 
+# caché incremental de TypeScript (artefacto de build)
+*.tsbuildinfo
+
 # variables de entorno (nunca se comitean)
 .env
 .env.local
