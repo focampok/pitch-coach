@@ -12,11 +12,13 @@ El feedback existente es subjetivo, tardío o inexistente. No hay una forma ráp
 
 ## 2. Concepto
 
-**Pitch Coach** es una herramienta conversacional de práctica de pitch. El usuario habla su pitch en voz alta frente al micrófono, el sistema transcribe, analiza el contenido contra una rúbrica según el tipo de pitch elegido, detecta muletillas, y responde con un veredicto hablado (a través de bocina) además de un dashboard visual con el detalle completo.
+**Pitch Coach** es una herramienta conversacional de práctica de pitch. El usuario habla su pitch en voz alta frente al micrófono, el sistema transcribe, analiza el contenido contra una rúbrica según el tipo de pitch elegido, detecta muletillas, y responde con un veredicto hablado (a través de bocina) además de un dashboard visual con el detalle completo. Un **coach visual (avatar)** personifica al entrenador: escucha en vivo durante la grabación y reacciona con gestos a lo que el sistema detecta, reforzando el feedback en el momento exacto (ver §5.1).
 
 La idea central:
 
 > No leas feedback en una pantalla. Practica en voz alta y recibe una respuesta hablada, como si un coach real te estuviera escuchando.
+
+El avatar es la **materialización visual de esa frase**: no es decoración, es el coach "viendo y sintiendo" la práctica mientras el usuario habla.
 
 ## 3. Usuario objetivo
 
@@ -26,12 +28,12 @@ Builders, emprendedores, estudiantes y profesionales que necesitan preparar un p
 
 1. El usuario elige el **tipo de pitch** (capital / educación / innovación / tecnología) y la **duración máxima** de su pitch, mediante presets de 1 a 7 minutos (en incrementos de 1 minuto).
 2. Presiona grabar y **pitchea en voz alta** frente al micrófono. La grabación se **corta automáticamente** al alcanzar la duración máxima seleccionada.
-3. El sistema **transcribe el audio a texto** en tiempo real (o al finalizar la grabación).
+3. El sistema **transcribe el audio a texto** en tiempo real (o al finalizar la grabación). Mientras graba, el **coach visual (avatar) escucha y reacciona en vivo** a lo que se detecta (muletillas, frases de impacto, silencios) — ver §5.1.
 4. El sistema analiza la transcripción:
    - Detecta **muletillas** (conteo por palabra/frase).
    - Evalúa el contenido contra la **rúbrica del tipo de pitch elegido** (puntos cubiertos / faltantes).
    - Genera un **score** y un **veredicto breve**.
-5. El veredicto se convierte a voz y se **reproduce por bocina** (modelo híbrido).
+5. El veredicto se convierte a voz y se **reproduce por bocina** (modelo híbrido); el avatar acompaña con una reacción de cierre (asiente o muestra gesto según el veredicto).
 6. En paralelo, el **dashboard muestra el detalle completo**: transcripción, muletillas resaltadas, puntos de rúbrica cumplidos/faltantes, score visual.
 7. (Opcional, si el tiempo lo permite) El usuario puede intentar de nuevo en la misma sesión y comparar contra el intento anterior.
 
@@ -43,6 +45,33 @@ El diferenciador central del producto frente a un simple "analizador de texto" e
 - **Canal visual (evidencia y detalle)**: mientras ocurre la interacción de voz, la pantalla muestra en tiempo real la transcripción, las muletillas detectadas, y el score — sirve como respaldo si el audio falla y como evidencia de "datos reales" para los jueces.
 
 Este diseño es intencional: si el TTS o el hardware de audio fallan durante la demo en vivo, el dashboard visual sigue funcionando como respaldo. Nunca se depende de un solo canal.
+
+### 5.1 Coach visual (avatar reactivo)
+
+El **avatar del coach** es la materialización visual del canal auditivo: un personaje estilizado (SVG inline, trazos simples, paleta neutra con un acento de color) que **escucha en vivo** durante la grabación y reacciona con micro-gestos a lo que el sistema detecta. No es un muñeco decorativo: **toda reacción se dispara por un dato real y es verificable en pantalla** — el avatar y el dashboard están sincronizados, nunca reacciona "porque sí".
+
+#### Estados (uno activo a la vez)
+
+| Estado | Disparador | Gesto | Refuerzo en dashboard |
+|---|---|---|---|
+| `Escuchando` (idle) | grabando con texto normal | postura atenta, parpadeo sutil | transcripción en vivo |
+| `Estremecido` | muletilla detectada en texto intermedio | leve retroceso / ceja levantada | la muletilla y su contador se muestran |
+| `Sorprendido` | frase de impacto (keyword matching local) | expresión de sorpresa | punto de rúbrica marcado cumplido |
+| `Asintiendo` | fin de grabación / veredicto positivo | pequeño asentimiento | score y resumen |
+| `MirandoReloj` | silencio prolongado (~3s sin texto nuevo) | gesto de espera / mira el reloj | barra de tiempo |
+
+#### Reglas de diseño
+
+- **Una reacción a la vez**, breve (~1.2s) y con prioridad a la más reciente; las demás se acumulan en los contadores. La animación informa, no distrae.
+- **Micro-gestos, no bailes**: ceja levantada, parpadeo doble, retroceso leve, asentimiento contenido. El gesto sobrio se lee como "coach", no como "juguete".
+- **Sin flashes** (WCAG: nada que parpadee >3 veces/s) y respetar `prefers-reduced-motion`: si el usuario lo tiene activado, el avatar queda estático y el feedback pasa 100% por contadores y TTS.
+- **El color nunca es el único canal**: el estremecimiento se acompaña del contador visible y la sorpresa de una marca ✅ en la rúbrica (accesibilidad).
+- **El humor va en el copy, no en el dibujo**: el avatar aporta la cara; la personalidad la da un mensaje breve en español (ej. "ese 'o sea' sonó fuerte — van 12"). Tonos sobrios pero con chispa, consistente con el track Learning by Shipping.
+
+#### Dependencia con el resto del sistema
+
+- Usa los **interim results** de la Web Speech API (ya disponibles en `GrabadorVoz.tsx`) y la misma lógica regex de `src/lib/muletillas.ts` — **sin IA en tiempo real**, sin latencia y sin depender de la red. Gemini sigue reservado al análisis final.
+- La detección de "frases de impacto" es **keyword matching local** sobre el texto intermedio (regex de frases potentes: "quiero", "vamos a", cifras + "usuarios/mercado", etc.), no una llamada al LLM por cada fragmento.
 
 ## 6. Rúbricas por tipo de pitch
 
@@ -122,6 +151,7 @@ Debe incluir:
 - [ ] Evaluación de contenido contra la rúbrica del tipo elegido, vía LLM (Gemini), devolviendo JSON estructurado.
 - [ ] Veredicto corto convertido a voz (SpeechSynthesis) y reproducido por el dispositivo de salida de audio (bocina Bluetooth).
 - [ ] Dashboard visual con: transcripción completa, muletillas resaltadas con conteo, puntos de rúbrica cumplidos/faltantes, score numérico o visual.
+- [ ] **Coach visual (avatar) con reacciones en vivo** (§5.1): al menos los estados `Escuchando`, `Estremecido` (muletilla) y `Asintiendo` (fin de grabación).
 - [ ] Sesión anónima, sin login — un intento completo funcional de punta a punta.
 
 ## 10. Fuera del alcance
@@ -132,7 +162,8 @@ Explícitamente no se construye en este MVP:
 - Persistencia de historial entre sesiones (base de datos). Si sobra tiempo, un segundo intento comparado **en memoria de la misma sesión** es aceptable, pero no persistencia real.
 - Edición o creación de rúbricas custom por el usuario.
 - Soporte multi-idioma (solo español).
-- Análisis de video, lenguaje corporal o expresión facial — únicamente audio.
+- Análisis de video, lenguaje corporal o expresión facial — únicamente audio. El avatar **no analiza el cuerpo del usuario**: sus reacciones se derivan solo de la transcripción.
+- Avatar con cuerpo 3D, rigging complejo o "talking head" con voz propia — es un personaje 2D (SVG + CSS) con micro-gestos; no es un virtual human.
 - Integración con n8n (se evaluó y se descartó: no aporta valor claro a un flujo lineal de 12h).
 - Backend separado (NestJS u otro) — todo corre en un solo proyecto Next.js con API routes.
 
@@ -145,6 +176,7 @@ Al finalizar una sesión corta, debe ser evidente que:
 - La detección de muletillas es real y específica (no genérica).
 - La evaluación de rúbrica identificó puntos concretos cubiertos y faltantes del pitch real del usuario.
 - El veredicto hablado y el dashboard visual coinciden y se refuerzan.
+- El **avatar reacciona en el momento** a algo real del pitch (ej. se estremece al decir "o sea") y su gesto coincide con el contador del dashboard — la reacción no es decorativa.
 
 ## 12. Uso de patrocinadores (orgánico)
 
@@ -191,6 +223,11 @@ Al finalizar una sesión corta, debe ser evidente que:
 ### Detección de muletillas
 - Lógica simple de regex/keyword matching, corre en frontend o en el mismo API route — no requiere LLM.
 
+### Coach visual (avatar reactivo)
+- **SVG inline + CSS transforms/animations** (opacity, translate, scale) — liviano, GPU-friendly, sin GIFs pesados ni dependencias nuevas. Compatible con el stack actual (solo React + Tailwind).
+- Reacciones en tiempo real con **regex/keyword matching local** sobre los interim results de la Web Speech API — sin IA ni red en el path caliente.
+- Respeto de `prefers-reduced-motion` (accesibilidad) y micro-gestos de ~1.2s.
+
 ### Hardware
 - Micrófono USB-C (ya disponible).
 - Bocina Bluetooth para eventos (ya disponible) — **probar conexión antes del evento**; tener como plan B la salida de audio de la laptop por cable, ante posible saturación de Bluetooth con 300 asistentes conectando dispositivos simultáneamente.
@@ -209,9 +246,10 @@ Al finalizar una sesión corta, debe ser evidente que:
 4. Detección de muletillas → integrar al output del análisis.
 5. TTS nativo leyendo el veredicto corto → validar reproducción por bocina Bluetooth.
 6. Dashboard visual (transcripción, muletillas resaltadas, rúbrica, score).
-7. *(Si sobra tiempo)* Selector completo de los 4 tipos de pitch con sus rúbricas.
-8. *(Si sobra tiempo)* Segundo intento en la misma sesión con comparación simple.
-9. *(Si sobra tiempo)* Voz más natural (ElevenLabs/OpenAI TTS) y/o enriquecimiento con Exa/Tavily.
+7. **Coach visual (avatar) v1** (§5.1): personaje SVG + 3 estados (`Escuchando`, `Estremecido`, `Asintiendo`) reaccionando a los interim results. Agregar `Sorprendido` (frase de impacto) y `MirandoReloj` (silencio) solo si sobra tiempo.
+8. *(Si sobra tiempo)* Selector completo de los 4 tipos de pitch con sus rúbricas.
+9. *(Si sobra tiempo)* Segundo intento en la misma sesión con comparación simple.
+10. *(Si sobra tiempo)* Voz más natural (ElevenLabs/OpenAI TTS) y/o enriquecimiento con Exa/Tavily.
 
 ## 15. Corte de emergencia (si el tiempo aprieta)
 
@@ -219,6 +257,7 @@ Si a mitad del evento el tiempo se complica, el corte más seguro es:
 
 - Quedarse con **un solo tipo de pitch** (ej. solo "Capital") en vez de los 4.
 - Priorizar que el **loop completo funcione de punta a punta** (voz → análisis → voz + dashboard) antes que agregar más tipos de pitch o rúbricas.
+- **El avatar es lo primero que se corta si aprieta el tiempo**: sin avatar, el loop completo sigue funcionando. El avatar es un refuerzo del loop crítico, no un requisito del mismo.
 - Un producto que hace una sola cosa bien, funcionando en vivo, vence a uno que promete cuatro y falla en la demo.
 
 ## 16. Entorno de desarrollo

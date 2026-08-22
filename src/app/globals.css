@@ -24,3 +24,169 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ---------------------------------------------------------------------------
+ * Coach visual (avatar) — docs/alcance.md §5.1
+ * Micro-gestos con CSS transforms (GPU-friendly), ~1.2s, una reacción a la vez.
+ * Cada reacción se dispara por un dato real verificable en el dashboard.
+ * ------------------------------------------------------------------------- */
+
+/* Idle: respiración sutil del torso. */
+@keyframes coach-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+/* Idle: parpadeo (solo los ojos). */
+@keyframes coach-blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+/* Estremecido: retroceso breve de la cabeza (muletilla detectada). */
+@keyframes coach-recoil {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(-5px, -4px);
+  }
+  60% {
+    transform: translate(4px, -3px);
+  }
+  80% {
+    transform: translate(-2px, -1px);
+  }
+}
+
+/* Sorprendido: salto de la cabeza (frase de impacto). */
+@keyframes coach-surprise {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translateY(-7px) scale(1.04);
+  }
+  60% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Asintiendo: pequeño asentimiento (fin de grabación). */
+@keyframes coach-nod {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  40% {
+    transform: rotate(0deg) translateY(5px);
+  }
+  70% {
+    transform: rotate(0deg) translateY(1px);
+  }
+}
+
+/* MirandoReloj: inclinación de cabeza (silencio prolongado). */
+@keyframes coach-tilt {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(9deg);
+  }
+}
+
+/* Contenedor base: transform-origin del grupo de cabeza en su centro. */
+.coach-head {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Idle (escuchando): respiración + parpadeo. */
+.coach-escuchando .coach-body {
+  animation: coach-breathe 3s ease-in-out infinite;
+}
+.coach-escuchando .coach-eye-l,
+.coach-escuchando .coach-eye-r {
+  animation: coach-blink 4.5s infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Estremecido: retroceso + cejas levantadas. */
+.coach-estremecido .coach-head {
+  animation: coach-recoil 0.6s ease-in-out;
+}
+.coach-estremecido .coach-brow-l,
+.coach-estremecido .coach-brow-r {
+  transform: translateY(-3px);
+}
+
+/* Sorprendido: salto + cejas muy levantadas + ojos abiertos. */
+.coach-sorprendido .coach-head {
+  animation: coach-surprise 0.8s ease-out;
+}
+.coach-sorprendido .coach-brow-l,
+.coach-sorprendido .coach-brow-r {
+  transform: translateY(-5px);
+}
+.coach-sorprendido .coach-eye-l,
+.coach-sorprendido .coach-eye-r {
+  transform: scale(1.4);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Asintiendo: movimiento de asentimiento. */
+.coach-asintiendo .coach-head {
+  animation: coach-nod 1.2s ease-in-out;
+}
+
+/* MirandoReloj: inclinación + cejas fruncidas + reloj visible. */
+.coach-mirandoReloj .coach-head {
+  animation: coach-tilt 1.2s ease-in-out;
+}
+.coach-mirandoReloj .coach-brow-l,
+.coach-mirandoReloj .coach-brow-r {
+  transform: translateY(2px);
+}
+
+/* Reloj de pulsera: aparece al mirar el reloj (fade, no flash). */
+.coach-watch {
+  position: absolute;
+  top: 8px;
+  right: -16px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.coach-watch.is-visible {
+  opacity: 1;
+}
+
+/* Accesibilidad (WCAG): sin animación si el usuario prefiere reducir el
+ * movimiento. El feedback pasa 100% por contadores y TTS (docs/alcance.md §5.1). */
+@media (prefers-reduced-motion: reduce) {
+  .coach-escuchando .coach-body,
+  .coach-escuchando .coach-eye-l,
+  .coach-escuchando .coach-eye-r,
+  .coach-estremecido .coach-head,
+  .coach-sorprendido .coach-head,
+  .coach-asintiendo .coach-head,
+  .coach-mirandoReloj .coach-head {
+    animation: none;
+  }
+}

@@ -8,6 +8,9 @@
 ## Resumen rápido
 
 - ✅ **Loop voz → transcripción → muletillas** funciona de punta a punta en Chrome.
+- ✅ **Coach visual (avatar reactivo, §5.1 alcance)** implementado: 5 estados que
+  reaccionan en tiempo real sobre los interim results (muletillas + frases de impacto),
+  con mensajes humorísticos y accesibilidad (prefers-reduced-motion, aria-live).
 - ⬜ **Análisis con Gemini** (rúbrica + score + veredicto), **veredicto hablado (TTS)**,
   **dashboard visual** completo y **deploy a Railway** siguen pendientes (stubs/TODO).
 
@@ -27,6 +30,7 @@
 | ✅ | Transcripción de voz a texto (§9.4) | `src/components/GrabadorVoz.tsx` | idioma `es-419` (LATAM); acumula solo resultados finales |
 | ✅ | Detección de muletillas (§9.5) | `src/lib/muletillas.ts` + `src/components/ResumenMuletillas.tsx` | 21 patrones con conteo por ocurrencia (detalle abajo) |
 | ✅ | UI principal | `src/app/page.tsx` | selectores + grabador + transcripción capturada + resumen de muletillas |
+| ✅ | Coach visual (avatar, §5.1) | `src/components/CoachAvatar.tsx` + `src/lib/reacciones.ts` + `src/types/coach.ts` | SVG + 5 estados (escuchando, estremecido, sorprendido, asintiendo, mirandoReloj) reaccionando en vivo a muletillas y frases de impacto vía interim results; mensajes humorísticos; animaciones CSS con `prefers-reduced-motion` |
 
 ### Detalle de muletillas (21 patrones)
 
@@ -59,8 +63,10 @@
 3. Seguir el orden de la tabla anterior (rúbricas → Gemini → prompt → API route →
    tipos → TTS → dashboard → deploy).
 4. Referencias útiles del alcance: §6 (rúbricas), §7 (tiempo como contexto),
-   §12 (JSON esperado), §14 (orden de construcción), §15 (corte de emergencia:
-   si aprieta el tiempo, quedarse con un solo tipo de pitch y priorizar el loop completo).
+   §5.1 (avatar: estados y reglas — ya implementado), §12 (JSON esperado),
+   §14 (orden de construcción), §15 (corte de emergencia: si aprieta el tiempo,
+   quedarse con un solo tipo de pitch, priorizar el loop completo, y
+   **el avatar es lo primero que se corta**).
 
 ## 4. Notas técnicas para el día
 
@@ -81,4 +87,9 @@
 
 Pitch "malo" intencional como input de la demo para mostrar lo que el coach
 detecta (muletillas + puntos de rúbrica faltantes + score). Para el loop completo
-(hablar → veredicto hablado) hace falta terminar los ítems 1–6 de la sección 2.
+(hablar → veredicto hablado) hace falta terminar los ítems 1–7 de la sección 2.
+
+**Momento "wow" del avatar (ya implementado):** al decir una muletilla en vivo
+(ej. "o sea"), el coach se estremece **en el instante** mientras el contador lo
+muestra — feedback en el momento, no después. Si aprieta el tiempo, el avatar se
+corta antes que el loop completo (§15 alcance), así que la demo no debe depender de él.

@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DuracionMaxima } from "@/types/pitch";
+import type { EstadoCoach, ReaccionCoach } from "@/types/coach";
+import { crearMotorReacciones, MENSAJES_COACH } from "@/lib/reacciones";
+import CoachAvatar from "./CoachAvatar";
 
 type EstadoGrabador = "inactivo" | "grabando" | "finalizado";
 
@@ -18,6 +21,9 @@ const IDIOMA_RECONOCIMIENTO = "es-419";
 
 const MENSAJE_NO_SOPORTADO =
   "Tu navegador no soporta reconocimiento de voz. Usa Chrome o Chromium.";
+
+// Duración de una reacción transitoria del coach (docs/alcance.md §5.1).
+const DURACION_REACCION_MS = 1200;
 
 // La Web Speech API vive en window.SpeechRecognition (estándar W3C) o en
 // window.webkitSpeechRecognition (Chrome/Chromium/Edge). Tipos mínimos en
@@ -45,6 +51,55 @@ export default function GrabadorVoz({
   const [tiempoRestante, setTiempoRestante] = useState(0);
   const [duracionTotal, setDuracionTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Estado del coach visual (docs/alcance.md §5.1): "escuchando" por defecto.
+  const [estadoCoach, setEstadoCoach] = useState<EstadoCoach>("escuchando");
+  // Mensaje breve del coach (el humor va en el copy, no en el dibujo).
+  const [mensajeCoach, setMensajeCoach] = useState<string | null>(null);
+
+  // Motor de reacciones: detecta muletillas/frases de impacto NUEVAS sobre el
+  // texto transcrito en vivo. Se crea una vez (las refs internas persisten).
+  const motorReaccionesRef = useRef(crearMotorReacciones());
+  // Texto ya evaluado por el motor, para no re-disparar en cada actualización.
+  const textoEvaluadoRef = useRef("");
+  // Marca temporal del último fragmento de texto recibido (para detectar
+  // silencio prolongado → "mirandoReloj").
+  const ultimoTextoRef = useRef(0);
+  // Ref espejo del estado del coach: permite leer el estado actual desde
+  // callbacks que cierran sobre el valor (onresult, intervalos) sin quedar obsoletos.
+  const estadoCoachRef = useRef<EstadoCoach>("escuchando");
+  // Timer que revierte las reacciones transitorias a "escuchando".
+  const reaccionTimerRef = useRef<number | null>(null);
+
+  const actualizarEstadoCoach = useCallback((nuevo: EstadoCoach) => {
+    estadoCoachRef.current = nuevo;
+    setEstadoCoach(nuevo);
+  }, []);
+
+  const limpiarTimerReaccion = useCallback(() => {
+    if (reaccionTimerRef.current !== null) {
+      window.clearTimeout(reaccionTimerRef.current);
+      reaccionTimerRef.current = null;
+    }
+  }, []);
+
+  const dispararReaccion = useCallback(
+    (reaccion: ReaccionCoach) => {
+      limpiarTimerReaccion();
+      actualizarEstadoCoach(reaccion);
+      const opciones = MENSAJES_COACH[reaccion];
+      setMensajeCoach(opciones[Math.floor(Math.random() * opciones.length)]);
+      // "asintiendo" y "mirandoReloj" persisten (se revierten desde el padre);
+      // el resto vuelve a "escuchando" tras ~1.2s.
+      if (reaccion !== "asintiendo" && reaccion !== "mirandoReloj") {
+        reaccionTimerRef.current = window.setTimeout(() => {
+          actualizarEstadoCoach("escuchando");
+          setMensajeCoach(null);
+          reaccionTimerRef.current = null;
+        }, DURACION_REACCION_MS);
+      }
+    },
+    [actualizarEstadoCoach, limpiarTimerReaccion],
+  );
 
   const reconocimientoRef = useRef<SpeechRecognition | null>(null);
   const debeContinuarRef = useRef(false);
@@ -67,8 +122,10 @@ export default function GrabadorVoz({
     setTranscripcionFinal(transcripcionFinalRef.current);
     setTranscripcionInterim("");
     setEstado("finalizado");
+    // El coach asiente al terminar: cierre de la grabación (docs/alcance.md §5.1).
+    dispararReaccion("asintiendo");
     onTranscripcionCompleta(transcripcionFinalRef.current.trim());
-  }, [onTranscripcionCompleta]);
+  }, [dispararReaccion, onTranscripcionCompleta]);
 
   const reiniciarReconocimiento = useCallback(() => {
     const rec = reconocimientoRef.current;
@@ -159,6 +216,23 @@ export default function GrabadorVoz({
       }
       setTranscripcionFinal(transcripcionFinalRef.current);
       setTranscripcionInterim(interim);
+
+      // Coach visual: evaluar el texto completo (final + interim) y disparar la
+      // reacción correspondiente (docs/alcance.md §5.1). Solo reacciona a
+      // detecciones NUEVAS y resetea el timer de silencio cuando hay texto.
+      const textoActual = (transcripcionFinalRef.current + interim).trim();
+      if (textoActual && textoActual !== textoEvaluadoRef.current) {
+        textoEvaluadoRef.current = textoActual;
+        ultimoTextoRef.current = Date.now();
+        const reaccion = motorReaccionesRef.current.evaluar(textoActual);
+        if (reaccion !== null) {
+          dispararReaccion(reaccion);
+        } else if (estadoCoachRef.current === "mirandoReloj") {
+          // Volvió a hablar: el coach deja de mirar el reloj y escucha.
+          actualizarEstadoCoach("escuchando");
+          setMensajeCoach(null);
+        }
+      }
     };
 
     rec.onerror = (event) => {
@@ -217,7 +291,7 @@ export default function GrabadorVoz({
     setDuracionTotal(duracionMaxima * 60);
     setTiempoRestante(duracionMaxima * 60);
     setEstado("grabando");
-  }, [duracionMaxima, manejarFin]);
+  }, [actualizarEstadoCoach, dispararReaccion, duracionMaxima, manejarFin]);
 
   const reiniciar = useCallback(() => {
     setEstado("inactivo");
@@ -230,7 +304,15 @@ export default function GrabadorVoz({
     debeContinuarRef.current = false;
     errorFatalRef.current = false;
     reconocimientoRef.current = null;
-  }, []);
+    // Coach visual: volver a "escuchando" y limpiar el motor para la nueva
+    // grabación (docs/alcance.md §5.1).
+    limpiarTimerReaccion();
+    actualizarEstadoCoach("escuchando");
+    setMensajeCoach(null);
+    motorReaccionesRef.current.reset();
+    textoEvaluadoRef.current = "";
+    ultimoTextoRef.current = 0;
+  }, [actualizarEstadoCoach, limpiarTimerReaccion]);
 
   // Intervalo que decrementa el tiempo restante mientras se graba.
   useEffect(() => {
@@ -247,6 +329,22 @@ export default function GrabadorVoz({
       detenerGrabacion();
     }
   }, [estado, tiempoRestante, detenerGrabacion]);
+
+  // Silencio prolongado (~3s sin texto nuevo) mientras se graba → el coach
+  // mira el reloj (docs/alcance.md §5.1). Se dispara solo si no está ya en
+  // esa reacción; persiste hasta que el usuario vuelve a hablar (ver onresult).
+  useEffect(() => {
+    if (estado !== "grabando") return;
+    const id = window.setInterval(() => {
+      if (
+        Date.now() - ultimoTextoRef.current > 3000 &&
+        estadoCoachRef.current === "escuchando"
+      ) {
+        dispararReaccion("mirandoReloj");
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [dispararReaccion, estado]);
 
   // Limpieza al desmontar: detener el reconocimiento y cualquier reinicio
   // pendiente para no dejar el micrófono activo de fondo.
@@ -293,6 +391,12 @@ export default function GrabadorVoz({
             Grabando
           </span>
         )}
+      </div>
+
+      {/* Coach visual: escucha y reacciona en vivo durante la grabación
+          (docs/alcance.md §5.1). */}
+      <div className="mt-4 flex justify-center">
+        <CoachAvatar estado={estadoCoach} mensaje={mensajeCoach} />
       </div>
 
       {estado === "grabando" && (
