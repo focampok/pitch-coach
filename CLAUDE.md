@@ -31,7 +31,7 @@
  - `GEMINI_API_KEY` — clave de la API de Gemini, usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y, opcionalmente, Scribe STT), usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - `TAVILY_API_KEY` — clave de Tavily (búsqueda de estadísticas para sugerencias), usada únicamente en API routes (server-side), nunca expuesta al cliente.
- - `NEXT_PUBLIC_VAPI_PUBLIC_KEY` — public key de Vapi para el Web SDK (ronda del inversionista). **Excepción documentada a la regla de `NEXT_PUBLIC_`**: esta clave es pública por diseño de Vapi (equivalente a un publishable key) y debe usarse en el cliente. La *private key* de Vapi, si llegara a necesitarse, va server-side sin prefijo.
+ - `NEXT_PUBLIC_VAPI_PUBLIC_KEY` — public key de Vapi para el Web SDK (ronda del jurado). **Excepción documentada a la regla de `NEXT_PUBLIC_`**: esta clave es pública por diseño de Vapi (equivalente a un publishable key) y debe usarse en el cliente. La *private key* de Vapi, si llegara a necesitarse, va server-side sin prefijo.
 - En Railway, las variables de entorno se configuran directamente en el panel del proyecto (Settings → Variables), replicando las mismas keys que en `.env.local`.
 - Cualquier variable que empiece con `NEXT_PUBLIC_` queda expuesta al navegador — **nunca usar ese prefijo para API keys o secretos** (única excepción: la public key de Vapi, ver arriba).
 
@@ -51,30 +51,36 @@ pitch-coach/
 ├── .env.local              # no se commitea
 ├── .env.example
 ├── Dockerfile              # solo para build/deploy en Railway, no se usa en local
+├── railway.toml            # builder Dockerfile + healthcheck para Railway
+├── .dockerignore
 ├── package.json
-├── next.config.js
-├── tailwind.config.js
+├── next.config.ts
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx                 # pantalla principal (selector de pitch + grabación + dashboard)
+│   │   ├── page.tsx                 # selector + grabación + transcripción + muletillas
 │   │   ├── layout.tsx
 │   │   ├── globals.css
 │   │   └── api/
 │   │       └── analizar-pitch/
-│   │           └── route.ts         # API route: recibe transcripción + tipo de pitch, llama a Gemini, responde JSON
+│   │           └── route.ts         # stub: Gemini (pendiente el día del evento)
 │   ├── components/
 │   │   ├── SelectorTipoPitch.tsx
-│   │   ├── GrabadorVoz.tsx           # maneja Web Speech API (STT)
-│   │   ├── ReproductorVeredicto.tsx  # maneja SpeechSynthesis (TTS)
-│   │   ├── DashboardResultado.tsx    # transcripción, muletillas, rúbrica, score
-│   │   └── ui/                       # componentes visuales reutilizables (botones, cards, etc.)
+│   │   ├── SelectorDuracion.tsx
+│   │   ├── GrabadorVoz.tsx           # Web Speech API (STT) + coach visual
+│   │   ├── CoachAvatar.tsx
+│   │   ├── ResumenMuletillas.tsx
+│   │   ├── ReproductorVeredicto.tsx  # stub: ElevenLabs TTS + fallback SpeechSynthesis
+│   │   └── DashboardResultado.tsx    # stub: rúbrica + score
 │   ├── lib/
-│   │   ├── gemini.ts                 # cliente y llamada a Gemini API
-│   │   ├── rubricas.ts               # las 4 rúbricas hardcodeadas (capital, educación, innovación, tecnología)
-│   │   ├── muletillas.ts             # lógica de detección por regex/keyword matching
-│   │   └── prompts.ts                # construcción del prompt que se envía a Gemini
+│   │   ├── gemini.ts                 # stub: cliente Gemini
+│   │   ├── rubricas.ts
+│   │   ├── muletillas.ts
+│   │   ├── reacciones.ts             # motor de reacciones del avatar
+│   │   └── prompts.ts
 │   └── types/
-│       └── pitch.ts                  # tipos TypeScript: TipoPitch, ResultadoAnalisis, etc.
+│       ├── pitch.ts
+│       ├── coach.ts
+│       └── web-speech.d.ts
 └── public/
 ```
 
@@ -84,13 +90,14 @@ El proyecto debe tener un `README.md` en la raíz, con al menos:
 
 - Nombre del proyecto y una línea que explique qué hace (ver `docs/alcance.md` sección 2, "Concepto").
 - Track del hackathon (Learning by Shipping) y nombre del evento (The Next Craft).
-- Stack técnico resumido (Next.js, Gemini API, Web Speech API, Railway).
+- Stack técnico resumido (Next.js, Gemini API, Web Speech API, ElevenLabs, Tavily, Vapi, Railway).
 - Instrucciones de setup local:
   - Clonar el repo.
   - `npm install`.
-  - Copiar `.env.example` a `.env.local` y completar `GEMINI_API_KEY`.
+  - Copiar `.env.example` a `.env.local` y completar las keys documentadas ahí (`GEMINI_API_KEY` es la única requerida para el loop crítico; el resto degrada con fallback).
   - `npm run dev` para levantar en local (sin Docker, ejecución nativa).
 - Nota explícita de que el `Dockerfile` es solo para el deploy en Railway y no se usa en desarrollo local.
+- El deploy en Railway es temprano y continuo (primer deploy antes del evento, luego al completar cada hito).
 - Se actualiza conforme el proyecto avanza — no es un documento estático que se escribe una sola vez al inicio.
 
 ### .gitignore
@@ -127,8 +134,8 @@ yarn-error.log*
 
 Notas sobre la estructura:
 - La lógica de negocio (rúbricas, detección de muletillas, construcción de prompts) vive en `src/lib/`, separada de los componentes de UI — facilita que el agente edite una cosa sin tocar la otra.
-- Un único API route (`/api/analizar-pitch`) concentra la llamada al LLM. No se crean múltiples endpoints salvo que el alcance crezca.
-- El `Dockerfile` vive en la raíz solo porque Railway lo espera ahí — no implica que se use en desarrollo (ver regla de entorno de desarrollo arriba).
+- El análisis del pitch vive en `/api/analizar-pitch`. El TTS de ElevenLabs y (si aplica) Scribe serán API routes adicionales server-side; no exponer keys al cliente.
+- El `Dockerfile` y `railway.toml` viven en la raíz porque Railway los espera ahí — no implica que se usen en desarrollo (ver regla de entorno de desarrollo arriba).
 
 ## Convención de idioma
 

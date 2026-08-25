@@ -34,8 +34,9 @@ Builders, emprendedores, estudiantes y profesionales que necesitan preparar un p
    - Evalúa el contenido contra la **rúbrica del tipo de pitch elegido** (puntos cubiertos / faltantes).
    - Genera un **score** y un **veredicto breve**.
 5. El veredicto se convierte a voz y se **reproduce por bocina** (modelo híbrido); el avatar acompaña con una reacción de cierre (asiente o muestra gesto según el veredicto).
-6. En paralelo, el **dashboard muestra el detalle completo**: transcripción, muletillas resaltadas, puntos de rúbrica cumplidos/faltantes, score visual.
-7. (Opcional, si el tiempo lo permite) El usuario puede intentar de nuevo en la misma sesión y comparar contra el intento anterior.
+6. En paralelo, el **dashboard muestra el detalle completo**: transcripción, muletillas resaltadas, puntos de rúbrica cumplidos/faltantes, score visual, y (si aplica) sugerencias con datos reales de Tavily.
+7. Tras el veredicto, el usuario puede iniciar la **ronda de preguntas del jurado** (Vapi): un agente de voz hace 2-3 preguntas basadas en los puntos de rúbrica incumplidos. El persona del agente cambia según el tipo de pitch (inversionista, comité académico, jurado de innovación o revisor técnico) — no es exclusivo de capital.
+8. (Opcional, si el tiempo lo permite) El usuario puede intentar de nuevo en la misma sesión y comparar contra el intento anterior.
 
 ## 5. Modelo híbrido (voz + visual)
 
@@ -143,18 +144,18 @@ El prototipo debe demostrar el ciclo completo:
 
 Debe incluir:
 
-- [ ] Selector de tipo de pitch (4 opciones fijas).
-- [ ] Selector de duración máxima (presets de 1 a 7 minutos).
-- [ ] Grabación de audio desde el micrófono del navegador, con corte automático al alcanzar la duración máxima seleccionada.
-- [ ] Transcripción de voz a texto (Web Speech API).
-- [ ] Detección de muletillas por conteo simple.
-- [ ] Evaluación de contenido contra la rúbrica del tipo elegido, vía LLM (Gemini), devolviendo JSON estructurado.
-- [ ] Veredicto corto convertido a voz con **ElevenLabs TTS** (server-side) y reproducido por el dispositivo de salida de audio (bocina Bluetooth), con **SpeechSynthesis como fallback obligatorio** en el cliente si la llamada falla.
-- [ ] Dashboard visual con: transcripción completa, muletillas resaltadas con conteo, puntos de rúbrica cumplidos/faltantes, score numérico o visual.
+- [x] Selector de tipo de pitch (4 opciones fijas).
+- [x] Selector de duración máxima (presets de 1 a 7 minutos).
+- [x] Grabación de audio desde el micrófono del navegador, con corte automático al alcanzar la duración máxima seleccionada.
+- [x] Transcripción de voz a texto (Web Speech API).
+- [x] Detección de muletillas por conteo simple.
+- [ ] Evaluación de contenido contra la rúbrica del tipo elegido, vía LLM (Gemini), devolviendo JSON estructurado. (`/api/analizar-pitch` es un stub.)
+- [ ] Veredicto corto convertido a voz con **ElevenLabs TTS** (server-side) y reproducido por el dispositivo de salida de audio (bocina Bluetooth), con **SpeechSynthesis como fallback obligatorio** en el cliente si la llamada falla. (`ReproductorVeredicto.tsx` es un stub.)
+- [ ] Dashboard visual con: transcripción completa, muletillas resaltadas con conteo, puntos de rúbrica cumplidos/faltantes, score numérico o visual. (Hoy: transcripción + conteo de muletillas; rúbrica/score pendientes de Gemini.)
 - [ ] **Sugerencias con datos reales (Tavily)**: cuando un punto de rúbrica queda incumplido por falta de un dato concreto, buscar una estadística real relacionada al tema del pitch y mostrarla como sugerencia en el dashboard.
 - [ ] **Ronda de preguntas del jurado (Vapi)**: tras el veredicto, un agente de voz en español hace 2-3 preguntas basadas en los puntos de rúbrica incumplidos. Funciona para los 4 tipos de pitch; el persona del agente cambia según el tipo (inversionista, comité académico, jurado de innovación, revisor técnico).
-- [ ] **Coach visual (avatar) con reacciones en vivo** (§5.1): al menos los estados `Escuchando`, `Estremecido` (muletilla) y `Asintiendo` (fin de grabación).
-- [ ] Sesión anónima, sin login — un intento completo funcional de punta a punta.
+- [x] **Coach visual (avatar) con reacciones en vivo** (§5.1): al menos los estados `Escuchando`, `Estremecido` (muletilla) y `Asintiendo` (fin de grabación).
+- [x] Sesión anónima, sin login — un intento completo funcional de punta a punta.
 
 ## 10. Fuera del alcance
 
@@ -179,6 +180,7 @@ Al finalizar una sesión corta, debe ser evidente que:
 - La evaluación de rúbrica identificó puntos concretos cubiertos y faltantes del pitch real del usuario.
 - El veredicto hablado y el dashboard visual coinciden y se refuerzan.
 - El **avatar reacciona en el momento** a algo real del pitch (ej. se estremece al decir "o sea") y su gesto coincide con el contador del dashboard — la reacción no es decorativa.
+- (Si la ronda del jurado está activa) El agente de voz hace preguntas concretas sobre puntos que el pitch no cubrió, con un persona coherente al tipo elegido — no un interrogatorio genérico.
 
 ## 12. Uso de patrocinadores (orgánico)
 
@@ -266,8 +268,8 @@ Los participantes cuentan con canjes de los patrocinadores (créditos de ElevenL
 - Bocina Bluetooth para eventos (ya disponible) — **probar conexión antes del evento**; tener como plan B la salida de audio de la laptop por cable, ante posible saturación de Bluetooth con 300 asistentes conectando dispositivos simultáneamente.
 
 ### Deploy
-- **Railway** (plan Hobby, $5/mes — ya activo). Un solo servicio (el proyecto Next.js completo), construido con el `Dockerfile` de la raíz (build standalone de Next.js).
-- **Deploy temprano y continuo**: el primer deploy se hace **antes del evento** (ver checklist en §14) y luego se deploya al completar cada hito. Razones: el primer build de producción siempre revela sorpresas (errores que el dev server tolera), `NEXT_PUBLIC_VAPI_PUBLIC_KEY` se incrusta en build time (requiere redeploy si cambia), y el micrófono (`getUserMedia`/`SpeechRecognition`) solo funciona en HTTPS o localhost — Railway da HTTPS automático para acceder desde otros dispositivos.
+- **Railway** (plan Hobby, $5/mes — ya activo). Servicio `web` en https://web-production-62e47a.up.railway.app, construido con el `Dockerfile` + `railway.toml` de la raíz (build standalone de Next.js). **Verificado en Chrome** (25 ago 2026): grabación y transcripción funcionan en producción.
+- **Deploy temprano y continuo**: el primer deploy ya está hecho **antes del evento** (ver checklist en §14) y luego se deploya al completar cada hito. Hasta conectar la GitHub App de Railway, cada hito se sube con `railway up`. Razones: el primer build de producción siempre revela sorpresas, `NEXT_PUBLIC_VAPI_PUBLIC_KEY` se incrusta en build time (requiere redeploy si cambia), y el micrófono (`getUserMedia`/`SpeechRecognition`) solo funciona en HTTPS o localhost.
 
 ### Costos totales del proyecto
 - $0 adicionales fuera del plan Railway Hobby ya existente. Las integraciones de patrocinadores (ElevenLabs, Tavily, Vapi) se cubren con los canjes del hackathon (§12).
@@ -282,7 +284,9 @@ Los canjes de patrocinadores son créditos que se aplican sobre cuentas existent
 - [ ] Crear cuenta en **Tavily** y generar API key (tier gratuito: 1,000 créditos/mes por sí solo).
 - [ ] Crear cuenta en **Vapi** y obtener la public key del Web SDK (cuenta nueva incluye ~$10 de crédito de prueba).
 - [ ] Llenar `.env.local` con las 4 keys y **probar una llamada real a cada API** (no descubrir un header mal puesto el día del evento).
-- [ ] **Primer deploy en Railway** con lo ya commiteado (selector, grabación, avatar): crear el proyecto, vincular el repo, configurar las variables de entorno en el panel y verificar que la URL pública funciona con HTTPS (el micrófono requiere contexto seguro fuera de localhost).
+- [x] **Proyecto Railway creado** (`pitch-coach`) y vinculado al directorio local. Servicio `web` en línea: https://web-production-62e47a.up.railway.app (HTTPS). Primer deploy con `railway up`; **probado en Chrome** — grabación y transcripción funcionan en producción.
+- [ ] Conectar la **GitHub App de Railway** al repo `focampok/pitch-coach` para auto-deploy en push a `main` (el servicio ya apunta al repo, pero Railway aún no tiene acceso; hasta entonces, cada hito se deploya con `railway up`).
+- [ ] Configurar las variables de entorno en Railway (`railway variable set` o panel) a medida que existan las keys. `NEXT_PUBLIC_VAPI_PUBLIC_KEY` requiere redeploy si cambia.
 - [ ] Probar bocina Bluetooth y micrófono USB-C (§13 Hardware).
 
 ### Día del evento (primeros 30 minutos)
@@ -292,7 +296,7 @@ Los canjes de patrocinadores son créditos que se aplican sobre cuentas existent
 
 ### Orden de construcción (12 horas)
 
-Avance previo al evento (ya commiteado): setup del proyecto, selector de tipo de pitch y duración, grabación + transcripción con Web Speech API, detección de muletillas (21 patrones) y coach visual (avatar) con reacciones en vivo.
+**Punto de partida del evento** (commit pre-evento, 25 ago 2026): setup Next.js, selectores de tipo y duración, grabación + transcripción (Web Speech API), detección de muletillas (21 patrones), coach visual (avatar) con reacciones en vivo, y **deploy en Railway verificado en Chrome**. El loop crítico aún no cierra: Gemini, TTS, dashboard de rúbrica/score, Tavily y Vapi están pendientes. No hay `.env.local` todavía (keys de patrocinadores: ver checklist arriba).
 
 Pendiente, en orden estricto — primero se cierra el loop crítico, después las integraciones de patrocinadores. **Se deploya a Railway al completar cada hito**, no una sola vez al final:
 

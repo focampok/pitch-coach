@@ -1,0 +1,11 @@
+# Configuración de Railway. El Dockerfile es exclusivo de producción
+# (no se usa en desarrollo local — ver CLAUDE.md).
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
