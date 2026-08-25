@@ -268,8 +268,8 @@ Los participantes cuentan con canjes de los patrocinadores (créditos de ElevenL
 - Bocina Bluetooth para eventos (ya disponible) — **probar conexión antes del evento**; tener como plan B la salida de audio de la laptop por cable, ante posible saturación de Bluetooth con 300 asistentes conectando dispositivos simultáneamente.
 
 ### Deploy
-- **Railway** (plan Hobby, $5/mes — ya activo). Servicio `web` en https://web-production-62e47a.up.railway.app, construido con el `Dockerfile` + `railway.toml` de la raíz (build standalone de Next.js). **Verificado en Chrome** (25 ago 2026): grabación y transcripción funcionan en producción.
-- **Deploy temprano y continuo**: el primer deploy ya está hecho **antes del evento** (ver checklist en §14) y luego se deploya al completar cada hito. Hasta conectar la GitHub App de Railway, cada hito se sube con `railway up`. Razones: el primer build de producción siempre revela sorpresas, `NEXT_PUBLIC_VAPI_PUBLIC_KEY` se incrusta en build time (requiere redeploy si cambia), y el micrófono (`getUserMedia`/`SpeechRecognition`) solo funciona en HTTPS o localhost.
+- **Railway** (plan Hobby, $5/mes — ya activo). Servicio en [https://pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/), construido con el `Dockerfile` + `railway.toml` de la raíz (build standalone de Next.js). **Verificado en Chrome** (25 ago 2026): grabación y transcripción funcionan en producción.
+- **Deploy temprano y continuo**: el primer deploy ya está hecho **antes del evento** (ver checklist en §14) y luego se deploya al completar cada hito. El servicio está conectado al repo GitHub: **un push a `main` dispara el deploy automático**. Razones de deployar temprano: el primer build de producción siempre revela sorpresas, `NEXT_PUBLIC_VAPI_PUBLIC_KEY` se incrusta en build time (requiere redeploy si cambia), y el micrófono (`getUserMedia`/`SpeechRecognition`) solo funciona en HTTPS o localhost.
 
 ### Costos totales del proyecto
 - $0 adicionales fuera del plan Railway Hobby ya existente. Las integraciones de patrocinadores (ElevenLabs, Tavily, Vapi) se cubren con los canjes del hackathon (§12).
@@ -284,8 +284,8 @@ Los canjes de patrocinadores son créditos que se aplican sobre cuentas existent
 - [ ] Crear cuenta en **Tavily** y generar API key (tier gratuito: 1,000 créditos/mes por sí solo).
 - [ ] Crear cuenta en **Vapi** y obtener la public key del Web SDK (cuenta nueva incluye ~$10 de crédito de prueba).
 - [ ] Llenar `.env.local` con las 4 keys y **probar una llamada real a cada API** (no descubrir un header mal puesto el día del evento).
-- [x] **Proyecto Railway creado** (`pitch-coach`) y vinculado al directorio local. Servicio `web` en línea: https://web-production-62e47a.up.railway.app (HTTPS). Primer deploy con `railway up`; **probado en Chrome** — grabación y transcripción funcionan en producción.
-- [ ] Conectar la **GitHub App de Railway** al repo `focampok/pitch-coach` para auto-deploy en push a `main` (el servicio ya apunta al repo, pero Railway aún no tiene acceso; hasta entonces, cada hito se deploya con `railway up`).
+- [x] **Proyecto Railway creado** (`pitch-coach`) y conectado al repo. Servicio en línea: https://pitch-coach-production-1c0c.up.railway.app (HTTPS). **Probado en Chrome** — grabación y transcripción funcionan en producción.
+- [x] **Auto-deploy desde GitHub** en push a `main` (servicio creado y vinculado al repo de forma manual).
 - [ ] Configurar las variables de entorno en Railway (`railway variable set` o panel) a medida que existan las keys. `NEXT_PUBLIC_VAPI_PUBLIC_KEY` requiere redeploy si cambia.
 - [ ] Probar bocina Bluetooth y micrófono USB-C (§13 Hardware).
 
@@ -296,9 +296,9 @@ Los canjes de patrocinadores son créditos que se aplican sobre cuentas existent
 
 ### Orden de construcción (12 horas)
 
-**Punto de partida del evento** (commit pre-evento, 25 ago 2026): setup Next.js, selectores de tipo y duración, grabación + transcripción (Web Speech API), detección de muletillas (21 patrones), coach visual (avatar) con reacciones en vivo, y **deploy en Railway verificado en Chrome**. El loop crítico aún no cierra: Gemini, TTS, dashboard de rúbrica/score, Tavily y Vapi están pendientes. No hay `.env.local` todavía (keys de patrocinadores: ver checklist arriba).
+**Punto de partida del evento** (commit pre-evento, 25 ago 2026): setup Next.js, selectores de tipo y duración, grabación + transcripción (Web Speech API), detección de muletillas (21 patrones), coach visual (avatar) con reacciones en vivo, y **deploy en Railway verificado en Chrome** (https://pitch-coach-production-1c0c.up.railway.app). El loop crítico aún no cierra: Gemini, TTS, dashboard de rúbrica/score, Tavily y Vapi están pendientes. No hay `.env.local` todavía (keys de patrocinadores: ver checklist arriba).
 
-Pendiente, en orden estricto — primero se cierra el loop crítico, después las integraciones de patrocinadores. **Se deploya a Railway al completar cada hito**, no una sola vez al final:
+Pendiente, en orden estricto — primero se cierra el loop crítico, después las integraciones de patrocinadores. **Se deploya a Railway al completar cada hito** (push a `main`; auto-deploy), no una sola vez al final:
 
 1. **Cerrar el loop crítico**: conexión a Gemini API en `/api/analizar-pitch` (transcripción + tipo de pitch + rúbrica + duración máxima y tiempo real como contexto del prompt) → validar el JSON de respuesta → dashboard visual conectado (transcripción, muletillas resaltadas, rúbrica, score). → deploy.
 2. **ElevenLabs TTS**: API route de veredicto → voz, reproducción en el navegador, fallback a SpeechSynthesis probado (desconectar la key y verificar que el veredicto suena igual). Validar reproducción por bocina Bluetooth. → deploy.
