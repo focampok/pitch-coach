@@ -6,7 +6,12 @@ import SelectorDuracion from "@/components/SelectorDuracion";
 import GrabadorVoz from "@/components/GrabadorVoz";
 import ResumenMuletillas from "@/components/ResumenMuletillas";
 import { detectarMuletillas } from "@/lib/muletillas";
-import type { TipoPitch, DuracionMaxima } from "@/types/pitch";
+import type {
+  TipoPitch,
+  DuracionMaxima,
+  SolicitudAnalisis,
+  ResultadoAnalisis,
+} from "@/types/pitch";
 
 const LABEL_TIPO_PITCH: Record<TipoPitch, string> = {
   capital: "Capital",
@@ -19,10 +24,51 @@ export default function Home() {
   const [tipoPitch, setTipoPitch] = useState<TipoPitch>("capital");
   const [duracionMaxima, setDuracionMaxima] = useState<DuracionMaxima>(3);
   const [transcripcion, setTranscripcion] = useState<string | null>(null);
+  // Tiempo real del pitch en segundos (docs/alcance.md §7: entra como contexto
+  // de la evaluación). Se guarda junto a la transcripción al terminar la grabación.
+  const [tiempoRealSegundos, setTiempoRealSegundos] = useState<number>(0);
+  // Estado del análisis: null = no iniciado; "cargando" = petición en curso;
+  // resultado/error = respuesta de /api/analizar-pitch (JSON crudo, temporal).
+  const [analisis, setAnalisis] = useState<ResultadoAnalisis | null>(null);
+  const [analizando, setAnalizando] = useState(false);
+  const [errorAnalisis, setErrorAnalisis] = useState<string | null>(null);
 
-  const handleTranscripcionCompleta = useCallback((texto: string) => {
-    setTranscripcion(texto);
-  }, []);
+  const handleTranscripcionCompleta = useCallback(
+    async (texto: string, tiempoReal: number) => {
+      setTranscripcion(texto);
+      setTiempoRealSegundos(tiempoReal);
+      setAnalisis(null);
+      setErrorAnalisis(null);
+
+      // Etapa actual: análisis real contra Gemini, mostrado como JSON crudo en
+      // pantalla para validar de punta a punta (el dashboard viene después).
+      setAnalizando(true);
+      try {
+        const respuesta = await fetch("/api/analizar-pitch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transcripcion: texto,
+            tipoPitch,
+            duracionMaxima,
+            tiempoRealSegundos: tiempoReal,
+          } satisfies SolicitudAnalisis),
+        });
+        const cuerpo = (await respuesta.json()) as ResultadoAnalisis | { error: string };
+        if (!respuesta.ok || "error" in cuerpo) {
+          throw new Error("error" in cuerpo ? cuerpo.error : "Error al analizar el pitch.");
+        }
+        setAnalisis(cuerpo);
+      } catch (error) {
+        setErrorAnalisis(
+          error instanceof Error ? error.message : "Error inesperado al analizar el pitch.",
+        );
+      } finally {
+        setAnalizando(false);
+      }
+    },
+    [tipoPitch, duracionMaxima],
+  );
 
   // Muletillas se derivan del lado del cliente (docs/alcance.md §8: no requiere
   // IA, es regex/keyword matching). Solo se calculan con transcripción presente.
@@ -91,8 +137,41 @@ export default function Home() {
             </p>
           )}
           {transcripcion && <ResumenMuletillas conteos={muletillas} />}
+          <p className="mt-2 text-sm text-zinc-500">
+            Tiempo real: {formatoSegundos(tiempoRealSegundos)} de{" "}
+            {duracionMaxima} min máximo.
+          </p>
+        </section>
+      )}
+
+      {/* Análisis (JSON crudo, temporal — reemplazado por el dashboard luego). */}
+      {analizando && (
+        <p className="text-zinc-600" role="status">
+          Analizando tu pitch…
+        </p>
+      )}
+      {errorAnalisis && (
+        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+          {errorAnalisis}
+        </p>
+      )}
+      {analisis !== null && (
+        <section className="w-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-zinc-800">
+            Resultado del análisis (JSON crudo)
+          </h2>
+          <pre className="mt-3 max-h-96 overflow-auto rounded-lg bg-zinc-900 p-4 text-xs leading-relaxed text-zinc-100">
+            {JSON.stringify(analisis, null, 2)}
+          </pre>
         </section>
       )}
     </main>
   );
+}
+
+/** Da formato humano a una duración en segundos (ej. "1:23"). */
+function formatoSegundos(segundos: number): string {
+  const m = Math.floor(segundos / 60);
+  const s = segundos % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }

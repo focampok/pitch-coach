@@ -11,8 +11,12 @@ type EstadoGrabador = "inactivo" | "grabando" | "finalizado";
 interface GrabadorVozProps {
   /** Duración máxima del pitch en minutos (presets 1–7, docs/alcance.md §7). */
   duracionMaxima: DuracionMaxima;
-  /** Se dispara al terminar la grabación (manual o por límite de tiempo) con el texto completo. */
-  onTranscripcionCompleta: (transcripcion: string) => void;
+  /**
+   * Se dispara al terminar la grabación (manual o por límite de tiempo) con el
+   * texto completo y el tiempo real que duró el pitch en segundos
+   * (docs/alcance.md §7: el tiempo usado entra como contexto de la evaluación).
+   */
+  onTranscripcionCompleta: (transcripcion: string, tiempoRealSegundos: number) => void;
 }
 
 // Español latinoamericano (mercado objetivo LATAM). Si en pruebas con el acento
@@ -106,6 +110,13 @@ export default function GrabadorVoz({
   const errorFatalRef = useRef(false);
   const transcripcionFinalRef = useRef("");
   const reinicioTimeoutRef = useRef<number | null>(null);
+  // Espejo del tiempo restante para leerlo desde callbacks que cierran sobre
+  // valores del render (finalizar/onend) sin quedarse obsoletos.
+  const tiempoRestanteRef = useRef(0);
+  // Espejo de la duración total: rec.onend se asigna con el render en que se
+  // inició la grabación, cuando duracionTotal aún era 0. Leerla desde el ref
+  // evita que finalizar calcule el tiempo real con ese valor obsoleto.
+  const duracionTotalRef = useRef(0);
 
   // El soporte de la Web Speech API solo puede detectarse en el cliente.
   // useSyncExternalStore devuelve null en el servidor (getServerSnapshot) y el
@@ -124,7 +135,14 @@ export default function GrabadorVoz({
     setEstado("finalizado");
     // El coach asiente al terminar: cierre de la grabación (docs/alcance.md §5.1).
     dispararReaccion("asintiendo");
-    onTranscripcionCompleta(transcripcionFinalRef.current.trim());
+    // Tiempo real usado: duración máxima menos lo que sobró (docs/alcance.md §7).
+    // Ambos valores se leen desde refs espejo: rec.onend captura esta función en
+    // un render donde duracionTotal aún era 0, así que el state quedaría obsoleto.
+    const tiempoRealSegundos = Math.max(
+      0,
+      duracionTotalRef.current - tiempoRestanteRef.current,
+    );
+    onTranscripcionCompleta(transcripcionFinalRef.current.trim(), tiempoRealSegundos);
   }, [dispararReaccion, onTranscripcionCompleta]);
 
   const reiniciarReconocimiento = useCallback(() => {
@@ -289,7 +307,9 @@ export default function GrabadorVoz({
     // Arrancar el countdown con la duración capturada al inicio, para que un
     // cambio del selector a mitad de grabación no reinicie el temporizador.
     setDuracionTotal(duracionMaxima * 60);
+    duracionTotalRef.current = duracionMaxima * 60;
     setTiempoRestante(duracionMaxima * 60);
+    tiempoRestanteRef.current = duracionMaxima * 60;
     setEstado("grabando");
   }, [actualizarEstadoCoach, dispararReaccion, duracionMaxima, manejarFin]);
 
@@ -299,10 +319,12 @@ export default function GrabadorVoz({
     setTranscripcionInterim("");
     setTiempoRestante(0);
     setDuracionTotal(0);
+    duracionTotalRef.current = 0;
     setError(null);
     transcripcionFinalRef.current = "";
     debeContinuarRef.current = false;
     errorFatalRef.current = false;
+    tiempoRestanteRef.current = 0;
     reconocimientoRef.current = null;
     // Coach visual: volver a "escuchando" y limpiar el motor para la nueva
     // grabación (docs/alcance.md §5.1).
@@ -314,11 +336,16 @@ export default function GrabadorVoz({
     ultimoTextoRef.current = 0;
   }, [actualizarEstadoCoach, limpiarTimerReaccion]);
 
-  // Intervalo que decrementa el tiempo restante mientras se graba.
+  // Intervalo que decrementa el tiempo restante mientras se graba. El ref se
+  // mantiene en sintonía con el estado para leerlo desde finalizar sin closure obsoleto.
   useEffect(() => {
     if (estado !== "grabando") return;
     const id = window.setInterval(() => {
-      setTiempoRestante((prev) => Math.max(0, prev - 1));
+      setTiempoRestante((prev) => {
+        const siguiente = Math.max(0, prev - 1);
+        tiempoRestanteRef.current = siguiente;
+        return siguiente;
+      });
     }, 1000);
     return () => window.clearInterval(id);
   }, [estado]);

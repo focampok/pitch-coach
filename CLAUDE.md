@@ -31,9 +31,8 @@
  - `GEMINI_API_KEY` — clave de la API de Gemini, usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y, opcionalmente, Scribe STT), usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - `TAVILY_API_KEY` — clave de Tavily (búsqueda de estadísticas para sugerencias), usada únicamente en API routes (server-side), nunca expuesta al cliente.
- - `NEXT_PUBLIC_VAPI_PUBLIC_KEY` — public key de Vapi para el Web SDK (ronda del jurado). **Excepción documentada a la regla de `NEXT_PUBLIC_`**: esta clave es pública por diseño de Vapi (equivalente a un publishable key) y debe usarse en el cliente. La *private key* de Vapi, si llegara a necesitarse, va server-side sin prefijo.
-- En Railway, las variables de entorno se configuran directamente en el panel del proyecto (Settings → Variables), replicando las mismas keys que en `.env.local`.
-- Cualquier variable que empiece con `NEXT_PUBLIC_` queda expuesta al navegador — **nunca usar ese prefijo para API keys o secretos** (única excepción: la public key de Vapi, ver arriba).
+ - En Railway, las variables de entorno se configuran directamente en el panel del proyecto (Settings → Variables), replicando las mismas keys que en `.env.local`.
+ - Cualquier variable que empiece con `NEXT_PUBLIC_` queda expuesta al navegador — **nunca usar ese prefijo para API keys o secretos**.
 
 ## Estructura de carpetas (scaffolding)
 
@@ -90,7 +89,7 @@ El proyecto debe tener un `README.md` en la raíz, con al menos:
 
 - Nombre del proyecto y una línea que explique qué hace (ver `docs/alcance.md` sección 2, "Concepto").
 - Track del hackathon (Learning by Shipping) y nombre del evento (The Next Craft).
-- Stack técnico resumido (Next.js, Gemini API, Web Speech API, ElevenLabs, Tavily, Vapi, Railway).
+- Stack técnico resumido (Next.js, Gemini API, Web Speech API, ElevenLabs, Tavily, Railway).
 - Instrucciones de setup local:
   - Clonar el repo.
   - `npm install`.

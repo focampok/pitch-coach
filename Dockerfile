@@ -13,11 +13,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Las variables NEXT_PUBLIC_* se incrustan en build time. Railway inyecta las
-# variables del servicio como build args cuando se declaran con ARG.
-ARG NEXT_PUBLIC_VAPI_PUBLIC_KEY
-ENV NEXT_PUBLIC_VAPI_PUBLIC_KEY=$NEXT_PUBLIC_VAPI_PUBLIC_KEY
-
 RUN npm run build
 
 # ---- Runtime ----
