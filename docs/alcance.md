@@ -1,9 +1,5 @@
 # Pitch Coach
 
-## Hackathon: The Next Craft — Track: Learning by Shipping
-
----
-
 ## 1. Problema
 
 Practicar un pitch normalmente se hace frente a un espejo, grabándose en el celular, o frente a otras personas — sin retroalimentación estructurada, sin medir muletillas, sin verificar si realmente se cubrieron los puntos clave según el tipo de pitch (capital, educación, innovación, tecnología).
@@ -12,43 +8,40 @@ El feedback existente es subjetivo, tardío o inexistente. No hay una forma ráp
 
 ## 2. Concepto
 
-**Pitch Coach** es una herramienta conversacional de práctica de pitch. El usuario habla su pitch en voz alta frente al micrófono, el sistema transcribe, analiza el contenido contra una rúbrica según el tipo de pitch elegido, detecta muletillas, y responde con un veredicto hablado (a través de bocina) además de un dashboard visual con el detalle completo. Un **coach visual (avatar)** personifica al entrenador: escucha en vivo durante la grabación y reacciona con gestos a lo que el sistema detecta, reforzando el feedback en el momento exacto (ver §5.1).
+**Pitch Coach** es una herramienta de práctica de pitch. El usuario habla en voz alta frente al micrófono, el sistema transcribe, analiza el contenido contra una rúbrica según el tipo elegido, detecta muletillas y muestra un dashboard con el detalle. El usuario puede escuchar un veredicto corto cuando quiera. Un **coach visual (avatar)** escucha en vivo durante la grabación y reacciona a lo que el sistema detecta (ver §5.1).
 
 La idea central:
 
-> No leas feedback en una pantalla. Practica en voz alta y recibe una respuesta hablada, como si un coach real te estuviera escuchando.
-
-El avatar es la **materialización visual de esa frase**: no es decoración, es el coach "viendo y sintiendo" la práctica mientras el usuario habla.
+> Practica en voz alta. Recibe feedback concreto — escrito primero, hablado si lo pides — como si un coach te estuviera escuchando.
 
 ## 3. Usuario objetivo
 
-Builders, emprendedores, estudiantes y profesionales que necesitan preparar un pitch — de capital, educativo, de innovación o técnico — y quieren practicar con retroalimentación objetiva antes de presentar frente a una audiencia real.
+Builders, emprendedores, estudiantes y profesionales que necesitan preparar un pitch — de capital, educativo, de innovación o técnico — y quieren practicar con retroalimentación objetiva antes de presentar frente a una audiencia real. Mercado: **LATAM**, interfaz y feedback en español.
 
 ## 4. Experiencia principal (loop del usuario)
 
-1. El usuario elige el **tipo de pitch** (capital / educación / innovación / tecnología) y la **duración máxima** de su pitch, mediante presets de 1 a 7 minutos (en incrementos de 1 minuto).
-2. Presiona grabar y **pitchea en voz alta** frente al micrófono. La grabación se **corta automáticamente** al alcanzar la duración máxima seleccionada.
-3. El sistema **transcribe el audio a texto** en tiempo real (o al finalizar la grabación). Mientras graba, el **coach visual (avatar) escucha y reacciona en vivo** a lo que se detecta (muletillas, frases de impacto, silencios) — ver §5.1.
+1. El usuario elige el **tipo de pitch** (capital / educación / innovación / tecnología) y la **duración máxima**, mediante presets de 1 a 7 minutos.
+2. Presiona grabar y **pitchea en voz alta**. La grabación se **corta automáticamente** al alcanzar la duración máxima.
+3. El sistema **transcribe el audio a texto** en tiempo real. Mientras graba, el **avatar escucha y reacciona** (muletillas, frases de impacto, silencios) — ver §5.1.
 4. El sistema analiza la transcripción:
    - Detecta **muletillas** (conteo por palabra/frase).
-   - Evalúa el contenido contra la **rúbrica del tipo de pitch elegido** (puntos cubiertos / faltantes).
+   - Evalúa el contenido contra la **rúbrica del tipo elegido**.
    - Genera un **score** y un **veredicto breve**.
-5. El veredicto se convierte a voz y se **reproduce por bocina** (modelo híbrido); el avatar acompaña con una reacción de cierre (asiente o muestra gesto según el veredicto).
-6. En paralelo, el **dashboard muestra el detalle completo**: transcripción, muletillas resaltadas, puntos de rúbrica cumplidos/faltantes, score visual.
-7. (Opcional, si el tiempo lo permite) El usuario puede intentar de nuevo en la misma sesión y comparar contra el intento anterior.
+5. El **dashboard muestra el detalle** en texto: transcripción con muletillas resaltadas, puntos de rúbrica, score y tiempo usado.
+6. El usuario **puede escuchar al coach**: el `veredicto_corto` se convierte a voz (ElevenLabs, con fallback a SpeechSynthesis). No se reproduce solo al terminar el análisis.
 
 ## 5. Modelo híbrido (voz + visual)
 
-El diferenciador central del producto frente a un simple "analizador de texto" es que la interacción principal ocurre **en voz**, no leyendo una pantalla:
+Se **practica en voz** y el resultado se ve y se puede oír:
 
-- **Canal auditivo (la demo "wow")**: el usuario habla, la bocina responde con un veredicto corto y directo.
-- **Canal visual (evidencia y detalle)**: mientras ocurre la interacción de voz, la pantalla muestra en tiempo real la transcripción, las muletillas detectadas, y el score — sirve como respaldo si el audio falla y como evidencia de "datos reales" para los jueces.
+- **Canal visual:** durante la grabación, transcripción y muletillas en vivo + avatar. Al terminar, dashboard con rúbrica, score y mejoras. Es el canal principal del resultado.
+- **Canal auditivo (a pedido):** el usuario pulsa "Escuchar veredicto". Si ElevenLabs falla, SpeechSynthesis cubre; si ambos fallan, el dashboard sigue ahí.
 
-Este diseño es intencional: si el TTS o el hardware de audio fallan durante la demo en vivo, el dashboard visual sigue funcionando como respaldo. Nunca se depende de un solo canal.
+Nunca se depende de un solo canal.
 
 ### 5.1 Coach visual (avatar reactivo)
 
-El **avatar del coach** es la materialización visual del canal auditivo: un personaje estilizado (SVG inline, trazos simples, paleta neutra con un acento de color) que **escucha en vivo** durante la grabación y reacciona con micro-gestos a lo que el sistema detecta. No es un muñeco decorativo: **toda reacción se dispara por un dato real y es verificable en pantalla** — el avatar y el dashboard están sincronizados, nunca reacciona "porque sí".
+Personaje estilizado (SVG inline) que **escucha en vivo** y reacciona con micro-gestos. **Toda reacción se dispara por un dato real y es verificable en pantalla.**
 
 #### Estados (uno activo a la vez)
 
@@ -62,20 +55,20 @@ El **avatar del coach** es la materialización visual del canal auditivo: un per
 
 #### Reglas de diseño
 
-- **Una reacción a la vez**, breve (~1.2s) y con prioridad a la más reciente; las demás se acumulan en los contadores. La animación informa, no distrae.
-- **Micro-gestos, no bailes**: ceja levantada, parpadeo doble, retroceso leve, asentimiento contenido. El gesto sobrio se lee como "coach", no como "juguete".
-- **Sin flashes** (WCAG: nada que parpadee >3 veces/s) y respetar `prefers-reduced-motion`: si el usuario lo tiene activado, el avatar queda estático y el feedback pasa 100% por contadores y TTS.
-- **El color nunca es el único canal**: el estremecimiento se acompaña del contador visible y la sorpresa de una marca ✅ en la rúbrica (accesibilidad).
-- **El humor va en el copy, no en el dibujo**: el avatar aporta la cara; la personalidad la da un mensaje breve en español (ej. "ese 'o sea' sonó fuerte — van 12"). Tonos sobrios pero con chispa, consistente con el track Learning by Shipping.
+- **Una reacción a la vez**, breve (~1.2s) y con prioridad a la más reciente.
+- **Micro-gestos, no bailes.** El gesto sobrio se lee como "coach", no como "juguete".
+- **Sin flashes** (WCAG) y respetar `prefers-reduced-motion`: si está activo, el avatar queda estático y el feedback pasa por contadores y TTS.
+- **El color nunca es el único canal.**
+- **El humor va en el copy, no en el dibujo** (ej. "ese 'o sea' sonó fuerte — van 12").
 
 #### Dependencia con el resto del sistema
 
-- Usa los **interim results** de la Web Speech API (ya disponibles en `GrabadorVoz.tsx`) y la misma lógica regex de `src/lib/muletillas.ts` — **sin IA en tiempo real**, sin latencia y sin depender de la red. Gemini sigue reservado al análisis final.
-- La detección de "frases de impacto" es **keyword matching local** sobre el texto intermedio (regex de frases potentes: "quiero", "vamos a", cifras + "usuarios/mercado", etc.), no una llamada al LLM por cada fragmento.
+- Usa los **interim results** de la Web Speech API y la misma lógica regex de `src/lib/muletillas.ts` — **sin IA en tiempo real**. Gemini queda reservado al análisis final.
+- Las "frases de impacto" son **keyword matching local** sobre el texto intermedio, no una llamada al LLM por cada fragmento.
 
 ## 6. Rúbricas por tipo de pitch
 
-Cada tipo de pitch tiene una lista fija de 4-5 puntos que la IA busca en la transcripción del usuario.
+Cada tipo tiene 5 puntos fijos que la IA busca en la transcripción. Van **hardcodeadas**; no hay rúbricas custom en esta versión.
 
 ### Capital
 1. Problema claro
@@ -105,24 +98,19 @@ Cada tipo de pitch tiene una lista fija de 4-5 puntos que la IA busca en la tran
 4. Estado actual (funcional, en desarrollo, escalabilidad)
 5. Uso de recursos o stack relevante mencionado con claridad
 
-> Nota: estas rúbricas van **hardcodeadas** en el MVP. No hay edición ni entrenamiento de rúbricas custom.
-
 ## 7. Duración máxima del pitch
 
-El usuario selecciona la duración máxima antes de grabar, mediante presets fijos: **1, 2, 3, 4, 5, 6 o 7 minutos**. No se acepta un valor libre/personalizado en el MVP — solo estos presets.
+Presets fijos: **1, 2, 3, 4, 5, 6 o 7 minutos**. No hay valor libre.
 
-- La grabación **se corta automáticamente** al llegar al límite seleccionado (deteniendo el reconocimiento de voz / grabación de audio).
-- El tiempo usado (duración real del pitch vs. duración máxima seleccionada) **se incluye como contexto en la evaluación del LLM**, no es solo un cronómetro visual. Ejemplos de feedback que esto habilita:
-  - El usuario se quedó sin tiempo antes de cubrir un punto clave de la rúbrica (ej. "se te acabó el tiempo antes de mencionar el ask de capital").
-  - El usuario terminó muy por debajo del tiempo disponible, sugiriendo que el pitch podría desarrollarse con más profundidad.
-  - El usuario administró bien el tiempo y cubrió todos los puntos de la rúbrica dentro del límite.
-- El dashboard visual debe mostrar el tiempo transcurrido vs. el máximo seleccionado (ej. barra de progreso o conteo regresivo durante la grabación).
+- La grabación **se corta automáticamente** al llegar al límite.
+- El tiempo real vs. el máximo **entra como contexto del LLM** (¿se acabó el tiempo antes del ask? ¿sobraron minutos?).
+- El dashboard muestra el tiempo usado vs. el máximo.
 
 ## 8. Detección de muletillas
 
-No requiere IA — se resuelve con matching simple (regex / keyword count) sobre la transcripción.
+No requiere IA: regex / keyword count sobre la transcripción.
 
-Lista inicial de muletillas a detectar (ajustable durante pruebas con la propia voz del usuario):
+Lista base:
 
 - "eeee" / "ehh"
 - "o sea"
@@ -133,89 +121,70 @@ Lista inicial de muletillas a detectar (ajustable durante pruebas con la propia 
 - "digamos"
 - "en ese sentido"
 
-El sistema cuenta ocurrencias por muletilla y las presenta en el dashboard (ej. "dijiste 'eeee' 12 veces").
+La implementación tiene **21 patrones** (oratoria LATAM) y umbral ≥3 para "pues" y "bueno". La misma lista (`PATRONES_MULETILLAS` en `src/lib/muletillas.ts`) sirve para el conteo y para el resaltado.
 
-## 9. MVP — Alcance dentro
+## 9. Alcance actual
 
-El prototipo debe demostrar el ciclo completo:
+Ciclo completo:
 
-**tipo de pitch + duración máxima → grabación de voz (con corte automático) → transcripción → análisis (muletillas + rúbrica + manejo del tiempo) → veredicto hablado + dashboard visual**
+**tipo de pitch + duración máxima → grabación (corte automático) → transcripción → análisis (muletillas + rúbrica + tiempo) → dashboard + veredicto a pedido**
 
-Debe incluir:
+- [x] Selector de tipo de pitch (4 opciones fijas).
+- [x] Selector de duración máxima (presets de 1 a 7 minutos).
+- [x] Grabación con corte automático.
+- [x] Transcripción (Web Speech API).
+- [x] Detección de muletillas por conteo.
+- [x] Evaluación contra rúbrica vía Gemini (JSON estructurado).
+- [x] Veredicto en voz (ElevenLabs, fallback SpeechSynthesis), a pedido.
+- [x] Dashboard: transcripción, muletillas resaltadas, rúbrica, score.
+- [x] Avatar con reacciones en vivo (§5.1).
+- [x] Sesión anónima, sin login.
 
-- [ ] Selector de tipo de pitch (4 opciones fijas).
-- [ ] Selector de duración máxima (presets de 1 a 7 minutos).
-- [ ] Grabación de audio desde el micrófono del navegador, con corte automático al alcanzar la duración máxima seleccionada.
-- [ ] Transcripción de voz a texto (Web Speech API).
-- [ ] Detección de muletillas por conteo simple.
-- [ ] Evaluación de contenido contra la rúbrica del tipo elegido, vía LLM (Gemini), devolviendo JSON estructurado.
-- [ ] Veredicto corto convertido a voz (SpeechSynthesis) y reproducido por el dispositivo de salida de audio (bocina Bluetooth).
-- [ ] Dashboard visual con: transcripción completa, muletillas resaltadas con conteo, puntos de rúbrica cumplidos/faltantes, score numérico o visual.
-- [ ] **Coach visual (avatar) con reacciones en vivo** (§5.1): al menos los estados `Escuchando`, `Estremecido` (muletilla) y `Asintiendo` (fin de grabación).
-- [ ] Sesión anónima, sin login — un intento completo funcional de punta a punta.
-
-## 10. Fuera del alcance
-
-Explícitamente no se construye en este MVP:
+## 10. Fuera de esta versión
 
 - Sistema de usuarios, login o perfiles.
-- Persistencia de historial entre sesiones (base de datos). Si sobra tiempo, un segundo intento comparado **en memoria de la misma sesión** es aceptable, pero no persistencia real.
-- Edición o creación de rúbricas custom por el usuario.
+- Persistencia de historial entre sesiones (base de datos).
+- Comparar dos intentos en la misma sesión.
+- Edición o creación de rúbricas custom.
 - Soporte multi-idioma (solo español).
-- Análisis de video, lenguaje corporal o expresión facial — únicamente audio. El avatar **no analiza el cuerpo del usuario**: sus reacciones se derivan solo de la transcripción.
-- Avatar con cuerpo 3D, rigging complejo o "talking head" con voz propia — es un personaje 2D (SVG + CSS) con micro-gestos; no es un virtual human.
-- Integración con n8n (se evaluó y se descartó: no aporta valor claro a un flujo lineal de 12h).
-- Backend separado (NestJS u otro) — todo corre en un solo proyecto Next.js con API routes.
+- Análisis de video, lenguaje corporal o expresión facial.
+- Avatar 3D o "talking head".
+- Backend separado — todo corre en Next.js con API routes.
 
-## 11. Qué debe demostrar la demo
+## 11. Qué debe ser evidente al usarlo
 
-Al finalizar una sesión corta, debe ser evidente que:
+- El usuario pitcheó en voz alta (no un texto pre-cargado).
+- La transcripción corresponde a lo dicho.
+- Las muletillas son específicas, no genéricas.
+- La rúbrica marca puntos concretos cubiertos y faltantes.
+- El dashboard y el veredicto hablado (si se escucha) coinciden.
+- El avatar reacciona a algo real del pitch (ej. se estremece al decir "o sea").
 
-- El usuario realmente pitcheó en voz alta (no fue un texto pre-cargado).
-- El sistema transcribió correctamente lo dicho.
-- La detección de muletillas es real y específica (no genérica).
-- La evaluación de rúbrica identificó puntos concretos cubiertos y faltantes del pitch real del usuario.
-- El veredicto hablado y el dashboard visual coinciden y se refuerzan.
-- El **avatar reacciona en el momento** a algo real del pitch (ej. se estremece al decir "o sea") y su gesto coincide con el contador del dashboard — la reacción no es decorativa.
+## 12. Servicios externos
 
-## 12. Uso de patrocinadores
+Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 
-Con los accesos confirmados del evento (Tavily, Exa, Vapi, Apify, Cursor, ElevenLabs, n8n, Replit), se evaluó cada uno contra el producto ya definido. Solo se integran los que aportan valor real al loop existente — se descartan explícitamente los que forzarían una funcionalidad ya cubierta de forma más simple.
-
-### Se usan
-
-- **ElevenLabs** (TTS del veredicto): reemplaza como primera opción a `SpeechSynthesis` nativa para el veredicto hablado, dado que los créditos del evento eliminan el factor costo que antes lo dejaba como "mejora opcional". `SpeechSynthesis` nativa se mantiene como **fallback obligatorio** en el código — nunca se elimina, solo se prioriza ElevenLabs cuando la llamada responde correctamente. Ver detalle en sección 13.
-- **Tavily** (enriquecimiento opcional, no crítico): cuando la rúbrica detecta que el usuario no dio un dato concreto (ej. "el mercado es grande" sin cifra), el sistema busca en vivo una estadística real relacionada al tema del pitch y la sugiere como mejora en el dashboard. No es parte del loop crítico. Se elige Tavily sobre Exa por ser más simple de integrar para este caso de uso.
-
-### Se descartan explícitamente
-
-- **Vapi**: su caso de uso natural es llamadas telefónicas / agentes conversacionales por voz. Pitch Coach ya resuelve toda la interacción de voz con Web Speech API (STT) + ElevenLabs/SpeechSynthesis (TTS), nativas del navegador y sin la fragilidad de telefonía/llamadas salientes. Integrar Vapi duplicaría una función ya cubierta, agregando riesgo sin beneficio.
-- **Apify**: su caso de uso natural es scraping de páginas externas (ej. vacantes, artículos). Pitch Coach no tiene un dato externo que requiera scraping — Tavily ya cubre la necesidad de "dato real" de forma más simple y directa.
-- **n8n**: no forma parte del MVP. Podría usarse a futuro para mandar un recap del pitch por email/WhatsApp al terminar, pero no está en el orden de construcción — solo se evalúa si sobra tiempo después de completar todo lo demás (ver sección 14).
-- **Exa**: descartado en favor de Tavily (ver arriba). No se usan ambos a la vez para evitar redundancia.
-- **Cursor / Replit (créditos de desarrollo)**: son herramientas para construir el proyecto, no features del producto en sí. No cambian el plan de deploy (sigue siendo Railway) ni el editor de trabajo ya establecido.
-
-### Principio general
-
-No se fuerza el uso de un patrocinador sin un propósito orgánico dentro del producto — un stack con integraciones forzadas sin valor real se nota, y el premio principal se gana por calidad del producto en el track, no por cantidad de créditos de patrocinador usados.
+- **Gemini** — análisis del pitch (rúbrica, score, `veredicto_corto`). Requerido para el loop.
+- **ElevenLabs** — TTS del veredicto. Primera opción; **SpeechSynthesis es fallback obligatorio** y no se elimina.
+- **Tavily** — enriquecimiento opcional: si un punto de rúbrica no se cumplió, busca una estadística y la sugiere en el dashboard. Si no hay key o falla, el resto de la UI no se rompe.
 
 ## 13. Stack técnico
 
-### Frontend + Backend (proyecto único)
-- **Next.js** (React) con **API routes** — un solo proyecto, un solo deploy. Las API routes corren server-side, ocultando la API key de Gemini del cliente.
-- **Tailwind CSS** para estilos rápidos.
+### Frontend + backend (proyecto único)
+- **Next.js** (React) con **API routes**. Las keys no salen del servidor.
+- **Tailwind CSS**.
 
-### Voz → Texto (STT)
-- **Web Speech API** (`SpeechRecognition`) nativa del navegador — gratis, sin dependencias externas. Funciona en Chrome/Chromium (disponible en Linux Mint).
-- **Requisito crítico de navegador**: `SpeechRecognition` solo tiene soporte confiable en navegadores basados en Chromium (Chrome, Chromium, Edge). **Brave no lo soporta** (decisión deliberada de privacidad del navegador) y **Firefox lo tiene deshabilitado por defecto** detrás de una flag. El desarrollo y la demo del hackathon deben hacerse en Chromium o Chrome — instalar con `sudo apt install chromium` en Linux Mint si no está disponible.
-- Requiere conexión a internet activa (el reconocimiento de Chrome procesa el audio en servidores de Google) — riesgo a considerar si el wifi del venue falla.
-- El componente `GrabadorVoz.tsx` debe detectar si el navegador no soporta `SpeechRecognition` y mostrar un mensaje claro en vez de fallar silenciosamente.
-- **Fallback** (si la precisión falla en pruebas con acento/velocidad): Whisper API de OpenAI, llamada server-side con el audio grabado como blob. *(Nota: esto tendría costo — evaluar solo si Web Speech API falla de forma crítica en las pruebas previas al evento).*
+### Voz → texto (STT)
+- **Web Speech API** (`SpeechRecognition`), sin dependencias.
+- Soporte fiable en Chrome / Chromium / Edge. Brave no lo expone; Firefox lo trae deshabilitado.
+- Requiere internet (Chrome procesa el audio en servidores de Google).
+- `GrabadorVoz.tsx` muestra un mensaje claro si el navegador no soporta reconocimiento.
+- Fallback posible a futuro: Whisper (u otro STT) server-side, si Web Speech API no alcanza.
 
-### Análisis de contenido (LLM)
-- **Gemini API (Flash / Flash-Lite)** — tier gratuito, sin costo, ya conocido por el desarrollador de otros proyectos.
-- El prompt recibe: transcripción + tipo de pitch + rúbrica correspondiente.
-- La respuesta se solicita en **JSON estructurado** (structured output) para mapear directo al dashboard sin parsing frágil. Ejemplo de forma esperada:
+### Análisis (LLM)
+- **Gemini API** (Flash / Flash-Lite).
+- El prompt recibe transcripción + tipo + rúbrica + tiempo real vs. máximo.
+- Respuesta en **JSON estructurado**:
 
 ```json
 {
@@ -232,53 +201,20 @@ No se fuerza el uso de un patrocinador sin un propósito orgánico dentro del pr
 }
 ```
 
-### Texto → Voz (TTS)
-- **ElevenLabs** como primera opción — créditos confirmados del evento, voz natural en español, prioriza el "wow" de la demo.
-- **SpeechSynthesis API** nativa del navegador como **fallback obligatorio**: si la llamada a ElevenLabs falla o no responde a tiempo (rate limit, latencia, error de red), el sistema cae automáticamente a SpeechSynthesis sin que el usuario note una interrupción del loop. Nunca se elimina del código — es la garantía de que el veredicto hablado funciona pase lo que pase.
+### Texto → voz (TTS)
+- **ElevenLabs** como primera opción (voz natural en español).
+- **SpeechSynthesis** nativa como fallback: si ElevenLabs falla o tarda, el loop no se corta.
 
-### Detección de muletillas
-- Lógica simple de regex/keyword matching, corre en frontend o en el mismo API route — no requiere LLM.
+### Muletillas
+- Regex / keyword matching. No requiere LLM.
 
-### Coach visual (avatar reactivo)
-- **SVG inline + CSS transforms/animations** (opacity, translate, scale) — liviano, GPU-friendly, sin GIFs pesados ni dependencias nuevas. Compatible con el stack actual (solo React + Tailwind).
-- Reacciones en tiempo real con **regex/keyword matching local** sobre los interim results de la Web Speech API — sin IA ni red en el path caliente.
-- Respeto de `prefers-reduced-motion` (accesibilidad) y micro-gestos de ~1.2s.
-
-### Hardware
-- Micrófono USB-C (ya disponible).
-- Bocina Bluetooth para eventos (ya disponible) — **probar conexión antes del evento**; tener como plan B la salida de audio de la laptop por cable, ante posible saturación de Bluetooth con 300 asistentes conectando dispositivos simultáneamente.
+### Avatar
+- SVG inline + CSS transforms. Matching local sobre interim results. Respeta `prefers-reduced-motion`.
 
 ### Deploy
-- **Railway** (plan Hobby, $5/mes — ya activo). Un solo servicio (el proyecto Next.js completo).
+- Un solo servicio Next.js (p. ej. Railway). HTTPS hace falta para el micrófono fuera de localhost.
 
-### Costos totales del proyecto
-- $0 adicionales fuera del plan Railway Hobby ya existente.
+## 14. Entorno de desarrollo
 
-## 14. Orden de construcción sugerido (12 horas)
-
-1. Setup del proyecto Next.js + primer deploy en Railway ("hola mundo" funcionando en producción desde el inicio).
-2. Grabación de audio + transcripción con Web Speech API → mostrar texto en pantalla.
-3. Conexión a Gemini API con una rúbrica hardcodeada (solo un tipo de pitch), pasando también la duración máxima seleccionada y el tiempo real que tomó el pitch como contexto del prompt desde el inicio → validar el JSON de respuesta antes de invertir en UI.
-4. Detección de muletillas → integrar al output del análisis.
-5. TTS: implementar primero SpeechSynthesis nativa leyendo el veredicto corto (garantiza el loop funcionando) → validar reproducción por bocina Bluetooth → luego integrar ElevenLabs como opción prioritaria con fallback automático a SpeechSynthesis si falla.
-6. Dashboard visual (transcripción, muletillas resaltadas, rúbrica, score).
-7. **Coach visual (avatar) v1** (§5.1): personaje SVG + 3 estados (`Escuchando`, `Estremecido`, `Asintiendo`) reaccionando a los interim results. Agregar `Sorprendido` (frase de impacto) y `MirandoReloj` (silencio) solo si sobra tiempo.
-8. *(Si sobra tiempo)* Selector completo de los 4 tipos de pitch con sus rúbricas.
-9. *(Si sobra tiempo)* Segundo intento en la misma sesión con comparación simple.
-10. *(Si sobra tiempo)* Enriquecimiento del feedback con Tavily (dato real cuando falta una cifra en el pitch).
-11. *(Si sobra tiempo, después de todo lo demás)* Recap del pitch por email/WhatsApp vía n8n.
-
-## 15. Corte de emergencia (si el tiempo aprieta)
-
-Si a mitad del evento el tiempo se complica, el corte más seguro es:
-
-- Quedarse con **un solo tipo de pitch** (ej. solo "Capital") en vez de los 4.
-- Priorizar que el **loop completo funcione de punta a punta** (voz → análisis → voz + dashboard) antes que agregar más tipos de pitch o rúbricas.
-- **El avatar es lo primero que se corta si aprieta el tiempo**: sin avatar, el loop completo sigue funcionando. El avatar es un refuerzo del loop crítico, no un requisito del mismo.
-- Un producto que hace una sola cosa bien, funcionando en vivo, vence a uno que promete cuatro y falla en la demo.
-
-## 16. Entorno de desarrollo
-
-- **SO**: Linux Mint (nativo).
-- **Editor/Agentes**: Roo Code y Claude Code, con acceso al codebase del proyecto.
-- **Flujo de trabajo**: prompts detallados generados de antemano → ejecutados por el agente dentro del proyecto → salida revisada y ajustada iterativamente.
+- Ejecución nativa (`npm run dev`). El `Dockerfile` es solo para el deploy, no para desarrollar.
+- Las keys van en `.env.local` (no se commitea). `.env.example` documenta los nombres, sin valores.

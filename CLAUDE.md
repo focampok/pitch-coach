@@ -30,6 +30,8 @@
 - Variables esperadas (ir actualizando esta lista conforme se agreguen):
  - `GEMINI_API_KEY` — clave de la API de Gemini, usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y, opcionalmente, Scribe STT), usada únicamente en API routes (server-side), nunca expuesta al cliente.
+ - `ELEVENLABS_VOICE_ID_MALE` — Voice ID de la voz de hombre (VoiceLab). Solo server-side.
+ - `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID de la voz de mujer (VoiceLab). Solo server-side.
  - `TAVILY_API_KEY` — clave de Tavily (búsqueda de estadísticas para sugerencias), usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - En Railway, las variables de entorno se configuran directamente en el panel del proyecto (Settings → Variables), replicando las mismas keys que en `.env.local`.
  - Cualquier variable que empiece con `NEXT_PUBLIC_` queda expuesta al navegador — **nunca usar ese prefijo para API keys o secretos**.
@@ -61,7 +63,7 @@ pitch-coach/
 │   │   ├── globals.css
 │   │   └── api/
 │   │       └── analizar-pitch/
-│   │           └── route.ts         # stub: Gemini (pendiente el día del evento)
+│   │           └── route.ts         # análisis Gemini
 │   ├── components/
 │   │   ├── SelectorTipoPitch.tsx
 │   │   ├── SelectorDuracion.tsx
@@ -88,16 +90,15 @@ pitch-coach/
 El proyecto debe tener un `README.md` en la raíz, con al menos:
 
 - Nombre del proyecto y una línea que explique qué hace (ver `docs/alcance.md` sección 2, "Concepto").
-- Track del hackathon (Learning by Shipping) y nombre del evento (The Next Craft).
+- Licencia (MIT) y que el proyecto es open source.
 - Stack técnico resumido (Next.js, Gemini API, Web Speech API, ElevenLabs, Tavily, Railway).
 - Instrucciones de setup local:
   - Clonar el repo.
   - `npm install`.
   - Copiar `.env.example` a `.env.local` y completar las keys documentadas ahí (`GEMINI_API_KEY` es la única requerida para el loop crítico; el resto degrada con fallback).
   - `npm run dev` para levantar en local (sin Docker, ejecución nativa).
-- Nota explícita de que el `Dockerfile` es solo para el deploy en Railway y no se usa en desarrollo local.
-- El deploy en Railway es temprano y continuo (primer deploy antes del evento, luego al completar cada hito).
-- Se actualiza conforme el proyecto avanza — no es un documento estático que se escribe una sola vez al inicio.
+- Nota explícita de que el `Dockerfile` es solo para el deploy y no se usa en desarrollo local.
+- Se actualiza conforme el proyecto avanza — no es un documento estático.
 
 ### .gitignore
 

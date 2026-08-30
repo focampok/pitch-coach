@@ -1,62 +1,105 @@
 # Pitch Coach
 
-Entrena tu pitch en voz alta y recibe un veredicto hablado con feedback
-estructurado según el tipo de pitch (capital, educación, innovación o
-tecnología).
+Entrena tu pitch en voz alta y recibe feedback estructurado según el tipo
+de pitch (capital, educación, innovación o tecnología): rúbrica, score,
+muletillas y un veredicto que puedes escuchar cuando quieras.
 
-Proyecto para el hackathon **The Next Craft** — track **Learning by Shipping**.
+Herramienta open source para practicar en español (LATAM). La comunidad
+puede usarla, forkarla y madurarla como quiera.
 
-## Estado (punto de partida del evento — 25 ago 2026)
+Licencia: [MIT](LICENSE).
 
-**Listo y verificado en Chrome / Railway:** selectores (tipo de pitch + duración), grabación con corte automático, transcripción en vivo (Web Speech API), detección de muletillas, avatar reactivo, sesión anónima. URL: [https://pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/).
+## Qué hace
 
-**Pendiente el día del evento (en este orden):** Gemini + dashboard de rúbrica/score → ElevenLabs TTS → Tavily. Detalle en `docs/alcance.md` §9 y §14.
+**Loop completo, verificado en Chrome:** eliges tipo y duración → grabas
+(con corte automático) → se transcribe (Web Speech API) → se cuentan
+muletillas → Gemini evalúa contra la rúbrica → el dashboard muestra
+score, puntos cumplidos/faltantes y transcripción resaltada → puedes
+escuchar el veredicto (ElevenLabs, o SpeechSynthesis si falta la key) →
+si un punto de rúbrica no se cubrió, Tavily puede sugerir un dato real.
 
-## Stack técnico
+Avatar reactivo durante la grabación. Sesión anónima, sin login.
 
-- **Next.js** (App Router + API routes) — proyecto único frontend + backend.
-- **Gemini API** (Flash / Flash-Lite) — análisis del pitch contra la rúbrica
-  del tipo elegido.
-- **Web Speech API** — transcripción de voz a texto (STT) en tiempo real.
-- **ElevenLabs** — veredicto hablado (TTS) con voz natural en español;
-  SpeechSynthesis nativa como fallback. Opcional: Scribe (STT) para la
-  transcripción final de precisión.
-- **Tavily** — búsqueda de estadísticas reales para sugerir mejoras cuando
-  falta un dato concreto en el pitch.
+Demo en línea:
+[https://pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/).
+
+Más detalle del producto: `docs/alcance.md`. Estado de implementación:
+`docs/status.md`.
+
+## Limitaciones conocidas
+
+Directo al grano, sin rodeos:
+
+- **Sin tests automatizados** — la verificación es manual en Chrome.
+- **Sesión anónima, sin persistencia** — un intento no se guarda en ningún
+  lado.
+- **El STT depende de la Web Speech API**: solo es confiable en
+  Chrome/Chromium y requiere internet (procesa el audio en servidores de
+  Google).
+- **Tier gratuito de Gemini/Tavily**: sujeto a rate limits, sin garantía de
+  uptime para uso pesado.
+- **"eeee" y rellenos vocálicos casi nunca se transcriben** — es una
+  limitación del STT de Chrome, no de la detección de muletillas.
+
+## Stack
+
+- **Next.js** (App Router + API routes) — frontend y backend en un solo repo.
+- **Gemini API** — analiza el pitch. Escribe score, comentarios y
+  `veredicto_corto`. No interviene en el TTS.
+- **Web Speech API** — transcripción en tiempo real (mejor en Chrome).
+- **ElevenLabs** — TTS del veredicto. Fallback: SpeechSynthesis del
+  navegador.
+- **Tavily** — estadísticas sugeridas cuando falta un dato. Opcional.
 - **Tailwind CSS** — estilos.
-- **Railway** — deploy (temprano y continuo: se deploya al completar cada
-  hito, no una sola vez al final).
+- **Railway** — deploy (el `Dockerfile` de la raíz es solo para eso).
 
-## Setup local (Linux)
+## Setup local
+
+Desarrollo nativo, sin Docker.
 
 1. Clonar el repositorio.
 2. `npm install`
-3. Copiar `.env.example` a `.env.local` y completar las variables:
-   - `GEMINI_API_KEY` — análisis del pitch (requerida).
-   - `ELEVENLABS_API_KEY` — TTS del veredicto (sin ella, se usa el fallback
-     nativo SpeechSynthesis).
-   - `TAVILY_API_KEY` — sugerencias con datos reales (sin ella, el dashboard
-     se muestra sin sugerencias).
+3. Copiar `.env.example` a `.env.local` y completar:
+   - `GEMINI_API_KEY` — análisis del pitch (**requerida**).
+   - `ELEVENLABS_API_KEY` — TTS del veredicto.
+   - `ELEVENLABS_VOICE_ID_MALE` / `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID
+     de VoiceLab. Si faltan, el botón de escuchar usa SpeechSynthesis.
+   - `TAVILY_API_KEY` — sugerencias. Si falta, esa sección no aparece.
 4. `npm run dev`
+
+Usa **Chrome** (o Chromium/Edge). Brave no expone la Web Speech API;
+Firefox la trae deshabilitada.
 
 ## Deploy (Railway)
 
-El proyecto **pitch-coach** ya está creado en Railway. El servicio está
-en línea en
-[https://pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/)
-(HTTPS automático, necesario para el micrófono fuera de localhost).
+El build usa el `Dockerfile` (Next.js standalone) y `railway.toml`.
+HTTPS es necesario para el micrófono fuera de localhost.
 
-El build usa el `Dockerfile` de la raíz (Next.js standalone) y
-`railway.toml`. El servicio está conectado al repo `focampok/pitch-coach`
-(rama `main`): **cada push a `main` dispara un deploy automático**.
+Variables en Settings → Variables (las mismas que `.env.local`):
 
-Las variables de entorno se configuran en el panel del proyecto
-(Settings → Variables) o con `railway variable set`, replicando las de
-`.env.local`:
-
-- `GEMINI_API_KEY` (requerida para el loop crítico)
+- `GEMINI_API_KEY` (requerida)
 - `ELEVENLABS_API_KEY`
+- `ELEVENLABS_VOICE_ID_MALE`
+- `ELEVENLABS_VOICE_ID_FEMALE`
 - `TAVILY_API_KEY`
 
-> El `Dockerfile` es exclusivo para el build/deploy en Railway y no se usa
-> en desarrollo local.
+## Contribuir
+
+Issues y pull requests son bienvenidos. El código de UI y de negocio
+está en español de producto (textos, rúbricas, prompts) e inglés de
+implementación (nombres de funciones y archivos técnicos). Ver
+[`CONTRIBUTING.md`](CONTRIBUTING.md) y `CLAUDE.md` si trabajas con
+agentes dentro del repo.
+
+## Origen y créditos
+
+Pitch Coach nació en el hackathon **The Next Craft**, en el track
+**Learning by Shipping**. Usa [ElevenLabs](https://elevenlabs.io) (TTS del
+veredicto) y [Tavily](https://tavily.com) (sugerencias de estadísticas)
+como patrocinadores del evento. Ambos tienen tier gratuito, así que el
+proyecto no depende de créditos del evento: quien lo clone puede usar sus
+propias claves gratuitas (ver [Setup local](#setup-local)).
+
+## Licencia
+
+MIT — ver [LICENSE](LICENSE).
