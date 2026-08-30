@@ -26,6 +26,12 @@ Demo en línea:
 Más detalle del producto: `docs/alcance.md`. Estado de implementación:
 `docs/status.md`.
 
+## Capturas
+
+| Selección del pitch | Coach reactivo | Dashboard de resultados |
+| :---: | :---: | :---: |
+| <img src="public/screenshots/selector.png" alt="Pantalla de selección de tipo de pitch y duración máxima" width="400"> | <img src="public/screenshots/avatar.png" alt="Coach reaccionando a una muletilla durante la grabación" width="400"> | <img src="public/screenshots/dashboard.png" alt="Dashboard con score, rúbrica, muletillas y veredicto" width="400"> |
+
 ## Limitaciones conocidas
 
 Directo al grano, sin rodeos:
