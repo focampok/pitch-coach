@@ -1,0 +1,167 @@
+/* Agregar a globals.css o importar directo en page.tsx.
+   Paleta neutra + un acento, consistente con el avatar (§5.1). */
+
+.pc-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 720px;
+}
+
+.pc-dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.pc-score {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 4px solid;
+  flex-shrink: 0;
+}
+
+.pc-score-num {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.pc-score-max {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+.pc-veredicto p {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.pc-veredicto button {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #d0d0d0;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+.pc-veredicto button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.pc-tiempo-barra {
+  height: 6px;
+  border-radius: 999px;
+  background: #eee;
+  overflow: hidden;
+}
+
+.pc-tiempo-barra-fill {
+  height: 100%;
+  background: #3b82f6;
+}
+
+.pc-tiempo p {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-top: 0.35rem;
+}
+
+.pc-rubrica ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pc-rubrica-item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.pc-rubrica-punto {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pc-rubrica-comentario {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.pc-rubrica-item.faltante .pc-rubrica-punto {
+  opacity: 0.85;
+}
+
+.pc-muletillas ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pc-muletillas li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.pc-muletilla-count {
+  font-weight: 700;
+  color: #e03131;
+}
+
+.pc-transcripcion p {
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.pc-muletilla,
+mark.pc-muletilla {
+  background: #ffe066;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+
+.pc-tavily ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pc-tavily li {
+  padding: 0.55rem 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.pc-tavily-punto {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.pc-tavily-resumen {
+  margin: 0.2rem 0 0.3rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}

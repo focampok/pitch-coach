@@ -4,7 +4,7 @@ import type { ConteoMuletillas } from "@/types/pitch";
 // (docs/alcance.md §8). No requiere IA. La lista es ajustable durante pruebas
 // con la voz real del usuario.
 
-interface PatronMuletilla {
+export interface PatronMuletilla {
   /** Nombre visible que se muestra en el dashboard. */
   etiqueta: string;
   /** Patrón de búsqueda global y case-insensitive (flags "gi"). */
@@ -17,7 +17,8 @@ interface PatronMuletilla {
   umbralMin?: number;
 }
 
-const PATRONES_MULETILLAS: readonly PatronMuletilla[] = [
+/** Fuente de verdad de los 21 patrones (detección + resaltado en el dashboard). */
+export const PATRONES_MULETILLAS: readonly PatronMuletilla[] = [
   // Relleno vocálico ("eeee", "ehh"). Ojo: la Web Speech API de Chrome suele
   // omitir estos sonidos en la transcripción — el patrón queda para cuando sí
   // llegan al texto.
@@ -62,11 +63,36 @@ const PATRONES_MULETILLAS: readonly PatronMuletilla[] = [
   { etiqueta: "bueno", patron: /\bbueno\b/gi, umbralMin: 3 },
 ];
 
+/** Clona el regex para no compartir `lastIndex` entre detección y resaltado. */
+function clonarPatron(patron: RegExp): RegExp {
+  return new RegExp(patron.source, patron.flags);
+}
+
+/**
+ * Resalta en HTML las muletillas que superan su umbral (mismo criterio que
+ * `detectarMuletillas`). "pues"/"bueno" solo se marcan con ≥3 ocurrencias.
+ */
+export function resaltarMuletillas(
+  texto: string,
+  patrones: readonly PatronMuletilla[] = PATRONES_MULETILLAS,
+): string {
+  let html = texto;
+  for (const { patron, umbralMin = 1 } of patrones) {
+    const coincidencias = texto.match(clonarPatron(patron));
+    if (!coincidencias || coincidencias.length < umbralMin) continue;
+    html = html.replace(
+      clonarPatron(patron),
+      (match) => `<mark class="pc-muletilla">${match}</mark>`,
+    );
+  }
+  return html;
+}
+
 /** Cuenta ocurrencias de cada muletilla en la transcripción (solo las presentes). */
 export function detectarMuletillas(transcripcion: string): ConteoMuletillas {
   const conteos: ConteoMuletillas = {};
   for (const { etiqueta, patron, umbralMin = 1 } of PATRONES_MULETILLAS) {
-    const coincidencias = transcripcion.match(patron);
+    const coincidencias = transcripcion.match(clonarPatron(patron));
     if (coincidencias && coincidencias.length >= umbralMin) {
       conteos[etiqueta] = coincidencias.length;
     }
