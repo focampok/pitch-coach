@@ -1,4 +1,5 @@
 import { proveedorGemini } from "./proveedor-gemini";
+import { proveedorNebius } from "./proveedor-nebius";
 import { ErrorModelo } from "./error-modelo";
 
 export { ErrorModelo };
@@ -21,6 +22,13 @@ export interface SolicitudModelo {
   user: string;
   /** Esquema que el modelo debe respetar. El adaptador lo traduce a su dialecto. */
   esquema: EsquemaJson;
+  /**
+   * Nombres de los puntos de la rúbrica, en orden. Es dato OPCIONAL: los
+   * adaptadores que lo aprovechan (Nebius) derivan de él un esquema
+   * restringido con `minItems`/`maxItems`/`enum`; los que no (Gemini) lo
+   * ignoran y siguen usando `esquema` tal cual.
+   */
+  puntosRubrica?: readonly string[];
 }
 
 /**
@@ -53,7 +61,7 @@ export interface ProveedorModelo {
 export type NombreProveedor = "gemini" | "nebius";
 
 /** Proveedor por defecto cuando `MODEL_PROVIDER` no está definido. */
-const PROVEEDOR_POR_DEFECTO: NombreProveedor = "gemini";
+const PROVEEDOR_POR_DEFECTO: NombreProveedor = "nebius";
 
 /**
  * Fábrica simple (sin librerías nuevas): devuelve el adaptador del proveedor
@@ -67,9 +75,11 @@ export function proveedorActivo(): ProveedorModelo {
   switch (nombre) {
     case "gemini":
       return proveedorGemini;
+    case "nebius":
+      return proveedorNebius;
     default:
       throw new ErrorModelo(
-        `MODEL_PROVIDER inválido: "${configurado}". Valores válidos: gemini.`,
+        `MODEL_PROVIDER inválido: "${configurado}". Valores válidos: gemini, nebius.`,
       );
   }
 }
