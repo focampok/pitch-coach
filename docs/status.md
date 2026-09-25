@@ -9,7 +9,8 @@
 - ✅ Loop voz → transcripción → muletillas (Chrome).
 - ✅ Avatar reactivo (§5.1): 5 estados sobre interim results.
 - ✅ Deploy: `Dockerfile` + `railway.toml`.
-- ✅ Análisis Gemini: rúbricas, prompt en español, tiempo como contexto,
+- ✅ Análisis con dos proveedores: **Nebius** (por defecto) y **Gemini**
+  (contingencia manual). Rúbricas, prompt en español, tiempo como contexto,
   JSON estructurado, fallbacks y reintentos.
 - ✅ Dashboard: score, rúbrica, muletillas, transcripción resaltada, tiempo.
 - ✅ TTS: ElevenLabs vía `/api/tts`, fallback a SpeechSynthesis.
@@ -42,7 +43,10 @@
 | ✅ | Rúbricas (§6) | `src/lib/rubricas.ts` | 4 tipos × 5 puntos |
 | ✅ | Tipos (§13) | `src/types/pitch.ts` | `ResultadoAnalisis` y relacionados |
 | ✅ | Tiempo real (§7) | `GrabadorVoz.tsx` + `page.tsx` | contexto de Gemini + dashboard |
-| ✅ | Cliente del modelo (§13) | `src/lib/modelo.ts` + `src/lib/proveedor-modelo.ts` | capa neutra + adaptador Gemini; backoff; timeout 20 s |
+| ✅ | Cliente del modelo (§13) | `src/lib/modelo.ts` + adaptadores | capa neutra + fábrica por `MODEL_PROVIDER`; backoff; timeout 20 s |
+| ✅ | Proveedor Nebius (por defecto) | `src/lib/proveedor-nebius.ts` | `/chat/completions` OpenAI-compatible; `json_schema` estricto (`{name, strict, schema}`); `enable_thinking: false`; reintento por `finish_reason: length`; modo `ultra` solo en librería (sin ruta ni botón) |
+| ✅ | Proveedor Gemini (contingencia) | `src/lib/proveedor-gemini.ts` | `generateContent`; se activa con `MODEL_PROVIDER=gemini` |
+| ✅ | Esquema restringido | `src/lib/validar-analisis.ts` | `construirEsquemaAnalisisRestringido` con `minItems`/`maxItems`/`enum`, generado una vez (caché) |
 | ✅ | Prompt (§7/§13) | `src/lib/prompts.ts` | español; transcripción como dato no confiable; pide rúbrica sin nombres + `claridad` + `veredicto_corto` |
 | ✅ | API `analizar-pitch` | `src/app/api/analizar-pitch/route.ts` | 400 / 413 / 429 / 502 (errores genéricos al cliente) |
 | ✅ | Dashboard | `DashboardResultado.tsx` + `dashboard-resultado.css` | incluye Tavily |
@@ -74,14 +78,23 @@
 
 En `.env.local` y en el host de deploy:
 
-- `GEMINI_API_KEY` — requerida
-- Configuración del modelo (todas opcionales): `MODEL`, `MODEL_FALLBACK_MODELS`,
-  `MODEL_MAX_TOKENS`, `MODEL_TEMPERATURE`, `MODEL_RETRY_ATTEMPTS`,
-  `MODEL_RETRY_DELAY_MS`, `MODEL_RETRY_MAX_DELAY_MS`. Los nombres anteriores
-  (`GEMINI_MODEL`, `GEMINI_FALLBACK_MODELS`, `GEMINI_RETRY_*`) siguen
-  funcionando como alias.
+- `MODEL_PROVIDER` — `nebius` (por defecto) o `gemini`.
+- **Nebius** (`MODEL_PROVIDER=nebius`): `NEBIUS_API_KEY` (requerida),
+  `NEBIUS_BASE_URL` (default `https://api.tokenfactory.nebius.com/v1`) y
+  `NEBIUS_MODEL_ULTRA` (default `nvidia/Nemotron-3-Ultra-550b-a55b`).
+- **Gemini** (`MODEL_PROVIDER=gemini`, contingencia manual):
+  `GEMINI_API_KEY` (requerida en ese modo).
+- Configuración del modelo, compartida por el proveedor activo (todas
+  opcionales): `MODEL`, `MODEL_FALLBACK_MODELS`, `MODEL_MAX_TOKENS`,
+  `MODEL_TEMPERATURE`, `MODEL_RETRY_ATTEMPTS`, `MODEL_RETRY_DELAY_MS`,
+  `MODEL_RETRY_MAX_DELAY_MS`. Los nombres `GEMINI_MODEL`,
+  `GEMINI_FALLBACK_MODELS` y `GEMINI_RETRY_*` siguen funcionando como alias,
+  pero **solo aplican cuando el proveedor activo es Gemini**.
 - `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID_MALE`, `ELEVENLABS_VOICE_ID_FEMALE` — TTS; sin ellas, SpeechSynthesis
 - `TAVILY_API_KEY` — sugerencias; sin ella, esa sección no aparece
+
+Prueba de humo manual contra Nebius real (fuera de vitest, la ejecuta el
+mantenedor con su clave): `scripts/smoke-nebius.mjs`.
 
 ## 4. Notas técnicas
 

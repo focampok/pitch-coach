@@ -4,6 +4,14 @@ Cómo reutilizar en otro proyecto el cliente de Gemini de este repo: API key, ll
 
 No hace falta el SDK oficial (`@google/generative-ai`). Pitch Coach habla con la API REST de `generativelanguage.googleapis.com` usando `fetch` nativo.
 
+> **Contexto actual del repo.** Desde la migración a Nebius, Pitch Coach tiene
+> **dos adaptadores** de la misma interfaz `ProveedorModelo`:
+> [`src/lib/proveedor-nebius.ts`](../src/lib/proveedor-nebius.ts) (por defecto) y
+> [`src/lib/proveedor-gemini.ts`](../src/lib/proveedor-gemini.ts) (contingencia
+> manual). La fábrica de [`src/lib/modelo.ts`](../src/lib/modelo.ts) elige uno
+> según `MODEL_PROVIDER`. Esta guía documenta el adaptador de Gemini; para el de
+> Nebius, ver [`docs/guia-integracion-nebius.md`](./guia-integracion-nebius.md).
+
 ---
 
 ## 1. Qué es reutilizable y qué no
@@ -11,7 +19,8 @@ No hace falta el SDK oficial (`@google/generative-ai`). Pitch Coach habla con la
 | Pieza | Archivo en este repo | ¿Se copia tal cual? |
 |---|---|---|
 | Capa neutra: timeout, reintentos, backoff, fallback, parseo | `src/lib/modelo.ts` | Sí, es el núcleo. Cambia el schema y el tipo de respuesta. |
-| Adaptador del proveedor (REST de Gemini) | `src/lib/proveedor-modelo.ts` | Sí, si sigues con Gemini. Es el único archivo a reemplazar si cambias de proveedor. |
+| Fábrica de proveedor (`MODEL_PROVIDER`) | `src/lib/modelo.ts` (`proveedorActivo`) | Sí, si quieres soportar más de un proveedor. |
+| Adaptador del proveedor (REST de Gemini) | `src/lib/proveedor-gemini.ts` | Sí, si sigues con Gemini. Es el único archivo a reemplazar si cambias de proveedor. |
 | Variables de entorno | `.env.example` | Sí (las keys `MODEL_*`; los nombres `GEMINI_*` se siguen aceptando como alias). |
 | API route que oculta la key | `src/app/api/analizar-pitch/route.ts` | El patrón sí; el body y la validación son del dominio pitch. |
 | Construcción del prompt | `src/lib/prompts.ts` | No. Reescribe el prompt para tu producto. |
@@ -247,7 +256,7 @@ Crea `.env.local` (gitignored) y `.env.example` (commiteable) con las keys de la
 
 ### Paso 2 — Cliente genérico
 
-Copia `src/lib/modelo.ts` (capa neutra) y `src/lib/proveedor-modelo.ts` (adaptador), y cambia tres cosas:
+Copia `src/lib/modelo.ts` (capa neutra) y `src/lib/proveedor-gemini.ts` (adaptador), y cambia tres cosas:
 
 1. El esquema neutro (`ESQUEMA_ANALISIS` → el tuyo) y el tipo de retorno.
 2. La función de validación (`validarAnalisis` → la tuya).
@@ -560,10 +569,11 @@ route.ts
         │
         ▼
 modelo.ts          ← capa neutra: timeout, reintentos, backoff, fallback, parseo
-  proveedor-modelo.ts   ← el único archivo atado a Gemini
-    GEMINI_API_KEY
-    [modelo principal → fallbacks]
-    generateContent + schema + sistema/usuario separados
+  proveedorActivo()    ← fábrica según MODEL_PROVIDER
+    ├─ proveedor-nebius.ts  ← /chat/completions (OpenAI-compatible)   [por defecto]
+    │    NEBIUS_API_KEY · json_schema {name,strict,schema} · finish_reason:length
+    └─ proveedor-gemini.ts  ← generateContent                        [contingencia]
+         GEMINI_API_KEY · [modelo principal → fallbacks]
 ```
 
 Lo que **no** pasa por Gemini en este proyecto: detección de muletillas, ensamblado de tiempos y **el score**. El modelo solo devuelve `{ cumplido, comentario }` por punto y `claridad`; el servidor asigna los nombres de los puntos y calcula `score = clamp(round(cumplidos / total * 80) + clamp(claridad, 0, 20), 0, 100)`. Si tu otro producto tiene cómputos deterministas, sácalos del modelo y mézclalos al JSON final: no gastes tokens en lo que un regex o un cálculo ya resuelve, y no le pidas al modelo un número que puedas derivar.
@@ -606,4 +616,4 @@ Lo que **no** pasa por Gemini en este proyecto: detección de muletillas, ensamb
 | `maxOutputTokens` | 1024 (`MODEL_MAX_TOKENS`) |
 | Temperature | 0.7 (`MODEL_TEMPERATURE`) |
 
-Fuente de verdad: capa neutra en [`src/lib/modelo.ts`](../src/lib/modelo.ts) y adaptador del proveedor en [`src/lib/proveedor-modelo.ts`](../src/lib/proveedor-modelo.ts). El esquema neutro y el cálculo del score viven en [`src/lib/validar-analisis.ts`](../src/lib/validar-analisis.ts).
+Fuente de verdad: capa neutra y fábrica en [`src/lib/modelo.ts`](../src/lib/modelo.ts) y adaptador del proveedor en [`src/lib/proveedor-gemini.ts`](../src/lib/proveedor-gemini.ts). El esquema neutro y el cálculo del score viven en [`src/lib/validar-analisis.ts`](../src/lib/validar-analisis.ts).
