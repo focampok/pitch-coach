@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { enriquecerConTavily } from "@/lib/tavily";
+import { limitar } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,10 @@ export const runtime = "nodejs";
  * nunca debe romper el resto de la UI.
  */
 export async function POST(req: NextRequest) {
+  // Rate limit por IP (en memoria, por instancia — ver src/lib/rate-limit.ts).
+  const bloqueo = limitar(req, "enriquecer");
+  if (bloqueo) return bloqueo;
+
   let body: {
     tema?: string;
     puntosSinCumplir?: { punto: string; comentario?: string }[];

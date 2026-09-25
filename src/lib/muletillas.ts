@@ -69,22 +69,74 @@ function clonarPatron(patron: RegExp): RegExp {
 }
 
 /**
+ * Escapa los caracteres con significado en HTML (&, <, >, ", ').
+ *
+ * Las entidades se escriben con `\u0026` (el ampersand) en lugar del carácter
+ * literal para que el propio código fuente no contenga secuencias de markup.
+ */
+export function escaparHtml(texto: string): string {
+  return texto
+    .replace(/&/g, "\u0026amp;")
+    .replace(/</g, "\u0026lt;")
+    .replace(/>/g, "\u0026gt;")
+    .replace(/"/g, "\u0026quot;")
+    .replace(/'/g, "\u0026#39;");
+}
+
+/**
  * Resalta en HTML las muletillas que superan su umbral (mismo criterio que
  * `detectarMuletillas`). "pues"/"bueno" solo se marcan con ≥3 ocurrencias.
+ *
+ * La transcripción viene de STT y por lo tanto NO es confiable: se escapa todo
+ * el texto antes de insertar las etiquetas `<mark>`, de modo que cualquier
+ * `<`, `>` o `&` del original se renderice como texto y no como markup. Los
+ * intervalos se calculan sobre el texto crudo y se ensamblan una sola vez, en
+ * vez de aplicar `replace` sucesivos sobre HTML ya generado (evita que un
+ * patrón posterior coincida dentro del markup insertado).
  */
 export function resaltarMuletillas(
   texto: string,
   patrones: readonly PatronMuletilla[] = PATRONES_MULETILLAS,
 ): string {
-  let html = texto;
-  for (const { patron, umbralMin = 1 } of patrones) {
+  // 1. Solo participan los patrones que superan su umbral en el texto crudo.
+  const elegibles = patrones.filter(({ patron, umbralMin = 1 }) => {
     const coincidencias = texto.match(clonarPatron(patron));
-    if (!coincidencias || coincidencias.length < umbralMin) continue;
-    html = html.replace(
-      clonarPatron(patron),
-      (match) => `<mark class="pc-muletilla">${match}</mark>`,
-    );
+    return coincidencias !== null && coincidencias.length >= umbralMin;
+  });
+
+  if (elegibles.length === 0) return escaparHtml(texto);
+
+  // 2. Recolecta los intervalos [inicio, fin) de todas las coincidencias.
+  const intervalos: { inicio: number; fin: number }[] = [];
+  for (const { patron } of elegibles) {
+    const regex = clonarPatron(patron);
+    let coincidencia: RegExpExecArray | null;
+    while ((coincidencia = regex.exec(texto)) !== null) {
+      if (coincidencia[0].length === 0) {
+        regex.lastIndex += 1; // evita bucle infinito con patrones vacíos
+        continue;
+      }
+      intervalos.push({
+        inicio: coincidencia.index,
+        fin: coincidencia.index + coincidencia[0].length,
+      });
+    }
   }
+
+  // 3. Ordena por posición (y el más largo primero) y ensambla escapando cada
+  //    tramo; los intervalos que solapan con uno ya emitido se descartan.
+  intervalos.sort((a, b) => a.inicio - b.inicio || b.fin - a.fin);
+
+  let html = "";
+  let cursor = 0;
+  for (const { inicio, fin } of intervalos) {
+    if (inicio < cursor) continue;
+    html += escaparHtml(texto.slice(cursor, inicio));
+    html += `<mark class="pc-muletilla">${escaparHtml(texto.slice(inicio, fin))}</mark>`;
+    cursor = fin;
+  }
+  html += escaparHtml(texto.slice(cursor));
+
   return html;
 }
 

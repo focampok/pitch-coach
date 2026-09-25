@@ -36,7 +36,8 @@ Más detalle del producto: `docs/alcance.md`. Estado de implementación:
 
 Directo al grano, sin rodeos:
 
-- **Sin tests automatizados** — la verificación es manual en Chrome.
+- **Tests unitarios, no de UI** — `npm test` (vitest) cubre la lógica de
+  `src/lib/`; el loop completo se verifica a mano en Chrome.
 - **Sesión anónima, sin persistencia** — un intento no se guarda en ningún
   lado.
 - **El STT depende de la Web Speech API**: solo es confiable en

@@ -49,8 +49,8 @@ Personaje estilizado (SVG inline) que **escucha en vivo** y reacciona con micro-
 |---|---|---|---|
 | `Escuchando` (idle) | grabando con texto normal | postura atenta, parpadeo sutil | transcripción en vivo |
 | `Estremecido` | muletilla detectada en texto intermedio | leve retroceso / ceja levantada | la muletilla y su contador se muestran |
-| `Sorprendido` | frase de impacto (keyword matching local) | expresión de sorpresa | punto de rúbrica marcado cumplido |
-| `Asintiendo` | fin de grabación / veredicto positivo | pequeño asentimiento | score y resumen |
+| `Sorprendido` | frase de impacto (keyword matching local) | expresión de sorpresa | la frase aparece en la transcripción |
+| `Asintiendo` | fin de grabación | pequeño asentimiento | score y resumen |
 | `MirandoReloj` | silencio prolongado (~3s sin texto nuevo) | gesto de espera / mira el reloj | barra de tiempo |
 
 #### Reglas de diseño
@@ -183,23 +183,25 @@ Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 
 ### Análisis (LLM)
 - **Gemini API** (Flash / Flash-Lite).
-- El prompt recibe transcripción + tipo + rúbrica + tiempo real vs. máximo.
-- Respuesta en **JSON estructurado**:
+- El prompt recibe transcripción + tipo + rúbrica + tiempo real vs. máximo. La
+  transcripción se marca como **dato no confiable** entre delimitadores.
+- El modelo devuelve **solo** esta porción, en **JSON estructurado**:
 
 ```json
 {
-  "score": 72,
   "veredicto_corto": "Buen manejo del problema, pero te faltó mencionar el ask de capital.",
+  "claridad": 15,
   "rubrica": [
-    { "punto": "Problema claro", "cumplido": true, "comentario": "..." },
-    { "punto": "Tamaño del mercado", "cumplido": false, "comentario": "..." }
-  ],
-  "muletillas": {
-    "eeee": 12,
-    "o sea": 3
-  }
+    { "cumplido": true, "comentario": "..." },
+    { "cumplido": false, "comentario": "..." }
+  ]
 }
 ```
+
+- El modelo **no** calcula el score, **no** nombra los puntos y **no** cuenta
+  muletillas. El servidor asigna el nombre de cada punto desde la rúbrica por
+  índice, calcula el score (`clamp(round(cumplidos / total * 80) + clamp(claridad, 0, 20), 0, 100)`)
+  y cuenta las muletillas con `src/lib/muletillas.ts`.
 
 ### Texto → voz (TTS)
 - **ElevenLabs** como primera opción (voz natural en español).

@@ -56,11 +56,16 @@ export function DashboardResultado({
   habilitarTavily = true,
 }: DashboardResultadoProps) {
   const [sugerencias, setSugerencias] = useState<SugerenciaTavily[]>([]);
-  const [cargandoTavily, setCargandoTavily] = useState(false);
 
   const puntosSinCumplir = useMemo(
     () => resultado.rubrica.filter((p) => !p.cumplido),
     [resultado.rubrica]
+  );
+
+  // El estado inicial de carga ya conoce si se va a consultar Tavily, así el
+  // efecto no necesita disparar un setState síncrono en su cuerpo.
+  const [cargandoTavily, setCargandoTavily] = useState(
+    habilitarTavily && puntosSinCumplir.length > 0
   );
 
   const transcripcionResaltada = useMemo(
@@ -87,7 +92,6 @@ export function DashboardResultado({
     if (!habilitarTavily || puntosSinCumplir.length === 0) return;
     let cancelado = false;
 
-    setCargandoTavily(true);
     fetch("/api/enriquecer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -172,7 +176,11 @@ export function DashboardResultado({
           <ul>
             {muletillasOrdenadas.map(([palabra, count]) => (
               <li key={palabra}>
-                <span className="pc-muletilla-palabra">"{palabra}"</span>
+                <span className="pc-muletilla-palabra">
+                  {'"'}
+                  {palabra}
+                  {'"'}
+                </span>
                 <span className="pc-muletilla-count">{count}</span>
               </li>
             ))}
@@ -183,8 +191,9 @@ export function DashboardResultado({
       <section className="pc-transcripcion">
         <h3>Transcripción</h3>
         <p
-          // La transcripción y las muletillas son texto ya generado/derivado
-          // por el propio análisis, no input HTML arbitrario de terceros.
+          // `resaltarMuletillas` escapa HTML de la transcripción (viene de STT,
+          // no es confiable) antes de insertar los <mark>; el único markup de
+          // este string es el que genera el propio resaltado.
           dangerouslySetInnerHTML={{ __html: transcripcionResaltada }}
         />
       </section>

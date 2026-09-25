@@ -16,6 +16,8 @@
   **Sin autoplay** — el usuario pulsa "Escuchar veredicto".
 - ✅ Tavily (§12): `/api/enriquecer` si hay puntos sin cumplir. Sin key,
   el dashboard no se rompe.
+- ✅ Tests unitarios (`npm test`, vitest) sobre la lógica de `src/lib/`.
+- ✅ Límites: transcripción máx. 8000 caracteres y rate limit por IP en memoria.
 - 🟡 El STT de Chrome casi nunca transcribe "eeee". Las muletillas léxicas sí.
 
 ## Leyenda
@@ -31,7 +33,7 @@
 | ✅ | Selector de tipo (§9) | `SelectorTipoPitch.tsx` | capital, educación, innovación, tecnología |
 | ✅ | Selector de duración (§9) | `SelectorDuracion.tsx` | 1 a 7 minutos |
 | ✅ | Grabación con corte (§9) | `GrabadorVoz.tsx` | Web Speech API; auto-stop; error si no hay STT |
-| ✅ | Transcripción (§9) | `GrabadorVoz.tsx` | `es-419`; solo resultados finales |
+| ✅ | Transcripción (§9) | `GrabadorVoz.tsx` | `es-419`; interim para el avatar, finales para el análisis |
 | ✅ | Muletillas (§8) | `src/lib/muletillas.ts` | 21 patrones; `PATRONES_MULETILLAS` es la fuente de verdad |
 | ✅ | UI | `src/app/page.tsx` | selectores + grabador + `DashboardResultado` |
 | ✅ | Avatar (§5.1) | `CoachAvatar.tsx` + `reacciones.ts` + `types/coach.ts` | 5 estados |
@@ -40,22 +42,23 @@
 | ✅ | Rúbricas (§6) | `src/lib/rubricas.ts` | 4 tipos × 5 puntos |
 | ✅ | Tipos (§13) | `src/types/pitch.ts` | `ResultadoAnalisis` y relacionados |
 | ✅ | Tiempo real (§7) | `GrabadorVoz.tsx` + `page.tsx` | contexto de Gemini + dashboard |
-| ✅ | Cliente Gemini (§13) | `src/lib/gemini.ts` | server-side; fallbacks; backoff; timeout 20 s |
-| ✅ | Prompt (§7/§13) | `src/lib/prompts.ts` | español; score 0–100; `veredicto_corto` |
-| ✅ | API `analizar-pitch` | `src/app/api/analizar-pitch/route.ts` | 400 / 502 |
+| ✅ | Cliente del modelo (§13) | `src/lib/modelo.ts` + `src/lib/proveedor-modelo.ts` | capa neutra + adaptador Gemini; backoff; timeout 20 s |
+| ✅ | Prompt (§7/§13) | `src/lib/prompts.ts` | español; transcripción como dato no confiable; pide rúbrica sin nombres + `claridad` + `veredicto_corto` |
+| ✅ | API `analizar-pitch` | `src/app/api/analizar-pitch/route.ts` | 400 / 413 / 429 / 502 (errores genéricos al cliente) |
 | ✅ | Dashboard | `DashboardResultado.tsx` + `dashboard-resultado.css` | incluye Tavily |
-| ✅ | TTS (§13) | `ReproductorVeredicto.tsx` + `elevenlabs.ts` + `/api/tts` | timeout 6 s; `autoPlay={false}` |
-| ✅ | Tavily (§12) | `tavily.ts` + `/api/enriquecer` | best-effort |
+| ✅ | TTS (§13) | `ReproductorVeredicto.tsx` + `elevenlabs.ts` + `/api/tts` | timeout 6 s; 413/429; `autoPlay={false}` |
+| ✅ | Tavily (§12) | `tavily.ts` + `/api/enriquecer` | best-effort; timeout 8 s |
+| ✅ | Límites | `src/lib/limites.ts` + `src/lib/rate-limit.ts` | transcripción máx. 8000; rate limit por IP en memoria (por instancia) |
 
 ### Muletillas (21 patrones)
 
 - **Base (§8):** "eeee / ehh", "o sea", "como les decía", "este…",
   "bueno pues", "a mí me tocó hablar de", "digamos", "en ese sentido".
-- **Oratoria (9):** "es decir", "quiero decir", "en otras palabras",
+- **Oratoria (11):** "es decir", "quiero decir", "en otras palabras",
   "básicamente", "literalmente", "prácticamente", "obviamente", "en fin",
-  "entonces".
-- **Umbral ≥3 (4):** "¿me explico?", "a ver", **"pues"** y **"bueno"**
-  (no se reportan ni se resaltan con menos de 3 apariciones).
+  "entonces", "¿me explico?", "a ver".
+- **Umbral ≥3 (2):** **"pues"** y **"bueno"** (no se reportan ni se resaltan
+  con menos de 3 apariciones).
 - 🟡 Chrome omite "eeee".
 
 ## 2. Abierto para la comunidad
@@ -72,6 +75,11 @@
 En `.env.local` y en el host de deploy:
 
 - `GEMINI_API_KEY` — requerida
+- Configuración del modelo (todas opcionales): `MODEL`, `MODEL_FALLBACK_MODELS`,
+  `MODEL_MAX_TOKENS`, `MODEL_TEMPERATURE`, `MODEL_RETRY_ATTEMPTS`,
+  `MODEL_RETRY_DELAY_MS`, `MODEL_RETRY_MAX_DELAY_MS`. Los nombres anteriores
+  (`GEMINI_MODEL`, `GEMINI_FALLBACK_MODELS`, `GEMINI_RETRY_*`) siguen
+  funcionando como alias.
 - `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID_MALE`, `ELEVENLABS_VOICE_ID_FEMALE` — TTS; sin ellas, SpeechSynthesis
 - `TAVILY_API_KEY` — sugerencias; sin ella, esa sección no aparece
 
@@ -80,6 +88,6 @@ En `.env.local` y en el host de deploy:
 - Correr: `npm run dev` (sin Docker). Chrome para STT.
 - Red: STT, Gemini, ElevenLabs y Tavily necesitan internet. SpeechSynthesis
   cubre el veredicto si ElevenLabs no responde.
-- Sin tests automatizados: prueba manual en Chrome; `npx tsx` puntual si
-  hace falta.
+- Tests: `npm test` (vitest, unitarios sobre `src/lib/`). El loop completo se
+  sigue verificando a mano en Chrome.
 - `.env.local` no se commitea. `.env.example` sí, sin valores.

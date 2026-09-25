@@ -27,6 +27,9 @@ async function buscarEnTavily(query: string): Promise<TavilyResult[]> {
     throw new Error("TAVILY_API_KEY no configurada");
   }
 
+  // Timeout defensivo: Tavily es enriquecimiento opcional y no debe colgar el
+  // análisis. Si tarda más de 8s, el intento falla y ese punto se queda sin
+  // sugerencia; el resto del dashboard no se ve afectado.
   const res = await fetch("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -37,6 +40,7 @@ async function buscarEnTavily(query: string): Promise<TavilyResult[]> {
       max_results: 3,
       include_answer: false,
     }),
+    signal: AbortSignal.timeout(8000),
   });
 
   if (!res.ok) {
@@ -62,7 +66,7 @@ export async function enriquecerConTavily(
 
   // Se corren en paralelo pero cada una se aísla con su propio try/catch.
   await Promise.all(
-    puntosSinCumplir.map(async ({ punto, comentario }) => {
+    puntosSinCumplir.map(async ({ punto }) => {
       const query = `estadística reciente ${temaPitch} ${punto}`.trim();
       try {
         const resultados = await buscarEnTavily(query);

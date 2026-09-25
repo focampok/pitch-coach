@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generarVerdictoHablado, VoiceGender } from "@/lib/elevenlabs";
+import { limitar } from "@/lib/rate-limit";
+import {
+  MENSAJE_TRANSCRIPCION_LARGA,
+  excedeLimiteTranscripcion,
+} from "@/lib/limites";
 
 export const runtime = "nodejs";
+
+const MENSAJE_ERROR_TTS = "No se pudo generar el audio en este momento.";
 
 /**
  * POST /api/tts
@@ -12,6 +19,10 @@ export const runtime = "nodejs";
  * interpreta cualquier respuesta que no sea 200 como "usar SpeechSynthesis".
  */
 export async function POST(req: NextRequest) {
+  // Rate limit por IP (en memoria, por instancia — ver src/lib/rate-limit.ts).
+  const bloqueo = limitar(req, "tts");
+  if (bloqueo) return bloqueo;
+
   let body: { texto?: string; voz?: VoiceGender };
   try {
     body = await req.json();
@@ -22,6 +33,9 @@ export async function POST(req: NextRequest) {
   const texto = body.texto?.trim();
   if (!texto) {
     return NextResponse.json({ error: "Falta 'texto'" }, { status: 400 });
+  }
+  if (excedeLimiteTranscripcion(texto)) {
+    return NextResponse.json({ error: MENSAJE_TRANSCRIPCION_LARGA }, { status: 413 });
   }
 
   // Timeout defensivo: si ElevenLabs tarda, fallar rápido y dejar que
@@ -47,8 +61,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     clearTimeout(timeout);
-    const mensaje = err instanceof Error ? err.message : "Error desconocido";
-    console.error("[/api/tts] fallo ElevenLabs:", mensaje);
-    return NextResponse.json({ error: mensaje }, { status: 502 });
+    // El detalle del proveedor se registra server-side y no se devuelve: el
+    // cliente solo necesita saber que debe caer a SpeechSynthesis.
+    console.error("[/api/tts] fallo ElevenLabs:", err);
+    return NextResponse.json({ error: MENSAJE_ERROR_TTS }, { status: 502 });
   }
 }

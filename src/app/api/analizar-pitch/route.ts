@@ -2,17 +2,29 @@ import { NextResponse } from "next/server";
 import type { SolicitudAnalisis, ResultadoAnalisis } from "@/types/pitch";
 import { obtenerRubrica } from "@/lib/rubricas";
 import { construirPrompt } from "@/lib/prompts";
-import { analizarConGemini } from "@/lib/gemini";
+import { analizarConModelo } from "@/lib/analisis-modelo";
 import { detectarMuletillas } from "@/lib/muletillas";
+import { limitar } from "@/lib/rate-limit";
+import {
+  MENSAJE_TRANSCRIPCION_LARGA,
+  excedeLimiteTranscripcion,
+} from "@/lib/limites";
 
 // API route del análisis del pitch (docs/alcance.md §13). Recibe la
-// transcripción + contexto, llama a Gemini server-side (la API key nunca sale
+// transcripción + contexto, llama al modelo server-side (la clave nunca sale
 // del servidor), recalcula muletillas y devuelve el ResultadoAnalisis completo.
 
 const TIPOS_PITCH_VALIDOS = new Set<string>(["capital", "educacion", "innovacion", "tecnologia"]);
 const DURACIONES_VALIDAS = new Set<number>([1, 2, 3, 4, 5, 6, 7]);
 
+const MENSAJE_ERROR_ANALISIS =
+  "No se pudo analizar el pitch en este momento. Inténtalo de nuevo en unos segundos.";
+
 export async function POST(request: Request): Promise<NextResponse> {
+  // Rate limit por IP (en memoria, por instancia — ver src/lib/rate-limit.ts).
+  const bloqueo = limitar(request, "analizar-pitch");
+  if (bloqueo) return bloqueo as NextResponse;
+
   let body: Partial<SolicitudAnalisis>;
   try {
     body = (await request.json()) as Partial<SolicitudAnalisis>;
@@ -28,6 +40,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   const { transcripcion, tipoPitch, duracionMaxima, tiempoRealSegundos } =
     body as SolicitudAnalisis;
 
+  // Límite duro de entrada: se corta antes de gastar cuota del modelo.
+  if (excedeLimiteTranscripcion(transcripcion)) {
+    return NextResponse.json({ error: MENSAJE_TRANSCRIPCION_LARGA }, { status: 413 });
+  }
+
   const rubrica = obtenerRubrica(tipoPitch);
   const prompt = construirPrompt({
     transcripcion,
@@ -38,7 +55,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   });
 
   try {
-    const resultadoGemini = await analizarConGemini(prompt);
+    const analisis = await analizarConModelo(prompt, rubrica);
 
     // Las muletillas se recalculan server-side sobre la transcripción
     // (docs/alcance.md §8: no requieren IA). El conteo server-side es la fuente
@@ -46,7 +63,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     const muletillas = detectarMuletillas(transcripcion);
 
     const resultado: ResultadoAnalisis = {
-      ...resultadoGemini,
+      score: analisis.score,
+      veredicto_corto: analisis.veredicto_corto,
+      rubrica: analisis.rubrica,
       muletillas,
       tiempo_real_segundos: tiempoRealSegundos,
       tiempo_maximo_segundos: duracionMaxima * 60,
@@ -54,9 +73,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(resultado);
   } catch (error) {
-    // Error claro, no un 200 con datos vacíos silenciosamente.
-    const mensaje = error instanceof Error ? error.message : "Error desconocido al analizar el pitch.";
-    return NextResponse.json({ error: mensaje }, { status: 502 });
+    // El detalle del proveedor se registra server-side y NUNCA se devuelve al
+    // cliente: hacia fuera solo va un mensaje genérico.
+    console.error("[/api/analizar-pitch] fallo el análisis:", error);
+    return NextResponse.json({ error: MENSAJE_ERROR_ANALISIS }, { status: 502 });
   }
 }
 
