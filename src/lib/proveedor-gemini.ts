@@ -1,17 +1,17 @@
 import type { EsquemaJson, ProveedorModelo, SolicitudModelo } from "./modelo";
 import { ErrorModelo } from "./error-modelo";
+import { leerEnteroPositivo, leerTemperatura } from "./config-modelo";
 
 // =============================================================================
 // ADAPTADOR DE PROVEEDOR — GEMINI
 // =============================================================================
-// Este es el ÚNICO archivo con código específico de Gemini: endpoint,
+// Este archivo es el ÚNICO con código específico de Gemini: endpoint,
 // autenticación, forma del body, dialecto del esquema y ubicación del texto en
 // la respuesta. Toda la política de reintentos/timeouts/parseo vive en
 // `src/lib/modelo.ts`, que es neutro.
 //
-// Para migrar a otro proveedor (p. ej. Nebius / cualquier endpoint compatible
-// con OpenAI) basta con reemplazar este archivo por otro que exporte un
-// `proveedorModelo` con la misma interfaz `ProveedorModelo`.
+// El adaptador de Nebius (OpenAI-compatible) vive en `proveedor-nebius.ts`.
+// Cuál se usa lo decide la fábrica de `modelo.ts` según `MODEL_PROVIDER`.
 // =============================================================================
 
 /** Gemini espera los tipos del esquema en MAYÚSCULAS (dialecto OpenAPI). */
@@ -35,30 +35,10 @@ function aEsquemaGemini(esquema: EsquemaJson): Record<string, unknown> {
   return salida;
 }
 
-/** Lee un entero positivo de la primera variable de entorno con valor válido. */
-function leerEnteroPositivo(nombres: string[], porDefecto: number): number {
-  for (const nombre of nombres) {
-    const valor = process.env[nombre];
-    if (valor === undefined || valor === "") continue;
-    const n = Number(valor);
-    if (Number.isInteger(n) && n > 0) return n;
-  }
-  return porDefecto;
-}
-
-/** Lee un decimal positivo (0-2) de la primera variable de entorno con valor válido. */
-function leerTemperatura(porDefecto: number): number {
-  const valor = process.env.MODEL_TEMPERATURE;
-  if (valor === undefined || valor === "") return porDefecto;
-  const n = Number(valor);
-  return Number.isFinite(n) && n >= 0 && n <= 2 ? n : porDefecto;
-}
-
 /**
  * Extrae el texto del primer candidato de `generateContent`. Es lo más
- * específico del proveedor: con un endpoint OpenAI-compatible habría que leer
- * `choices[0].message.content`, y este es justamente el punto que hay que
- * cambiar al migrar.
+ * específico del proveedor: con un endpoint OpenAI-compatible hay que leer
+ * `choices[0].message.content` (ver `proveedor-nebius.ts`).
  */
 function extraerTextoGemini(cuerpo: unknown): string | null {
   if (cuerpo === null || typeof cuerpo !== "object") return null;
@@ -71,7 +51,7 @@ function extraerTextoGemini(cuerpo: unknown): string | null {
   return textos.length > 0 ? textos : null;
 }
 
-export const proveedorModelo: ProveedorModelo = {
+export const proveedorGemini: ProveedorModelo = {
   nombre: "gemini",
 
   listarModelos(): string[] {
@@ -97,7 +77,7 @@ export const proveedorModelo: ProveedorModelo = {
     }
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`;
-    const temperature = leerTemperatura(0.7);
+    const temperature = leerTemperatura(["MODEL_TEMPERATURE"], 0.7);
     const maxOutputTokens = leerEnteroPositivo(["MODEL_MAX_TOKENS"], 1024);
 
     let respuesta: Response;
