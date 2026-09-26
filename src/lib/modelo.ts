@@ -199,7 +199,9 @@ export async function llamarModelo<T>(entrada: EntradaLlamarModelo<T>): Promise<
           solicitud: entrada,
           signal: AbortSignal.timeout(TIMEOUT_MS),
         });
-        return entrada.validar(parsearRespuesta<unknown>(texto, modelo));
+        const resultado = entrada.validar(parsearRespuesta<unknown>(texto, modelo));
+        console.log(`[modelo] proveedor=${proveedor.nombre} modelo=${modelo}`);
+        return resultado;
       } catch (error) {
         const err = normalizarError(error, modelo);
         ultimoError = err;
