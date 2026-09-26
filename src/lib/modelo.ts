@@ -25,8 +25,8 @@ export interface SolicitudModelo {
   /**
    * Nombres de los puntos de la rúbrica, en orden. Es dato OPCIONAL: los
    * adaptadores que lo aprovechan (Nebius) derivan de él un esquema
-   * restringido con `minItems`/`maxItems`/`enum`; los que no (Gemini) lo
-   * ignoran y siguen usando `esquema` tal cual.
+   * restringido con `minItems === maxItems === puntos.length`; los que no
+   * (Gemini) lo ignoran y siguen usando `esquema` tal cual.
    */
   puntosRubrica?: readonly string[];
 }

@@ -28,7 +28,7 @@ export async function analizarConModelo(
     user: prompt.user,
     esquema: ESQUEMA_ANALISIS as EsquemaJson,
     // Los adaptadores que usan salida estructurada estricta derivan de estos
-    // nombres un esquema con minItems/maxItems/enum. Gemini los ignora.
+    // nombres un esquema con minItems/maxItems exactos. Gemini los ignora.
     puntosRubrica: rubrica.map((punto) => punto.punto),
     validar: (datos: unknown) => validarAnalisis(datos, rubrica),
   });

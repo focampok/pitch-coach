@@ -101,12 +101,14 @@ const CACHE_ESQUEMA_RESTRINGIDO = new Map<string, EsquemaJson>();
  *
  * Sobre el esquema base agrega:
  * - `minItems === maxItems === puntos.length`: obliga a un ítem por punto.
- * - `enum` con los nombres exactos de los puntos en cada ítem (`punto`), de
- *   modo que el modelo no pueda inventar ni renombrar puntos.
  * - `required` + `additionalProperties: false` (lo exige el modo estricto).
  *
- * El adaptador de Nebius lo usa; Gemini sigue usando `ESQUEMA_ANALISIS` porque
- * su prompt pide explícitamente no devolver el nombre del punto.
+ * Los ítems de `rubrica` son solo `{ cumplido, comentario }`: el modelo NUNCA
+ * nombra los puntos. El servidor asigna cada nombre desde la rúbrica por
+ * índice, así que aquí no se declara el campo ni un `enum` de nombres. `puntos`
+ * solo fija la longitud exacta del array.
+ *
+ * El adaptador de Nebius lo usa; Gemini sigue usando `ESQUEMA_ANALISIS`.
  */
 export function construirEsquemaAnalisisRestringido(
   puntos: readonly string[],
@@ -132,14 +134,8 @@ export function construirEsquemaAnalisisRestringido(
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["punto", "cumplido", "comentario"],
+          required: ["cumplido", "comentario"],
           properties: {
-            punto: {
-              type: "string",
-              enum: [...puntos],
-              description:
-                "Nombre EXACTO del punto de la rúbrica que se evalúa en esta posición.",
-            },
             cumplido: { ...base.properties.rubrica.items.properties.cumplido },
             comentario: { ...base.properties.rubrica.items.properties.comentario },
           },

@@ -118,13 +118,25 @@ describe("proveedor Nebius — contrato HTTP", () => {
         rubrica: {
           minItems?: number;
           maxItems?: number;
-          items: { required?: string[]; properties: { punto: { enum?: string[] } } };
+          items: {
+            required?: string[];
+            additionalProperties?: boolean;
+            properties: Record<string, { enum?: string[] }>;
+          };
         };
       };
     };
     expect(schema.properties.rubrica.minItems).toBe(PUNTOS.length);
     expect(schema.properties.rubrica.maxItems).toBe(PUNTOS.length);
-    expect(schema.properties.rubrica.items.properties.punto.enum).toEqual(PUNTOS);
+
+    // El modelo NO nombra los puntos: el ítem es solo { cumplido, comentario }.
+    const items = schema.properties.rubrica.items;
+    expect(Object.keys(items.properties).sort()).toEqual(["comentario", "cumplido"]);
+    expect(items.required).toEqual(["cumplido", "comentario"]);
+    expect(items.additionalProperties).toBe(false);
+    expect(items.properties).not.toHaveProperty("punto");
+    expect(JSON.stringify(items)).not.toContain("enum");
+
     expect(schema.required).toEqual(["veredicto_corto", "claridad", "rubrica"]);
     expect(schema.additionalProperties).toBe(false);
   });

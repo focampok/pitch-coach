@@ -111,4 +111,26 @@ describe("validarAnalisis", () => {
     const resultado = validarAnalisis(sinComentario, RUBRICA);
     expect(resultado.rubrica.every((r) => r.comentario === "")).toBe(true);
   });
+
+  it("ignora campos extra del modelo (ej. 'punto') en vez de rechazarlos", () => {
+    // El modelo puede alucinar el nombre del punto o agregar claves de más: eso
+    // NO invalida la respuesta. El servidor asigna el nombre por índice.
+    const conExtra = {
+      ...respuestaValida,
+      rubrica: respuestaValida.rubrica.map((item, i) => ({
+        punto: `nombre inventado ${i}`,
+        score: 99,
+        cumplido: item.cumplido,
+        comentario: item.comentario,
+      })),
+    };
+    const resultado = validarAnalisis(conExtra, RUBRICA);
+    expect(resultado.rubrica.map((r) => r.punto)).toEqual([
+      "Problema",
+      "Solución",
+      "Mercado",
+      "Tracción",
+    ]);
+    expect(resultado.rubrica.every((r) => !("score" in r))).toBe(true);
+  });
 });

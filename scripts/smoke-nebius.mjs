@@ -12,11 +12,27 @@
 // Verifica el contrato exacto del adaptador (src/lib/proveedor-nebius.ts):
 // envoltorio response_format.json_schema {name, strict, schema} y
 // chat_template_kwargs {enable_thinking:false} en modo estándar.
+//
+// IMPORTANTE: el esquema NO se duplica aquí. Se importa la MISMA función que
+// usa el adaptador de producción (`construirEsquemaAnalisisRestringido`) y la
+// MISMA validación server-side (`validarAnalisis`), de modo que la prueba de
+// humo falla si producción y script se desalinean. Node ≥ 22.6 ejecuta los
+// `.ts` de `src/lib` directamente (type stripping nativo), así que no hace
+// falta ningún runner ni build previo.
 // =============================================================================
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+
+// Módulos de PRODUCCIÓN (sin duplicar lógica). Rutas relativas con extensión
+// `.ts`: es lo que exige el resolver de Node al importar TypeScript.
+import {
+  construirEsquemaAnalisisRestringido,
+  validarAnalisis,
+} from "../src/lib/validar-analisis.ts";
+import { RUBRICAS } from "../src/lib/rubricas.ts";
+import { construirPrompt } from "../src/lib/prompts.ts";
 
 const BASE_URL_POR_DEFECTO = "https://api.tokenfactory.nebius.com/v1";
 const MODELO_POR_DEFECTO = "nvidia/nemotron-3-super-120b-a12b";
@@ -67,46 +83,44 @@ const modelo = esUltra
 const maxTokens = Number(process.env.MODEL_MAX_TOKENS) || 1024;
 const temperature = Number(process.env.MODEL_TEMPERATURE) || 0.7;
 
-// Esquema mínimo con la MISMA forma restringida que envía el adaptador.
-const PUNTOS = ["Problema claro"];
-const esquema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["veredicto_corto", "claridad", "rubrica"],
-  properties: {
-    veredicto_corto: { type: "string" },
-    claridad: { type: "integer" },
-    rubrica: {
-      type: "array",
-      minItems: PUNTOS.length,
-      maxItems: PUNTOS.length,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["punto", "cumplido", "comentario"],
-        properties: {
-          punto: { type: "string", enum: PUNTOS },
-          cumplido: { type: "boolean" },
-          comentario: { type: "string" },
-        },
-      },
-    },
-  },
-};
+// --- Contexto de la prueba: la rúbrica REAL de producción (5 puntos) ---------
+const tipoPitch = "capital";
+const rubrica = RUBRICAS[tipoPitch];
+const puntos = rubrica.map(({ punto }) => punto);
+
+const transcripcion =
+  "Hola, somos Talently. El problema es claro: las pymes de LATAM pierden meses " +
+  "buscando talento técnico y no lo encuentran. Nuestro mercado es el reclutamiento " +
+  "técnico de la región, unos 3 mil millones de dólares al año. La solución es una " +
+  "plataforma que valida habilidades con retos reales y no con CVs; nos diferencia " +
+  "que el candidato se evalúa trabajando. Ya tenemos 120 empresas pagando y crecimos " +
+  "20 por ciento mes a mes. Buscamos 500 mil dólares para duplicar el equipo de ventas.";
+
+const prompt = construirPrompt({
+  transcripcion,
+  tipoPitch,
+  rubrica,
+  tiempoMaximoSegundos: 60,
+  tiempoRealSegundos: 48,
+});
+
+// --- Esquema EXACTO de producción (misma función que usa el adaptador) -------
+const esquema = construirEsquemaAnalisisRestringido(puntos);
+const itemsRubrica = esquema.properties.rubrica.items;
+
+console.log("=== Esquema de producción (construirEsquemaAnalisisRestringido) ===");
+console.log(`puntos de la rúbrica (${puntos.length}): ${puntos.join(" | ")}`);
+console.log(`rubrica.minItems === maxItems: ${esquema.properties.rubrica.minItems} === ${esquema.properties.rubrica.maxItems}`);
+console.log(`items.required: ${JSON.stringify(itemsRubrica.required)}`);
+console.log(`items.additionalProperties: ${itemsRubrica.additionalProperties}`);
+console.log(`items.properties: ${JSON.stringify(Object.keys(itemsRubrica.properties))}`);
+console.log(`items tiene "punto": ${Object.prototype.hasOwnProperty.call(itemsRubrica.properties, "punto")}`);
 
 const body = {
   model: modelo,
   messages: [
-    {
-      role: "system",
-      content:
-        "Eres un coach de pitches. Devuelve SOLO el JSON estructurado, en español, sin texto adicional.",
-    },
-    {
-      role: "user",
-      content:
-        "Pitch de prueba: 'Tenemos un problema claro: las pymes no encuentran talento técnico'. Evalúa el único punto de la rúbrica.",
-    },
+    { role: "system", content: prompt.system },
+    { role: "user", content: prompt.user },
   ],
   temperature,
   max_tokens: maxTokens,
@@ -121,7 +135,7 @@ if (!esUltra) {
 }
 
 const url = `${baseUrl}/chat/completions`;
-console.log(`POST ${url}`);
+console.log(`\nPOST ${url}`);
 console.log(`modelo: ${modelo} | nivel: ${esUltra ? "ultra" : "estandar"} | max_tokens: ${maxTokens}`);
 
 let respuesta;
@@ -169,15 +183,47 @@ if (finishReason === "length") {
   console.warn("AVISO: respuesta truncada (length). El adaptador reintentaría con max_tokens duplicado.");
 }
 
-let parseado = false;
+// --- JSON COMPLETO del content, sin recortar ---------------------------------
+console.log("\n=== content completo (sin recortar) ===");
+console.log(contenido);
+console.log("=== fin del content ===");
+
+// --- Paso 1: parsea como JSON ------------------------------------------------
+let parseado = null;
 try {
-  JSON.parse(contenido);
-  parseado = true;
-} catch {
-  /* se reporta abajo */
+  parseado = JSON.parse(contenido);
+} catch (error) {
+  console.error(`\ncontent parsea como JSON: NO — ${error.message}`);
+  process.exit(1);
+}
+console.log(`\ncontent parsea como JSON: sí`);
+
+// --- Paso 2: validación REAL de producción (validarAnalisis) ----------------
+let valido = false;
+try {
+  const analisis = validarAnalisis(parseado, rubrica);
+  valido = true;
+  console.log("\nvalidarAnalisis(): OK");
+  console.log(`  score: ${analisis.score}`);
+  console.log(`  veredicto_corto: ${analisis.veredicto_corto}`);
+  console.log(`  rubrica: ${analisis.rubrica.length} ítem(s)`);
+} catch (error) {
+  console.error(`\nvalidarAnalisis(): LANZÓ ${error.name}: ${error.message}`);
 }
 
-console.log(`\ncontent parsea como JSON: ${parseado ? "sí" : "NO"}`);
-console.log(`content (recortado):\n${contenido.slice(0, 800)}`);
+// --- Paso 3: forma cruda del JSON devuelto (independiente de la validación) --
+const rubricaCruda = parseado?.rubrica;
+console.log("\n=== forma del JSON devuelto por el modelo ===");
+console.log(`rubrica es array: ${Array.isArray(rubricaCruda)}`);
+if (Array.isArray(rubricaCruda)) {
+  console.log(`rubrica.length: ${rubricaCruda.length} (esperado: ${puntos.length})`);
+  console.log(`exactamente ${puntos.length} ítems: ${rubricaCruda.length === puntos.length}`);
+  rubricaCruda.forEach((item, i) => {
+    const claves = item && typeof item === "object" ? Object.keys(item) : [];
+    console.log(`  [${i}] punto asignado por el servidor: "${rubrica[i]?.punto ?? "(sin rúbrica)"}" | claves del modelo: ${JSON.stringify(claves)}`);
+  });
+}
 
-process.exit(parseado && finishReason !== "length" ? 0 : 1);
+const ok = valido && finishReason !== "length" && Array.isArray(rubricaCruda) && rubricaCruda.length === puntos.length;
+console.log(`\nRESULTADO: ${ok ? "OK" : "FALLÓ"}`);
+process.exit(ok ? 0 : 1);

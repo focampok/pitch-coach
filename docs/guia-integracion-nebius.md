@@ -140,18 +140,19 @@ reintentos/modelos de `modelo.ts`.
 
 ## 6. Esquema restringido (una sola generación)
 
-En modo estricto conviene que el esquema declare el número exacto de ítems y sus
-nombres. `construirEsquemaAnalisisRestringido(puntos)` deriva de
-`ESQUEMA_ANALISIS` un esquema con:
+En modo estricto conviene que el esquema fije el número exacto de ítems.
+`construirEsquemaAnalisisRestringido(puntos)` deriva de `ESQUEMA_ANALISIS` un
+esquema con:
 
 - `minItems === maxItems === puntos.length` en `rubrica`;
-- `enum` con los nombres exactos de los puntos en `punto` (el modelo no puede
-  inventarlos);
+- ítems de la forma `{ cumplido, comentario }`: el modelo **no** nombra los
+  puntos ni se declara un `enum` de nombres (el servidor asigna el nombre por
+  índice desde la rúbrica);
 - `required` + `additionalProperties: false` donde corresponde.
 
 Se genera **una sola vez por conjunto de puntos** (caché por nombres en orden).
-El llamador aporta los nombres vía `SolicitudModelo.puntosRubrica` (opcional).
-Gemini **no** lo usa: su prompt pide no devolver el nombre del punto, así que el
+El llamador aporta los puntos vía `SolicitudModelo.puntosRubrica` (opcional);
+solo se usan para la longitud exacta del array. Gemini **no** lo usa, así que el
 esquema restringido queda específico de Nebius.
 
 ---
@@ -169,9 +170,21 @@ NEBIUS_API_KEY=... node scripts/smoke-nebius.mjs
 NEBIUS_API_KEY=... node scripts/smoke-nebius.mjs --ultra
 ```
 
-El script imprime status HTTP, `finish_reason`, si el `content` parsea como JSON
-y el uso de tokens (para confirmar que el razonamiento queda en 0 en modo
-estándar).
+El script **no duplica lógica**: importa `construirEsquemaAnalisisRestringido()`,
+`validarAnalisis()`, `RUBRICAS` y `construirPrompt()` de `src/lib` (Node ≥ 22.6
+ejecuta los `.ts` directamente, sin runner ni build). Por eso una desalineación
+entre producción y prueba de humo hace fallar al script.
+
+Imprime: el esquema de producción efectivo (longitud de la rúbrica,
+`items.required`, si existe `punto`), status HTTP, `finish_reason`, uso de tokens,
+el **JSON completo sin recortar** del `content`, el resultado de
+`validarAnalisis()` real y el número de ítems de `rubrica`.
+
+Sobre campos extra del modelo: `validarAnalisis()` **ignora** claves de más
+(incluido un `punto` alucinado) y **nunca** las rechaza — el servidor asigna el
+nombre de cada punto por índice desde `RUBRICAS`. Así que un `rubrica` con
+exactamente `puntos.length` ítems y `{ cumplido, comentario }` válidos siempre
+pasa, aunque el modelo agregue campos.
 
 ---
 

@@ -95,8 +95,8 @@ async function llamarUnaVez(args: {
   const url = `${leerBaseUrl()}/chat/completions`;
   const temperature = leerTemperatura(["MODEL_TEMPERATURE"], 0.7);
 
-  // Esquema restringido (minItems/maxItems/enum) cuando el llamador aporta los
-  // nombres de los puntos; si no, el esquema neutro tal cual.
+  // Esquema restringido (minItems/maxItems exactos) cuando el llamador aporta
+  // los puntos de la rúbrica; si no, el esquema neutro tal cual.
   const esquema: EsquemaJson = args.solicitud.puntosRubrica?.length
     ? construirEsquemaAnalisisRestringido(args.solicitud.puntosRubrica)
     : args.solicitud.esquema;
