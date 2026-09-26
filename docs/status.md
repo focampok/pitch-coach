@@ -46,7 +46,7 @@
 | ✅ | Cliente del modelo (§13) | `src/lib/modelo.ts` + adaptadores | capa neutra + fábrica por `MODEL_PROVIDER`; backoff; timeout 20 s |
 | ✅ | Proveedor Nebius (por defecto) | `src/lib/proveedor-nebius.ts` | `/chat/completions` OpenAI-compatible; `json_schema` estricto (`{name, strict, schema}`); `enable_thinking: false`; reintento por `finish_reason: length`; modo `ultra` solo en librería (sin ruta ni botón) |
 | ✅ | Proveedor Gemini (contingencia) | `src/lib/proveedor-gemini.ts` | `generateContent`; se activa con `MODEL_PROVIDER=gemini` |
-| ✅ | Esquema restringido | `src/lib/validar-analisis.ts` | `construirEsquemaAnalisisRestringido` con `minItems`/`maxItems`/`enum`, generado una vez (caché) |
+| ✅ | Esquema restringido | `src/lib/validar-analisis.ts` | `construirEsquemaAnalisisRestringido`: `rubrica` con `minItems === maxItems === puntos.length`; cada ítem con `additionalProperties: false` y `required: ["cumplido", "comentario"]` (sin `punto` ni `enum`: el nombre lo asigna el servidor por índice); generado una vez (caché) |
 | ✅ | Prompt (§7/§13) | `src/lib/prompts.ts` | español; transcripción como dato no confiable; pide rúbrica sin nombres + `claridad` + `veredicto_corto` |
 | ✅ | API `analizar-pitch` | `src/app/api/analizar-pitch/route.ts` | 400 / 413 / 429 / 502 (errores genéricos al cliente) |
 | ✅ | Dashboard | `DashboardResultado.tsx` + `dashboard-resultado.css` | incluye Tavily |
