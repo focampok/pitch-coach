@@ -1,4 +1,5 @@
-import { proveedorModelo } from "./proveedor-modelo";
+import { proveedorGemini } from "./proveedor-gemini";
+import { proveedorNebius } from "./proveedor-nebius";
 import { ErrorModelo } from "./error-modelo";
 
 export { ErrorModelo };
@@ -6,9 +7,11 @@ export { ErrorModelo };
 // Capa NEUTRA respecto al proveedor para invocar un modelo de lenguaje.
 // Todo lo que NO depende del proveedor vive aquí: reintentos con backoff,
 // timeout por intento, extracción tolerante del JSON y parseo. El código
-// específico del proveedor (endpoint, autenticación, forma del body, dialecto
-// del esquema y extracción del texto) vive en un único archivo:
-// `src/lib/proveedor-modelo.ts`. Cambiar de proveedor = reemplazar ese archivo.
+// específico de cada proveedor (endpoint, autenticación, forma del body,
+// dialecto del esquema y extracción del texto) vive en su propio adaptador:
+//   - `src/lib/proveedor-gemini.ts`  (Gemini / generateContent)
+//   - `src/lib/proveedor-nebius.ts`  (Nebius / OpenAI-compatible)
+// `proveedorActivo()` elige uno según `MODEL_PROVIDER`.
 
 /** Esquema de respuesta en dialecto neutro (JSON Schema, tipos en minúsculas). */
 export type EsquemaJson = Record<string, unknown>;
@@ -19,6 +22,13 @@ export interface SolicitudModelo {
   user: string;
   /** Esquema que el modelo debe respetar. El adaptador lo traduce a su dialecto. */
   esquema: EsquemaJson;
+  /**
+   * Nombres de los puntos de la rúbrica, en orden. Es dato OPCIONAL: los
+   * adaptadores que lo aprovechan (Nebius) derivan de él un esquema
+   * restringido con `minItems === maxItems === puntos.length`; los que no
+   * (Gemini) lo ignoran y siguen usando `esquema` tal cual.
+   */
+  puntosRubrica?: readonly string[];
 }
 
 /**
@@ -45,6 +55,33 @@ export interface ProveedorModelo {
     solicitud: SolicitudModelo;
     signal: AbortSignal;
   }): Promise<string>;
+}
+
+/** Nombres de proveedor soportados por la fábrica. */
+export type NombreProveedor = "gemini" | "nebius";
+
+/** Proveedor por defecto cuando `MODEL_PROVIDER` no está definido. */
+const PROVEEDOR_POR_DEFECTO: NombreProveedor = "nebius";
+
+/**
+ * Fábrica simple (sin librerías nuevas): devuelve el adaptador del proveedor
+ * activo según `MODEL_PROVIDER`. Se resuelve en cada llamada para que un cambio
+ * de variable de entorno (o un test) surta efecto sin reiniciar el módulo.
+ */
+export function proveedorActivo(): ProveedorModelo {
+  const configurado = (process.env.MODEL_PROVIDER ?? "").trim().toLowerCase();
+  const nombre = (configurado || PROVEEDOR_POR_DEFECTO) as NombreProveedor;
+
+  switch (nombre) {
+    case "gemini":
+      return proveedorGemini;
+    case "nebius":
+      return proveedorNebius;
+    default:
+      throw new ErrorModelo(
+        `MODEL_PROVIDER inválido: "${configurado}". Valores válidos: gemini, nebius.`,
+      );
+  }
 }
 
 /** Timeout de cada intento (un análisis debe responder en segundos). */
@@ -137,7 +174,8 @@ function parsearRespuesta<T>(texto: string | null, modelo: string): T {
  * 4. Si todo falla, lanza `ErrorModelo` con el último detalle (server-side).
  */
 export async function llamarModelo<T>(entrada: EntradaLlamarModelo<T>): Promise<T> {
-  const modelos = proveedorModelo.listarModelos();
+  const proveedor = proveedorActivo();
+  const modelos = proveedor.listarModelos();
   const intentos = leerEnteroPositivo(
     ["MODEL_RETRY_ATTEMPTS", "GEMINI_RETRY_ATTEMPTS"],
     3,
@@ -156,7 +194,7 @@ export async function llamarModelo<T>(entrada: EntradaLlamarModelo<T>): Promise<
   for (const modelo of modelos) {
     for (let intento = 1; intento <= intentos; intento++) {
       try {
-        const texto = await proveedorModelo.enviar({
+        const texto = await proveedor.enviar({
           modelo,
           solicitud: entrada,
           signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -185,5 +223,5 @@ export async function llamarModelo<T>(entrada: EntradaLlamarModelo<T>): Promise<
 
 /** Expuesto para logs y mensajes internos; nunca se envía al cliente. */
 export function nombreProveedor(): string {
-  return proveedorModelo.nombre;
+  return proveedorActivo().nombre;
 }

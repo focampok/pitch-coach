@@ -13,7 +13,7 @@ Licencia: [MIT](LICENSE).
 
 **Loop completo, verificado en Chrome:** eliges tipo y duración → grabas
 (con corte automático) → se transcribe (Web Speech API) → se cuentan
-muletillas → Gemini evalúa contra la rúbrica → el dashboard muestra
+muletillas → el modelo (Nebius por defecto) evalúa contra la rúbrica → el dashboard muestra
 score, puntos cumplidos/faltantes y transcripción resaltada → puedes
 escuchar el veredicto (ElevenLabs, o SpeechSynthesis si falta la key) →
 si un punto de rúbrica no se cubrió, Tavily puede sugerir un dato real.
@@ -43,16 +43,19 @@ Directo al grano, sin rodeos:
 - **El STT depende de la Web Speech API**: solo es confiable en
   Chrome/Chromium y requiere internet (procesa el audio en servidores de
   Google).
-- **Tier gratuito de Gemini/Tavily**: sujeto a rate limits, sin garantía de
-  uptime para uso pesado.
+- **Proveedor del modelo y Tavily con tier gratuito**: sujetos a rate limits,
+  sin garantía de uptime para uso pesado.
 - **"eeee" y rellenos vocálicos casi nunca se transcriben** — es una
   limitación del STT de Chrome, no de la detección de muletillas.
 
 ## Stack
 
 - **Next.js** (App Router + API routes) — frontend y backend en un solo repo.
-- **Gemini API** — analiza el pitch. Escribe score, comentarios y
-  `veredicto_corto`. No interviene en el TTS.
+- **Nebius Token Factory** — analiza el pitch (por defecto). Devuelve
+  `cumplido`/`comentario` por punto, `claridad` y `veredicto_corto`; el
+  **score lo calcula el servidor**. No interviene en el TTS.
+- **Gemini API** — proveedor alternativo, activable con
+  `MODEL_PROVIDER=gemini` como contingencia manual.
 - **Web Speech API** — transcripción en tiempo real (mejor en Chrome).
 - **ElevenLabs** — TTS del veredicto. Fallback: SpeechSynthesis del
   navegador.
@@ -67,7 +70,10 @@ Desarrollo nativo, sin Docker.
 1. Clonar el repositorio.
 2. `npm install`
 3. Copiar `.env.example` a `.env.local` y completar:
-   - `GEMINI_API_KEY` — análisis del pitch (**requerida**).
+   - `MODEL_PROVIDER` — `nebius` (por defecto) o `gemini`.
+   - `NEBIUS_API_KEY` — análisis del pitch (**requerida** con el proveedor por
+     defecto). Con `MODEL_PROVIDER=gemini`, en su lugar se requiere
+     `GEMINI_API_KEY`.
    - `ELEVENLABS_API_KEY` — TTS del veredicto.
    - `ELEVENLABS_VOICE_ID_MALE` / `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID
      de VoiceLab. Si faltan, el botón de escuchar usa SpeechSynthesis.
@@ -84,7 +90,10 @@ HTTPS es necesario para el micrófono fuera de localhost.
 
 Variables en Settings → Variables (las mismas que `.env.local`):
 
-- `GEMINI_API_KEY` (requerida)
+- `MODEL_PROVIDER` (`nebius` por defecto)
+- `NEBIUS_API_KEY` (requerida con el proveedor por defecto)
+- `NEBIUS_BASE_URL`, `NEBIUS_MODEL_ULTRA` (opcionales)
+- `GEMINI_API_KEY` (solo si `MODEL_PROVIDER=gemini`)
 - `ELEVENLABS_API_KEY`
 - `ELEVENLABS_VOICE_ID_MALE`
 - `ELEVENLABS_VOICE_ID_FEMALE`

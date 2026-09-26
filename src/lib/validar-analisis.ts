@@ -73,6 +73,81 @@ export const ESQUEMA_ANALISIS: EsquemaJson = {
   },
 };
 
+/** Vista tipada mínima del esquema base, para derivar el restringido. */
+interface VistaEsquemaBase {
+  properties: {
+    veredicto_corto: Record<string, unknown>;
+    claridad: Record<string, unknown>;
+    rubrica: {
+      description?: string;
+      items: {
+        properties: {
+          cumplido: Record<string, unknown>;
+          comentario: Record<string, unknown>;
+        };
+      };
+    };
+  };
+}
+
+// Caché para que el esquema con restricciones se genere UNA sola vez por
+// conjunto de puntos de rúbrica (clave = nombres de los puntos, en orden).
+const CACHE_ESQUEMA_RESTRINGIDO = new Map<string, EsquemaJson>();
+
+/**
+ * Esquema restringido (JSON Schema estándar) derivado de `ESQUEMA_ANALISIS`,
+ * pensado para proveedores con salida estructurada estricta (Nebius /
+ * OpenAI-compatible con `response_format.json_schema` + `strict: true`).
+ *
+ * Sobre el esquema base agrega:
+ * - `minItems === maxItems === puntos.length`: obliga a un ítem por punto.
+ * - `required` + `additionalProperties: false` (lo exige el modo estricto).
+ *
+ * Los ítems de `rubrica` son solo `{ cumplido, comentario }`: el modelo NUNCA
+ * nombra los puntos. El servidor asigna cada nombre desde la rúbrica por
+ * índice, así que aquí no se declara el campo ni un `enum` de nombres. `puntos`
+ * solo fija la longitud exacta del array.
+ *
+ * El adaptador de Nebius lo usa; Gemini sigue usando `ESQUEMA_ANALISIS`.
+ */
+export function construirEsquemaAnalisisRestringido(
+  puntos: readonly string[],
+): EsquemaJson {
+  const clave = puntos.join("\u0000");
+  const enCache = CACHE_ESQUEMA_RESTRINGIDO.get(clave);
+  if (enCache) return enCache;
+
+  const base = ESQUEMA_ANALISIS as unknown as VistaEsquemaBase;
+
+  const esquema: EsquemaJson = {
+    type: "object",
+    additionalProperties: false,
+    required: ["veredicto_corto", "claridad", "rubrica"],
+    properties: {
+      veredicto_corto: { ...base.properties.veredicto_corto },
+      claridad: { ...base.properties.claridad },
+      rubrica: {
+        type: "array",
+        description: base.properties.rubrica.description,
+        minItems: puntos.length,
+        maxItems: puntos.length,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["cumplido", "comentario"],
+          properties: {
+            cumplido: { ...base.properties.rubrica.items.properties.cumplido },
+            comentario: { ...base.properties.rubrica.items.properties.comentario },
+          },
+        },
+      },
+    },
+  };
+
+  CACHE_ESQUEMA_RESTRINGIDO.set(clave, esquema);
+  return esquema;
+}
+
 function esObjeto(valor: unknown): valor is Record<string, unknown> {
   return valor !== null && typeof valor === "object" && !Array.isArray(valor);
 }

@@ -28,3 +28,4 @@ yarn-error.log*
 
 # Railway (si genera archivos locales de config)
 .railway/
+next-env.d.ts
