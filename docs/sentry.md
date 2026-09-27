@@ -475,11 +475,23 @@ Con comentarios originales y línea correcta.
 ### Producción: los `ARG` del build
 
 **Verificado en un deploy real** (issue `PITCH-COACH-5`, 2026-09-27): el stack
-trace llegó con el código original (`../../../src/lib/modelo.ts:255`) y el
-`release` con el SHA del commit. Eso prueba que Railway **sí** pasa las
-variables del servicio como build args cuando están declaradas con `ARG` — la
-única vía posible, porque Railway construye clonando el repo y los archivos
-`.env*` con valores están gitignoreados.
+trace llegó con el código original (`../../../src/lib/modelo.ts:255`).
+
+**Cómo se sabe que Railway pasa las variables como build args** (la evidencia
+correcta, que no es la del párrafo anterior): los artefactos que solo existen en
+build-time llegan al navegador. Dos pruebas independientes:
+
+1. `NEXT_PUBLIC_SENTRY_DSN` aparece **inlineada** en los chunks del cliente. Sin
+   el `ARG`, la referencia quedaba como lectura en runtime y no había DSN.
+2. El release del cliente aparece **inyectado como literal** en los chunks
+   (`release:"90fa3e5…"`).
+
+> **Corrección de un razonamiento anterior de este documento:** se había escrito
+> que el `release` del servidor probaba el mecanismo de `ARG`. **Era falso.** El
+> servidor obtiene su release en **runtime**, no en build: Railway inyecta
+> `RAILWAY_GIT_COMMIT_SHA` en el contenedor y `getSentryRelease()` lo lee. Por eso
+> el servidor tenía release desde el primer deploy, cuando el cliente no tenía
+> ninguno.
 
 Declarados en la etapa `builder`:
 
@@ -601,8 +613,16 @@ reales en el proyecto (región EU); conviene cerrarlos.
   contra `npm run dev`). El *transporte* del cliente en producción sí está
   verificado (§6), pero disparar un error de render en producción requeriría
   shipear una página que falle; no hay forma de provocarlo a demanda.
-- **El cliente de producción no lleva `release`** (ver §10). Falta decidir si
-  importa.
+- **El desminificado de los stack traces del cliente.** El cliente ya lleva
+  `release` (ver §10), y los mapas se suben bajo ese release, así que debería
+  resolver. Pero **no se comprobó con un error real en producción**, y para
+  provocarlo hace falta que falle código del bundle: no hay forma desde la
+  consola de DevTools, porque esos errores nacen fuera de los chunks.
+
+  Ojo con el muestreo al probar: en producción el cliente muestrea trazas al
+  **10%** (`tracesSampleRate: 0.1`), así que cargar la página una vez
+  probablemente **no** genere transacción. Los eventos de error, en cambio, no
+  están sujetos a ese muestreo: son la sonda determinista.
 - **Tres categorías de `dataCollection` siguen sin auditar**: `cookies`,
   `urlQueryParams` y `httpHeaders.response`. `httpBodies` se auditó sin fuga
   (§3.6.1) y `genAI` resultó inerte por construcción, verificado (§3.6.2). Ver
@@ -694,27 +714,39 @@ reales en el proyecto (región EU); conviene cerrarlos.
     `proveedor-nebius.ts` al paquete `openai` (plausible, Nebius es
     OpenAI-compatible), `genAI` se enciende con defaults permisivos y el prompt
     viaja a Sentry como atributo de span, sin pasar por `beforeSend`. Ver §3.6.2.
+14. **El cliente de producción no llevaba `release`, y la causa era asimétrica.**
+    Síntoma: 50 spans de servidor con release y 240 de navegador sin él.
+
+    Causa: el release del cliente se resuelve en **build-time**
+    (`releaseName = release.name ?? getSentryRelease() ?? getGitRevision()`). En
+    un build por Dockerfile no hay `.git`, y `getSentryRelease()` —en
+    `@sentry/node/build/cjs/sdk/api.js`— busca primero `SENTRY_RELEASE` y después
+    una lista larga de variables de CI entre las que está
+    **`RAILWAY_GIT_COMMIT_SHA`**. Ninguna de las dos llegaba al build: la primera
+    no existía como variable, y la segunda no estaba declarada como `ARG`.
+
+    **Por qué el servidor sí lo tenía:** lo resuelve en **runtime**, donde Railway
+    sí inyecta `RAILWAY_GIT_COMMIT_SHA` en el contenedor. El servidor nunca
+    necesitó configuración, y eso hacía que el problema se viera como "el cliente
+    está roto" en vez de "falta declarar el `ARG`".
+
+    **Fix (commit `90fa3e5`):** `ARG RAILWAY_GIT_COMMIT_SHA` en la etapa
+    `builder`. Se eligió eso en lugar de crear una variable `SENTRY_RELEASE` con
+    referencia `${{RAILWAY_GIT_COMMIT_SHA}}`, que en el editor de Railway
+    quedaba vacía; el SDK reconoce la variable de Railway directamente.
+
+    **Verificación:** el bundle desplegado contiene `release:"90fa3e56…"` como
+    literal (antes era una lectura sin definición detrás), y Sentry muestra un
+    release con ese nombre creado por el plugin en build-time.
+
+    **Moraleja transferible:** cualquier valor que el SDK necesite en
+    **build-time** tiene que llegar por `ARG`, y los del servidor no sirven como
+    evidencia de que llegó — el servidor puede estar resolviéndolo en runtime.
 
 ---
 
 ## 10. Lo que queda pendiente
 
-- **El cliente de producción no lleva `release`.** Verificado en los chunks
-  desplegados: el código del cliente es
-  `release: process.env._sentryRelease || i_._sentryRelease`, y **no hay ninguna
-  definición de `_sentryRelease` en el bundle** — ni el SHA del commit, ni una
-  asignación, ni nada inyectado en el HTML. En desarrollo sí lleva release,
-  porque el plugin lo detecta de git, que en Railway no existe.
-  Consecuencia probable: los eventos de cliente quedan sin release, así que se
-  pierden las funciones que dependen de él (detección de regresiones, "qué
-  release lo introdujo") y **muy probablemente los stack traces del navegador
-  salgan minificados**, porque los source maps se asocian a un release.
-  La causa no se pudo determinar desde afuera: el servidor **sí** tiene release
-  (`cb206b7a…`) y el cliente no, lo que sugiere que el servidor lo obtiene en
-  **runtime** (variable de servicio de Railway) y el cliente, que lo necesita en
-  **build-time**, no lo recibe por esa vía.
-  **Comprobación de 5 segundos:** en Sentry, abrir cualquier transacción de
-  navegador de producción y mirar el campo `Release`.
 - **Migrar a `beforeSendSpan` antes de subir a la v12 del SDK** (§9.7). Hoy el
   filtro de transacciones funciona vía `beforeSendTransaction` + `static`, pero
   esa opción se elimina en v12. En `"stream"` el callback recibe

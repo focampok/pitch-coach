@@ -205,10 +205,18 @@ agrega un `extra` nuevo en alguna ruta, revisar antes esta sección.
   `POST /monitoring` en DevTools. Antes de esto, el cliente no reportaba nada
   porque faltaban los `ARG NEXT_PUBLIC_*` en el `Dockerfile` — ver
   `docs/sentry.md` §6.
-- **Un cabo suelto, con evidencia:** el cliente de producción **no lleva
-  `release`**, así que los stack traces del navegador probablemente salgan
-  minificados. El servidor sí lo lleva. Comprobación y detalle, en
-  `docs/sentry.md` §10.
+- **El cliente de producción ya lleva `release`.** Antes no lo llevaba: el
+  release del navegador se resuelve en build-time y no llegaba nunca al build,
+  mientras que el del servidor se resuelve en runtime y por eso sí aparecía —
+  una asimetría que hacía parecer roto al cliente. Se arregló declarando
+  `ARG RAILWAY_GIT_COMMIT_SHA` en el `Dockerfile`. Verificado en el bundle
+  desplegado. Detalle y moraleja, en `docs/sentry.md` §9.14.
+- **Lo único sin verificar en producción:** que los stack traces del navegador
+  salgan **desminificados**. El cliente ya tiene release y los mapas suben bajo
+  ese release, así que debería resolver, pero comprobarlo requiere un error real
+  lanzado desde código del bundle — no alcanza con uno tirado desde la consola.
+  Ojo al probar: el cliente muestrea trazas al 10%, así que cargar la página una
+  vez probablemente no genere transacción; los errores no se muestrean.
 
 > **⚠️ Trampa latente de `genAI`.** Las integraciones de IA **se registran por
 > defecto** igual: son no-ops solo mientras el paquete del vendor no exista. Si
