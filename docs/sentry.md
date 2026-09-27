@@ -588,6 +588,10 @@ principio. No se reescribió la historia para disimularlo; el commit de la tarea
 | Suite completa | 181 tests en verde (175 previos + 6 nuevos) |
 | Lint / tipos / build | `npm run lint`, `npx tsc --noEmit`, `next build` — todos limpios |
 
+**Los issues de prueba que generaron estas verificaciones quedaron todos en
+`resolved`** (`PITCH-COACH-1` a `PITCH-COACH-5`), cada uno con un comentario que
+explica qué era la prueba. No queda ninguno abierto.
+
 ### Cómo se verificó lo del cliente (reproducible)
 
 1. `npm run dev` y abrir `http://localhost:3000/…` en Chrome. **Usar `localhost`,
@@ -760,12 +764,6 @@ reales en el proyecto (región EU); conviene cerrarlos.
   `dataCollection.genAI: { inputs: false, outputs: false }` **antes** del cambio:
   es lo único que impide que los prompts —con la transcripción— viajen a Sentry
   como atributos de span, que no pasan por `beforeSend`. Ver §3.6.2.
-- **Issues de prueba en Sentry.** `PITCH-COACH-1` y `PITCH-COACH-2` (fases
-  anteriores) y `PITCH-COACH-3` y `PITCH-COACH-4` (camino de error de cliente)
-  están en `resolved`, con un comentario que explica que eran pruebas. Queda
-  **`PITCH-COACH-5`**, la prueba del `MODEL` inventado que confirmó que el
-  servidor reporta en producción: es un artefacto de verificación, no un fallo
-  real, y se puede cerrar.
 - **Decidido: `docs/sentry.md` entra a la rama.** Es el registro de decisión de
   la fase; el resumen corto y estable vive en `docs/status.md` §5. Si en algún
   momento divergen, manda `status.md`.
