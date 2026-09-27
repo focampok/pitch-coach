@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generarVerdictoHablado, VoiceGender } from "@/lib/elevenlabs";
 import { limitar } from "@/lib/rate-limit";
+import { reportarFallo } from "@/lib/sentry-reporte";
 import {
   MENSAJE_TRANSCRIPCION_LARGA,
   excedeLimiteTranscripcion,
@@ -64,6 +65,9 @@ export async function POST(req: NextRequest) {
     // El detalle del proveedor se registra server-side y no se devuelve: el
     // cliente solo necesita saber que debe caer a SpeechSynthesis.
     console.error("[/api/tts] fallo ElevenLabs:", err);
+    // Acá el proveedor real es ElevenLabs, no el modelo de lenguaje, así que el
+    // tag lo refleja. Mismo resumen sanitizado que en las rutas del modelo.
+    reportarFallo(err, { proveedor: "elevenlabs" }, { proveedor: "elevenlabs" });
     return NextResponse.json({ error: MENSAJE_ERROR_TTS }, { status: 502 });
   }
 }

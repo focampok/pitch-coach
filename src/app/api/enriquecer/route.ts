@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { enriquecerConTavily } from "@/lib/tavily";
 import { limitar } from "@/lib/rate-limit";
+import { reportarFallo } from "@/lib/sentry-reporte";
 
 export const runtime = "nodejs";
 
@@ -49,6 +50,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sugerencias });
   } catch (err) {
     console.error("[/api/enriquecer] fallo Tavily:", err);
+    // El proveedor acá es Tavily, no el modelo de lenguaje.
+    reportarFallo(err, { proveedor: "tavily" }, { proveedor: "tavily" });
     // No crítico: se responde 200 con lista vacía en vez de romper el dashboard.
     return NextResponse.json({ sugerencias: [] });
   }

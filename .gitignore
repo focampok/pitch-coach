@@ -12,6 +12,8 @@ out/
 .env
 .env.local
 .env*.local
+# token de subida de source maps de Sentry (build-time, lo lee el plugin)
+.env.sentry-build-plugin
 
 # logs
 npm-debug.log*

@@ -82,6 +82,19 @@ const PROVEEDOR_POR_DEFECTO: NombreProveedor = "nebius";
  * activo según `MODEL_PROVIDER`. Se resuelve en cada llamada para que un cambio
  * de variable de entorno (o un test) surta efecto sin reiniciar el módulo.
  */
+/**
+ * Nombre del proveedor configurado, sin construir el adaptador.
+ *
+ * A diferencia de `proveedorActivo()`, NO lanza ante un valor inválido: se usa
+ * para etiquetar eventos de Sentry, y un tag no debería poder tumbar una
+ * petición. Ante un valor desconocido devuelve el proveedor por defecto.
+ */
+export function nombreProveedorActivo(): NombreProveedor {
+  const configurado = (process.env.MODEL_PROVIDER ?? "").trim().toLowerCase();
+  if (configurado === "gemini" || configurado === "nebius") return configurado;
+  return PROVEEDOR_POR_DEFECTO;
+}
+
 export function proveedorActivo(nivel: NivelAnalisis = "estandar"): ProveedorModelo {
   const configurado = (process.env.MODEL_PROVIDER ?? "").trim().toLowerCase();
   const nombre = (configurado || PROVEEDOR_POR_DEFECTO) as NombreProveedor;

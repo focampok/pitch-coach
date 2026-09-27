@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { SolicitudAnalisis, ResultadoAnalisis } from "@/types/pitch";
 import type { NivelAnalisis } from "@/lib/modelo";
+import { nombreProveedorActivo } from "@/lib/modelo";
+import { reportarFallo } from "@/lib/sentry-reporte";
 import { obtenerRubrica } from "@/lib/rubricas";
 import { construirPrompt } from "@/lib/prompts";
 import { analizarConModelo } from "@/lib/analisis-modelo";
@@ -81,6 +83,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     // El detalle del proveedor se registra server-side y NUNCA se devuelve al
     // cliente: hacia fuera solo va un mensaje genérico.
     console.error("[/api/analizar-pitch] fallo el análisis:", error);
+    // A Sentry va un resumen sanitizado, nunca el error crudo: el mensaje de
+    // ErrorModelo puede arrastrar el cuerpo del proveedor y, con él, la
+    // transcripción. Ver src/lib/sentry-reporte.ts.
+    const nivelEfectivo = nivel ?? "estandar";
+    const proveedor = nombreProveedorActivo();
+    reportarFallo(
+      error,
+      { proveedor, nivel: nivelEfectivo },
+      { proveedor, nivel: nivelEfectivo },
+    );
     return NextResponse.json({ error: MENSAJE_ERROR_ANALISIS }, { status: 502 });
   }
 }

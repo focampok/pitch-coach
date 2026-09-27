@@ -10,6 +10,22 @@ RUN npm ci
 # ---- Build ----
 FROM node:24-alpine AS builder
 WORKDIR /app
+
+# Sentry en build-time. Railway NO expone las variables del servicio a un build
+# por Dockerfile: hay que declararlas con ARG (y el ARG solo vale dentro de la
+# etapa donde se declara, por eso van acá y no antes del primer FROM).
+#
+# Sin esto, `npm run build` no ve el token y el plugin avisa
+# "No auth token provided. Will not upload source maps" — el deploy sale igual,
+# pero los stack traces de producción quedan minificados.
+#
+# SENTRY_RELEASE se pasa explícito porque .dockerignore excluye .git, así que la
+# detección automática de release (que lee el SHA de git) no encuentra nada.
+ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+ARG SENTRY_RELEASE
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 

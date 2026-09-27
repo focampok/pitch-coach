@@ -4,6 +4,8 @@ import { obtenerPuntoRubrica } from "@/lib/rubricas";
 import { construirPromptPreguntaSparring } from "@/lib/prompts-sparring";
 import { generarPreguntaSparring } from "@/lib/sparring-modelo";
 import { limitar } from "@/lib/rate-limit";
+import { nombreProveedorActivo } from "@/lib/modelo";
+import { reportarFallo } from "@/lib/sentry-reporte";
 import {
   MENSAJE_PUNTO_SPARRING_LARGO,
   excedeLimitePuntoSparring,
@@ -57,6 +59,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ pregunta: resultado.pregunta });
   } catch (error) {
     console.error("[/api/sparring/pregunta] fallo al generar:", error);
+    // Resumen sanitizado a Sentry; el detalle del proveedor queda en el log.
+    const proveedor = nombreProveedorActivo();
+    reportarFallo(
+      error,
+      { proveedor, nivel: "rapido" },
+      { proveedor, nivel: "rapido" },
+    );
     return NextResponse.json({ error: MENSAJE_ERROR_SPARRING }, { status: 502 });
   }
 }

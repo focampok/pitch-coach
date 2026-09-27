@@ -4,6 +4,8 @@ import { obtenerPuntoRubrica } from "@/lib/rubricas";
 import { construirPromptEvaluacionSparring } from "@/lib/prompts-sparring";
 import { evaluarRespuestaSparring } from "@/lib/sparring-modelo";
 import { limitar } from "@/lib/rate-limit";
+import { nombreProveedorActivo } from "@/lib/modelo";
+import { reportarFallo } from "@/lib/sentry-reporte";
 import {
   MENSAJE_PUNTO_SPARRING_LARGO,
   MENSAJE_PREGUNTA_SPARRING_LARGA,
@@ -81,6 +83,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
   } catch (error) {
     console.error("[/api/sparring/evaluar] fallo al evaluar:", error);
+    // Resumen sanitizado a Sentry; el detalle del proveedor queda en el log.
+    const proveedor = nombreProveedorActivo();
+    reportarFallo(
+      error,
+      { proveedor, nivel: "rapido" },
+      { proveedor, nivel: "rapido" },
+    );
     return NextResponse.json({ error: MENSAJE_ERROR_SPARRING }, { status: 502 });
   }
 }

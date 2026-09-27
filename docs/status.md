@@ -19,6 +19,10 @@
   **Sin autoplay** — el usuario pulsa "Escuchar veredicto".
 - ✅ Tavily (§12): `/api/enriquecer` si hay puntos sin cumplir. Sin key,
   el dashboard no se rompe.
+- ✅ Sentry: errores de servidor y de cliente, con filtro de privacidad (§5).
+  **Session Replay deshabilitado a propósito**; **la IP del cliente no se
+  reporta** y **los breadcrumbs de consola no salen** (fuga real, cerrada).
+  Camino de error del cliente verificado en Chrome.
 - ✅ Tests unitarios (`npm test`, vitest) sobre la lógica de `src/lib/`
   (incluido el historial local) y las rutas de análisis/sparring (fetch
   mockeado; sin llamadas reales a proveedores).
@@ -124,3 +128,101 @@ mantenedor con su clave): `scripts/smoke-nebius.mjs`.
   en Chrome.
 - Timeout del modelo: 20 s en `estandar`/`rapido`, 90 s en `ultra` (razonamiento).
 - `.env.local` no se commitea. `.env.example` sí, sin valores.
+
+## 5. Sentry (monitoreo de errores)
+
+Integrado en los tres runtimes: Node, Edge y navegador. Los errores de las
+rutas de API se reportan con un **resumen sanitizado**, nunca con el error
+crudo; los de render del cliente, con los error boundaries del App Router
+(`src/app/error.tsx` y `src/app/global-error.tsx`).
+
+**Qué NO llega a Sentry.** La regla es la misma que ya se aplicó al historial
+local: lo sensible no se persiste ni se envía, aunque cueste funcionalidad.
+
+- La **transcripción** del pitch.
+- El campo **`comentario`** de cualquier rúbrica (principal, Ultra, o de un
+  turno de "Resolver hallazgos").
+- El campo **`traza`** del Análisis Ultra.
+- La **`pregunta`** y la **`respuesta`** de un turno de hallazgos.
+- El **`veredicto`** y el **`veredicto_corto`**.
+- **Audio** en cualquier forma.
+- La **IP del cliente**. La app es de sesión anónima, así que la IP era el
+  único identificador de cliente que podía colarse; ya no se reporta. Salía por
+  cuatro canales (el usuario, las cabeceras del evento y los atributos de los
+  spans); se apaga con `dataCollection` en las tres configs, más un borrado
+  redundante en el filtro. El detalle, en `docs/sentry.md` §3.6.
+- Los **breadcrumbs de consola**. Eran una fuga real, no teórica: el
+  `console.error` de los `catch` graba el mensaje de `ErrorModelo` completo, y
+  ese mensaje arrastra el cuerpo de respuesta del proveedor —que puede repetir
+  la petición, con la transcripción—. Se descartan enteros en `beforeSend` y
+  `beforeSendTransaction`; el resto de los breadcrumbs sigue pasando por el
+  filtro. Reproducción y fix, en `docs/sentry.md` §3.7.
+
+El filtro (`src/lib/sentry-scrub.ts`) redacta esas propiedades por nombre, en
+cualquier nivel y también dentro de arrays (las rúbricas y los turnos son
+arrays de objetos). Además, el error del proveedor **nunca se manda crudo**: su
+mensaje puede arrastrar el cuerpo de respuesta del proveedor, que a su vez
+puede repetir la petición —y con ella la transcripción—. Se envía un resumen
+(tipo de error, código HTTP, proveedor, nivel) con el stack sin su primera
+línea, que es la que lleva el mensaje original.
+
+**Límite conocido:** el filtro decide por *nombre* de propiedad, no por
+contenido. Un texto sensible que viaje como *valor* de una propiedad con nombre
+permitido no se detecta. Por eso las rutas nunca adjuntan texto del usuario
+como contexto y el error del proveedor se resume en vez de reenviarse. Si se
+agrega un `extra` nuevo en alguna ruta, revisar antes esta sección.
+
+**Verificado, capturando el sobre real** (antes eran suposiciones):
+
+- El filtro **corre de verdad** en el pipeline de servidor: con centinelas sin
+  filtrar adjuntos a propósito, el sobre real salió con `transcripcion` y
+  `veredicto_corto` en `"[Filtered]"`.
+- El **camino de error del cliente funciona**: un throw en `useEffect` y otro en
+  render en Chrome 152 hacen que `error.tsx` muestre la UI de respaldo, y el
+  evento con la excepción real llega al túnel hacia Sentry (HTTP 200).
+- La IP quedó fuera en los cuatro canales.
+- **`beforeSendTransaction` sí se ejecuta** ahora, y se comprobó de forma
+  directa: centinelas en una transacción real salieron `"[Filtered]"`. Ese
+  marcador solo lo produce el callback, así que no basta con que el SDK deje de
+  avisar por consola.
+- **`httpBodies` no filtra el cuerpo** de la petición: se mandó un POST real con
+  la transcripción y el cuerpo no llega a Sentry por ninguna vía —ni
+  `request.data`, ni atributos de span, ni breadcrumbs `http`—. Ver `§3.6.1`.
+- **`genAI` es inerte por construcción** (verificado, no supuesto): instrumenta
+  solo SDKs de IA reconocidos, por **paquete + versión + archivo exactos**
+  (`openai`, `@google/genai`, `langchain`…), **nunca por URL ni por host**. Este
+  proyecto llama a los proveedores por `fetch` crudo y no tiene ningún SDK de IA
+  instalado, así que la categoría no captura nada. Confirmado además en los
+  sobres: la llamada al proveedor sale como `auto.http.node_fetch` /
+  `http.client`, sin ningún atributo `gen_ai.*`. Ver `docs/sentry.md` §3.6.2.
+- El modo `static` **no pierde telemetría**: mismas trazas y mismos spans (36 en
+  la home del navegador), solo cambia el sobre en que viajan.
+
+> **⚠️ Trampa latente de `genAI`.** Las integraciones de IA **se registran por
+> defecto** igual: son no-ops solo mientras el paquete del vendor no exista. Si
+> alguien reemplaza el `fetch` crudo de `src/lib/proveedor-nebius.ts` por el
+> **paquete oficial `openai`** (plausible: Nebius es compatible con esa API),
+> `genAI` se activa con sus **defaults permisivos** (`inputs`/`outputs: true`) y
+> el prompt —con la transcripción— empieza a viajar a Sentry **sin que nadie
+> toque la privacidad**, como atributo de span, que **no pasa por `beforeSend`**.
+> Si eso pasa, poner `dataCollection.genAI: { inputs: false, outputs: false }`
+> **antes** del cambio.
+
+**Siguen sin auditarse** `cookies`, `urlQueryParams` y `httpHeaders.response`:
+sin evidencia de fuga, pero tampoco de lo contrario. Ver `docs/sentry.md` §3.6.3.
+
+**Requiere tu decisión, con fecha.** `traceLifecycle` es `"static"` a propósito:
+con el default (`"stream"`) el SDK **ignora** `beforeSendTransaction`, y los
+eventos de transacción llevan breadcrumbs, que pueden llevar texto del usuario.
+El precio es que `beforeSendTransaction` **se elimina en la v12 del SDK**: hay
+que migrar a `beforeSendSpan` antes de subir a esa versión. No es urgente, pero
+es una fecha. Ver `docs/sentry.md` §3.8 y §10.
+
+**Session Replay está deshabilitado a propósito.** Graba interacciones del DOM
+—incluido texto tipeado y leído—, que es exactamente el tipo de captura que
+este proyecto no quiere. No activarlo sin revisar antes esta sección.
+
+Sin `SENTRY_DSN` la app funciona igual: el SDK no envía nada.
+`SENTRY_ENABLED=false` apaga el envío sin tocar código. Las variables están
+documentadas en `.env.example`; la subida de source maps necesita además
+`SENTRY_AUTH_TOKEN` en build-time.
