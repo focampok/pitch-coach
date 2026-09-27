@@ -11,6 +11,7 @@ import { POST as postAnalizar } from "@/app/api/analizar-pitch/route";
 import { POST as postPregunta } from "@/app/api/sparring/pregunta/route";
 import { POST as postEvaluar } from "@/app/api/sparring/evaluar/route";
 import { POST as postTts } from "@/app/api/tts/route";
+import { POST as postTranscribir } from "@/app/api/transcribir/route";
 import { POST as postEnriquecer } from "@/app/api/enriquecer/route";
 import { reiniciar } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
@@ -178,6 +179,21 @@ describe("tags operativos en eventos de servidor", () => {
     // Sin ELEVENLABS_API_KEY la ruta falla y cae al catch.
     const res = await postTts(
       comoNextRequest(peticion("/api/tts", { texto: "Buen pitch." }, "10.0.0.6"))
+    );
+
+    expect(res.status).toBe(502);
+    expect(ultimosTags()).toEqual({ proveedor: "elevenlabs" });
+  });
+
+  it("transcribir etiqueta a ElevenLabs como proveedor", async () => {
+    const form = new FormData();
+    form.append("audio", new File(["clip"], "grabacion.webm", { type: "audio/webm" }));
+    const res = await postTranscribir(
+      new Request("http://localhost/api/transcribir", {
+        method: "POST",
+        headers: { "x-forwarded-for": "10.0.0.9" },
+        body: form,
+      }),
     );
 
     expect(res.status).toBe(502);

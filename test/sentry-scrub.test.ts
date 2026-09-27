@@ -289,6 +289,37 @@ describe("sentry-scrub", () => {
       expect(entrada.user.ip_address).toBe(IP_CLIENTE);
     });
 
+    it("cubre el path de error de /api/transcribir: audio y breadcrumbs de consola", () => {
+      const eventoTranscribir = {
+        request: {
+          url: "https://pitch-coach.focampo.com/api/transcribir",
+          data: { audio: AUDIO },
+        },
+        extra: { proveedor: "elevenlabs", audio: AUDIO },
+        breadcrumbs: [
+          {
+            category: "console",
+            message: `[/api/transcribir] fallo ElevenLabs: ${AUDIO}`,
+            data: { arguments: ["[/api/transcribir] fallo ElevenLabs:", AUDIO] },
+          },
+          {
+            category: "fetch",
+            data: { url: "/api/transcribir", audio: AUDIO, status_code: 502 },
+          },
+        ],
+      };
+
+      const salida = beforeSend(eventoTranscribir);
+      const serializado = JSON.stringify(salida);
+      expect(serializado).not.toContain(AUDIO);
+      expect(leer(salida, "request", "data", "audio")).toBe(REDACTED);
+      expect(leer(salida, "extra", "audio")).toBe(REDACTED);
+      expect(leer(salida, "extra", "proveedor")).toBe("elevenlabs");
+      const breadcrumbs = leer(salida, "breadcrumbs") as unknown[];
+      expect(breadcrumbs).toHaveLength(1);
+      expect(leer(breadcrumbs, "0", "data", "audio")).toBe(REDACTED);
+    });
+
     it("REGRESIÓN: descarta el breadcrumb de consola que filtró el pitch", () => {
       // La fuga real, reproducida contra `npm run dev` con un proveedor que
       // devolvía eco: el `console.error` del catch de la ruta graba el mensaje

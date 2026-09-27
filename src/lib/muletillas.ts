@@ -19,9 +19,8 @@ export interface PatronMuletilla {
 
 /** Fuente de verdad de los 21 patrones (detección + resaltado en el dashboard). */
 export const PATRONES_MULETILLAS: readonly PatronMuletilla[] = [
-  // Relleno vocálico ("eeee", "ehh"). Ojo: la Web Speech API de Chrome suele
-  // omitir estos sonidos en la transcripción — el patrón queda para cuando sí
-  // llegan al texto.
+  // Relleno vocálico ("eeee", "ehh"). Algunos STT omiten estos sonidos;
+  // el patrón queda para cuando sí llegan al texto.
   { etiqueta: "eeee / ehh", patron: /\b(e{2,}|eh+)\b/gi },
   { etiqueta: "o sea", patron: /o\s+sea/gi },
   // Tolera "decia" sin tilde (Chrome a veces no la escribe).

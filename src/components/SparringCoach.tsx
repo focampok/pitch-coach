@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type {
   EvaluacionRubrica,
   SparringCompletado,
@@ -23,13 +23,6 @@ interface SparringCoachProps {
   onCompletado?: (sparring: SparringCompletado) => void;
 }
 
-function obtenerConstructorReconocimiento():
-  | (new () => SpeechRecognition)
-  | undefined {
-  if (typeof window === "undefined") return undefined;
-  return window.SpeechRecognition ?? window.webkitSpeechRecognition;
-}
-
 export function SparringCoach({
   tipoPitch,
   rubrica,
@@ -50,13 +43,6 @@ export function SparringCoach({
   );
   const [turnos, setTurnos] = useState<TurnoSparring[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [textoRespaldo, setTextoRespaldo] = useState("");
-
-  const soporteStt = useSyncExternalStore(
-    () => () => {},
-    () => Boolean(obtenerConstructorReconocimiento()),
-    () => null,
-  );
 
   const cargarPregunta = useCallback(
     async (i: number) => {
@@ -66,7 +52,6 @@ export function SparringCoach({
       setError(null);
       setPregunta(null);
       setFeedback(null);
-      setTextoRespaldo("");
       try {
         const respuesta = await fetch("/api/sparring/pregunta", {
           method: "POST",
@@ -205,35 +190,7 @@ export function SparringCoach({
             </p>
           )}
 
-          {fase === "pregunta" && soporteStt === false && (
-            <form
-              className="space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void evaluar(textoRespaldo);
-              }}
-            >
-              <p className="text-sm text-zinc-600">
-                Tu navegador no soporta reconocimiento de voz. Escribe la
-                respuesta.
-              </p>
-              <textarea
-                value={textoRespaldo}
-                onChange={(event) => setTextoRespaldo(event.target.value)}
-                rows={4}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-zinc-800"
-                placeholder="Escribe tu respuesta…"
-              />
-              <button
-                type="submit"
-                className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                Enviar respuesta
-              </button>
-            </form>
-          )}
-
-          {fase === "pregunta" && soporteStt && (
+          {fase === "pregunta" && (
             <GrabadorVoz
               key={`sparring-${indice}`}
               duracionMaxima={1}

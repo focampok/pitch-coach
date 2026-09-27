@@ -29,9 +29,10 @@
 - Archivo `.env.example` sí se comitea, con las mismas keys pero sin valores reales (o con placeholders), para que quede documentado qué variables necesita el proyecto.
 - Variables esperadas (ir actualizando esta lista conforme se agreguen):
  - `GEMINI_API_KEY` — clave de la API de Gemini, usada únicamente en API routes (server-side), nunca expuesta al cliente.
- - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y, opcionalmente, Scribe STT), usada únicamente en API routes (server-side), nunca expuesta al cliente.
+ - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y STT Scribe), usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - `ELEVENLABS_VOICE_ID_MALE` — Voice ID de la voz de hombre (VoiceLab). Solo server-side.
  - `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID de la voz de mujer (VoiceLab). Solo server-side.
+ - `ELEVENLABS_SCRIBE_MODEL` — modelo batch de Scribe (default `scribe_v2`). Solo server-side.
  - `TAVILY_API_KEY` — clave de Tavily (búsqueda de estadísticas para sugerencias), usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - En Railway, las variables de entorno se configuran directamente en el panel del proyecto (Settings → Variables), replicando las mismas keys que en `.env.local`.
  - Cualquier variable que empiece con `NEXT_PUBLIC_` queda expuesta al navegador — **nunca usar ese prefijo para API keys o secretos**.
@@ -67,7 +68,7 @@ pitch-coach/
 │   ├── components/
 │   │   ├── SelectorTipoPitch.tsx
 │   │   ├── SelectorDuracion.tsx
-│   │   ├── GrabadorVoz.tsx           # Web Speech API (STT) + coach visual
+│   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe (STT) + coach visual
 │   │   ├── CoachAvatar.tsx
 │   │   ├── ResumenMuletillas.tsx
 │   │   ├── ReproductorVeredicto.tsx  # stub: ElevenLabs TTS + fallback SpeechSynthesis
@@ -80,8 +81,7 @@ pitch-coach/
 │   │   └── prompts.ts
 │   └── types/
 │       ├── pitch.ts
-│       ├── coach.ts
-│       └── web-speech.d.ts
+│       └── coach.ts
 └── public/
 ```
 
@@ -91,7 +91,7 @@ El proyecto debe tener un `README.md` en la raíz, con al menos:
 
 - Nombre del proyecto y una línea que explique qué hace (ver `docs/alcance.md` sección 2, "Concepto").
 - Licencia (MIT) y que el proyecto es open source.
-- Stack técnico resumido (Next.js, Gemini API, Web Speech API, ElevenLabs, Tavily, Railway).
+- Stack técnico resumido (Next.js, Nebius/Gemini, MediaRecorder, ElevenLabs Scribe/TTS, Tavily, Railway).
 - Instrucciones de setup local:
   - Clonar el repo.
   - `npm install`.

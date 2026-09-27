@@ -14,7 +14,7 @@ En Pitch Coach, Tavily no alimenta el análisis principal: es un **enriquecimien
 |---|---|---|---|
 | Búsqueda de datos reales para sugerencias | Sí | Tavily `POST /search` | **Sí, esta guía** |
 | Análisis del pitch (lo que decide *qué* faltó) | Sí | Gemini | No (ver `guia-integracion-gemini.md`) |
-| Transcripción del discurso | Sí | Web Speech API del navegador | No usa Tavily |
+| Transcripción del discurso | Sí | MediaRecorder + ElevenLabs Scribe | No usa Tavily |
 
 Punto importante: Tavily **no produce texto**, produce fuentes. La decisión de *qué* buscar la toma otra capa (en este repo, los puntos no cumplidos que devuelve Gemini). Si tu otro proyecto no tiene una capa que te diga "qué reforzar", la pieza que extraes se reduce al cliente HTTP de la sección 8.1.
 

@@ -11,12 +11,13 @@ Licencia: [MIT](LICENSE).
 
 ## Qué hace
 
-**Loop completo, verificado en Chrome:** eliges tipo y duración → grabas
-(con corte automático) → se transcribe (Web Speech API) → se cuentan
-muletillas → el modelo (Nebius por defecto) evalúa contra la rúbrica → el dashboard muestra
-score, puntos cumplidos/faltantes y transcripción resaltada → puedes
-escuchar el veredicto (ElevenLabs, o SpeechSynthesis si falta la key) →
-si un punto de rúbrica no se cubrió, Tavily puede sugerir un dato real.
+**Loop completo:** eliges tipo y duración → grabas (MediaRecorder, con
+corte automático) → se transcribe en el servidor (ElevenLabs Scribe) → se
+cuentan muletillas → el modelo (Nebius por defecto) evalúa contra la
+rúbrica → el dashboard muestra score, puntos cumplidos/faltantes y
+transcripción resaltada → puedes escuchar el veredicto (ElevenLabs, o
+SpeechSynthesis si falta la key) → si un punto de rúbrica no se cubrió,
+Tavily puede sugerir un dato real.
 
 Avatar reactivo durante la grabación. Sesión anónima, sin login.
 
@@ -37,16 +38,16 @@ Más detalle del producto: `docs/alcance.md`. Estado de implementación:
 Directo al grano, sin rodeos:
 
 - **Tests unitarios, no de UI** — `npm test` (vitest) cubre la lógica de
-  `src/lib/`; el loop completo se verifica a mano en Chrome.
-- **Sesión anónima, sin persistencia** — un intento no se guarda en ningún
-  lado.
-- **El STT depende de la Web Speech API**: solo es confiable en
-  Chrome/Chromium y requiere internet (procesa el audio en servidores de
-  Google).
+  `src/lib/` y las rutas de API (fetch mockeado); el loop con micrófono se
+  verifica a mano.
+- **Sesión anónima, sin persistencia en servidor** — el historial vive en
+  `localStorage` de este navegador.
+- **El STT requiere `ELEVENLABS_API_KEY`** (Scribe, server-side). Sin ella,
+  o si el micrófono no está disponible, hay un campo de texto de respaldo.
 - **Proveedor del modelo y Tavily con tier gratuito**: sujetos a rate limits,
   sin garantía de uptime para uso pesado.
-- **"eeee" y rellenos vocálicos casi nunca se transcriben** — es una
-  limitación del STT de Chrome, no de la detección de muletillas.
+- **La transcripción no es en vivo** — se graba, se detiene y después se
+  transcribe el clip completo (el modo Realtime de Scribe queda para después).
 
 ## Stack
 
@@ -56,9 +57,10 @@ Directo al grano, sin rodeos:
   **score lo calcula el servidor**. No interviene en el TTS.
 - **Gemini API** — proveedor alternativo, activable con
   `MODEL_PROVIDER=gemini` como contingencia manual.
-- **Web Speech API** — transcripción en tiempo real (mejor en Chrome).
-- **ElevenLabs** — TTS del veredicto. Fallback: SpeechSynthesis del
-  navegador.
+- **MediaRecorder + ElevenLabs Scribe** — captura de audio en cualquier
+  navegador moderno y transcripción server-side.
+- **ElevenLabs** — TTS del veredicto (fallback: SpeechSynthesis) y STT
+  (Scribe).
 - **Tavily** — estadísticas sugeridas cuando falta un dato. Opcional.
 - **Tailwind CSS** — estilos.
 - **Railway** — deploy (el `Dockerfile` de la raíz es solo para eso).
@@ -74,14 +76,15 @@ Desarrollo nativo, sin Docker.
    - `NEBIUS_API_KEY` — análisis del pitch (**requerida** con el proveedor por
      defecto). Con `MODEL_PROVIDER=gemini`, en su lugar se requiere
      `GEMINI_API_KEY`.
-   - `ELEVENLABS_API_KEY` — TTS del veredicto.
+   - `ELEVENLABS_API_KEY` — TTS del veredicto y STT (Scribe).
    - `ELEVENLABS_VOICE_ID_MALE` / `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID
      de VoiceLab. Si faltan, el botón de escuchar usa SpeechSynthesis.
    - `TAVILY_API_KEY` — sugerencias. Si falta, esa sección no aparece.
 4. `npm run dev`
 
-Usa **Chrome** (o Chromium/Edge). Brave no expone la Web Speech API;
-Firefox la trae deshabilitada.
+Cualquier navegador moderno con micrófono (Chrome, Firefox, Safari, Brave,
+móvil). HTTPS hace falta para el micrófono fuera de localhost. Si no hay
+micrófono o se niega el permiso, se puede escribir el texto.
 
 ## Deploy (Railway)
 
@@ -97,6 +100,7 @@ Variables en Settings → Variables (las mismas que `.env.local`):
 - `ELEVENLABS_API_KEY`
 - `ELEVENLABS_VOICE_ID_MALE`
 - `ELEVENLABS_VOICE_ID_FEMALE`
+- `ELEVENLABS_SCRIBE_MODEL` (opcional; default `scribe_v2`)
 - `TAVILY_API_KEY`
 
 ## Contribuir

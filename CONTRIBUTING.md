@@ -22,9 +22,8 @@ esta es la misma receta:
 Desarrollo nativo, sin Docker. El `Dockerfile` de la raíz es solo para el
 deploy en Railway.
 
-> **Navegador:** usa **Chrome** (o Chromium/Edge). Brave no expone la Web
-> Speech API y Firefox la trae deshabilitada, así que no sirven para
-> probar el STT.
+> **Navegador:** cualquier navegador moderno con micrófono. El STT es
+> MediaRecorder + ElevenLabs Scribe (server-side), no depende de Chrome.
 
 ## Puntos de extensión
 
@@ -69,15 +68,13 @@ El patrón es **disparador → gesto → refuerzo en dashboard**, descrito en
 
 ## Qué se espera de un PR
 
-No hay tests automatizados todavía, así que cada PR debe incluir una
-**prueba manual en Chrome** descrita en la descripción del PR:
+`npm test` cubre la lógica de `src/lib/` y las rutas de API (fetch
+mockeado). El loop con micrófono se verifica a mano; cada PR que lo toque
+debe incluir una **prueba manual** en la descripción:
 
 - **Qué se probó** (paso a paso).
 - **Qué se vio** (resultado / comportamiento observado).
-
-> **Brave y Firefox no sirven para probar el STT** (Web Speech API): Brave
-> no la expone y Firefox la trae deshabilitada. La verificación manual se
-> hace en Chrome (o Chromium/Edge).
+- **En qué navegador** (Chrome, Firefox, Safari, Brave, o móvil).
 
 ## Cómo reportar bugs
 

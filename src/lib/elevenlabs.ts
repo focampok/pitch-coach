@@ -79,3 +79,60 @@ export async function generarVerdictoHablado(
   const audio = await response.arrayBuffer();
   return { audio, voiceGender: resolvedGender };
 }
+
+const ELEVENLABS_STT_URL = "https://api.elevenlabs.io/v1/speech-to-text";
+const MODELO_SCRIBE_DEFAULT = "scribe_v2";
+
+function nombreArchivoAudio(mime: string): string {
+  const base = mime.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (base.includes("mp4") || base.includes("m4a")) return "grabacion.mp4";
+  if (base.includes("ogg")) return "grabacion.ogg";
+  if (base.includes("mpeg") || base.includes("mp3")) return "grabacion.mp3";
+  if (base.includes("wav")) return "grabacion.wav";
+  return "grabacion.webm";
+}
+
+/**
+ * Transcribe un Blob de audio con ElevenLabs Scribe (batch).
+ * El audio vive solo en memoria: se reenvía como multipart y se descarta
+ * al terminar. Nunca se escribe a disco ni se incluye en el Error.
+ */
+export async function transcribirAudio(
+  audio: Blob,
+  signal?: AbortSignal,
+): Promise<string> {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) {
+    throw new Error("ELEVENLABS_API_KEY no configurada");
+  }
+
+  const modelId = process.env.ELEVENLABS_SCRIBE_MODEL?.trim() || MODELO_SCRIBE_DEFAULT;
+  const form = new FormData();
+  form.append("model_id", modelId);
+  form.append("language_code", "es");
+  form.append("tag_audio_events", "false");
+  form.append("timestamps_granularity", "none");
+  form.append("file", audio, nombreArchivoAudio(audio.type));
+
+  const response = await fetch(ELEVENLABS_STT_URL, {
+    method: "POST",
+    headers: {
+      "xi-api-key": apiKey,
+    },
+    body: form,
+    signal,
+  });
+
+  if (!response.ok) {
+    const detalle = await response.text().catch(() => "");
+    throw new Error(
+      `ElevenLabs STT respondió ${response.status}: ${detalle.slice(0, 200)}`,
+    );
+  }
+
+  const cuerpo = (await response.json()) as { text?: unknown };
+  if (typeof cuerpo.text !== "string") {
+    throw new Error("ElevenLabs STT respondió sin texto");
+  }
+  return cuerpo.text;
+}

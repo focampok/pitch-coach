@@ -11,9 +11,7 @@ No hace falta el SDK oficial de ElevenLabs. Pitch Coach habla con la API REST de
 | Tipo de voz | En este repo | Motor | ¿Se extrae? |
 |---|---|---|---|
 | TTS — leer el veredicto en voz alta | Sí | ElevenLabs + fallback SpeechSynthesis | **Sí, esta guía** |
-| STT — transcribir el discurso del usuario | Sí | Web Speech API del navegador (`GrabadorVoz.tsx`) | No usa ElevenLabs |
-
-Punto importante: aunque `.env.example` menciona "opcionalmente Scribe (STT)", **no hay integración de Scribe en el código**. La transcripción es Web Speech API nativa del navegador. Si tu otro proyecto necesita STT, ElevenLabs sería una pieza nueva, no una extracción.
+| STT — transcribir el discurso del usuario | Sí | MediaRecorder + ElevenLabs Scribe (`/api/transcribir`) | **Sí** (`transcribirAudio` en `elevenlabs.ts`) |
 
 ---
 
@@ -27,7 +25,7 @@ Punto importante: aunque `.env.example` menciona "opcionalmente Scribe (STT)", *
 | Variables de entorno | `.env.example` | Sí (las keys `ELEVENLABS_*`). |
 | Voz hablada / qué texto se lee | `src/lib/prompts.ts` (veredicto_corto), `src/types/pitch.ts` | No. Es dominio de Pitch Coach. |
 
-**Dependencias:** ninguna extra. `package.json` no incluye SDK de ElevenLabs. Bastan `fetch`, TypeScript, variables de entorno y la Web Speech API (que es del navegador, no una dependencia).
+**Dependencias:** ninguna extra. `package.json` no incluye SDK de ElevenLabs. Bastan `fetch`, TypeScript y variables de entorno. SpeechSynthesis (TTS fallback) y MediaRecorder (captura) son del navegador.
 
 ---
 
@@ -526,7 +524,7 @@ elevenlabs.ts
 ReproductorVeredicto → SpeechSynthesis (es-419), mismo texto
 ```
 
-Lo que **no** pasa por ElevenLabs en este proyecto: la transcripción del pitch (Web Speech API, ver sección 0) y el análisis con IA. Si tu producto también necesita TTS de feedback generado por un LLM, este mismo patrón aplica: llama a tu endpoint de análisis primero y pásale al componente el texto corto que quieras leer (los textos largos se escuchan peor y tardan más en sintetizar).
+El análisis con IA no pasa por ElevenLabs. El STT sí: `POST /api/transcribir` reenvía el Blob a `POST https://api.elevenlabs.io/v1/speech-to-text` (`scribe_v2`, hint `es`). El audio no se escribe a disco ni se adjunta a logs o a Sentry. Si tu producto también necesita TTS de feedback generado por un LLM, el patrón de esta guía aplica: llama a tu endpoint de análisis primero y pásale al componente el texto corto que quieras leer.
 
 ---
 
