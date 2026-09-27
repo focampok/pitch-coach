@@ -19,6 +19,8 @@ export interface AnalisisModelo {
   veredicto_corto: string;
   claridad: number;
   rubrica: EvaluacionRubrica[];
+  /** Pasos de razonamiento (solo Análisis Ultra). */
+  traza?: string[];
 }
 
 /** Rango máximo que aporta la claridad al score. */
@@ -70,6 +72,12 @@ export const ESQUEMA_ANALISIS: EsquemaJson = {
         },
       },
     },
+    traza: {
+      type: "array",
+      description:
+        "Pasos de razonamiento (4 a 8): qué buscaste, qué hallaste o faltó, y cómo decidiste cada punto.",
+      items: { type: "string" },
+    },
   },
 };
 
@@ -87,6 +95,7 @@ interface VistaEsquemaBase {
         };
       };
     };
+    traza: Record<string, unknown>;
   };
 }
 
@@ -112,36 +121,59 @@ const CACHE_ESQUEMA_RESTRINGIDO = new Map<string, EsquemaJson>();
  */
 export function construirEsquemaAnalisisRestringido(
   puntos: readonly string[],
+  opciones: { incluirTraza?: boolean } = {},
 ): EsquemaJson {
-  const clave = puntos.join("\u0000");
+  const clave = `${opciones.incluirTraza ? "traza" : "base"}\u0000${puntos.join("\u0000")}`;
   const enCache = CACHE_ESQUEMA_RESTRINGIDO.get(clave);
   if (enCache) return enCache;
 
   const base = ESQUEMA_ANALISIS as unknown as VistaEsquemaBase;
 
-  const esquema: EsquemaJson = {
-    type: "object",
-    additionalProperties: false,
-    required: ["veredicto_corto", "claridad", "rubrica"],
-    properties: {
-      veredicto_corto: { ...base.properties.veredicto_corto },
-      claridad: { ...base.properties.claridad },
-      rubrica: {
-        type: "array",
-        description: base.properties.rubrica.description,
-        minItems: puntos.length,
-        maxItems: puntos.length,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["cumplido", "comentario"],
-          properties: {
-            cumplido: { ...base.properties.rubrica.items.properties.cumplido },
-            comentario: { ...base.properties.rubrica.items.properties.comentario },
+  const properties: Record<string, unknown> = {
+    veredicto_corto: { ...base.properties.veredicto_corto },
+    claridad: { ...base.properties.claridad },
+    rubrica: {
+      type: "array",
+      description: base.properties.rubrica.description,
+      minItems: puntos.length,
+      maxItems: puntos.length,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["cumplido", "comentario"],
+        properties: {
+          cumplido: { ...base.properties.rubrica.items.properties.cumplido },
+          comentario: {
+            ...base.properties.rubrica.items.properties.comentario,
+            ...(opciones.incluirTraza
+              ? {
+                  description:
+                    "Comentario en español (2 a 4 frases): cita evidencia de la transcripción y explica por qué.",
+                }
+              : {}),
           },
         },
       },
     },
+  };
+  const required = ["veredicto_corto", "claridad", "rubrica"];
+
+  if (opciones.incluirTraza) {
+    properties.traza = {
+      type: "array",
+      description: base.properties.traza.description,
+      minItems: 4,
+      maxItems: 8,
+      items: { type: "string" },
+    };
+    required.push("traza");
+  }
+
+  const esquema: EsquemaJson = {
+    type: "object",
+    additionalProperties: false,
+    required,
+    properties,
   };
 
   CACHE_ESQUEMA_RESTRINGIDO.set(clave, esquema);
@@ -172,6 +204,27 @@ export function calcularScore(
   return acotar(cobertura + claridadAcotada, 0, 100);
 }
 
+/** Normaliza `traza`. Si `exigir` es true, un array vacío o ausente falla. */
+function normalizarTraza(valor: unknown, exigir: boolean): string[] | undefined {
+  if (valor === undefined) {
+    if (exigir) {
+      throw new ErrorValidacion("La respuesta del modelo no trae una traza de razonamiento.");
+    }
+    return undefined;
+  }
+  if (!Array.isArray(valor)) {
+    throw new ErrorValidacion("La traza del modelo no es un array.");
+  }
+  const pasos = valor
+    .filter((paso): paso is string => typeof paso === "string")
+    .map((paso) => paso.trim())
+    .filter((paso) => paso !== "");
+  if (exigir && pasos.length === 0) {
+    throw new ErrorValidacion("La traza del modelo está vacía.");
+  }
+  return pasos.length > 0 ? pasos : undefined;
+}
+
 /**
  * Valida la respuesta del modelo contra la rúbrica y devuelve el análisis con
  * los nombres de punto asignados por índice y el score ya calculado.
@@ -181,12 +234,13 @@ export function calcularScore(
 export function validarAnalisis(
   datos: unknown,
   rubrica: readonly PuntoRubrica[],
+  opciones: { exigirTraza?: boolean } = {},
 ): AnalisisModelo & { score: number } {
   if (!esObjeto(datos)) {
     throw new ErrorValidacion("La respuesta del modelo no es un objeto JSON.");
   }
 
-  const { veredicto_corto, claridad, rubrica: items } = datos;
+  const { veredicto_corto, claridad, rubrica: items, traza: trazaCruda } = datos;
 
   if (typeof veredicto_corto !== "string" || veredicto_corto.trim() === "") {
     throw new ErrorValidacion("La respuesta del modelo no trae un veredicto_corto válido.");
@@ -224,11 +278,13 @@ export function validarAnalisis(
   });
 
   const cumplidos = evaluaciones.filter((e) => e.cumplido).length;
+  const traza = normalizarTraza(trazaCruda, opciones.exigirTraza === true);
 
   return {
     veredicto_corto,
     claridad,
     rubrica: evaluaciones,
     score: calcularScore(cumplidos, rubrica.length, claridad),
+    ...(traza ? { traza } : {}),
   };
 }

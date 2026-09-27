@@ -1,4 +1,6 @@
-import type { EsquemaJson, ProveedorModelo, SolicitudModelo } from "./modelo";
+import type { EsquemaJson, NivelAnalisis, ProveedorModelo, SolicitudModelo } from "./modelo";
+
+export type { NivelAnalisis };
 import { ErrorModelo } from "./error-modelo";
 import { leerEnteroPositivo, leerTemperatura } from "./config-modelo";
 import { construirEsquemaAnalisisRestringido } from "./validar-analisis";
@@ -15,12 +17,10 @@ import { construirEsquemaAnalisisRestringido } from "./validar-analisis";
 // Este archivo solo transporta y clasifica errores vía `ErrorModelo`.
 // =============================================================================
 
-/** Modo de análisis. `ultra` deja el razonamiento activo y usa otro modelo. */
-export type NivelAnalisis = "estandar" | "ultra";
-
 const BASE_URL_POR_DEFECTO = "https://api.tokenfactory.nebius.com/v1";
 const MODELO_POR_DEFECTO = "nvidia/nemotron-3-super-120b-a12b";
 const MODELO_ULTRA_POR_DEFECTO = "nvidia/Nemotron-3-Ultra-550b-a55b";
+const MODELO_NANO_POR_DEFECTO = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
 
 /** Tope de tokens de salida al reintentar una respuesta truncada. */
 export const TECHO_MAX_TOKENS_TRUNCADO = 8192;
@@ -36,9 +36,14 @@ function obtenerModeloEstandar(): string {
   return process.env.MODEL?.trim() || MODELO_POR_DEFECTO;
 }
 
-/** Modelo del modo ultra (§ "Análisis Ultra", aún sin ruta ni botón). */
+/** Modelo del modo ultra (razonamiento activo). */
 function obtenerModeloUltra(): string {
   return process.env.NEBIUS_MODEL_ULTRA?.trim() || MODELO_ULTRA_POR_DEFECTO;
+}
+
+/** Modelo del modo rápido (Nano, p. ej. sparring). */
+function obtenerModeloNano(): string {
+  return process.env.NEBIUS_MODEL_NANO?.trim() || MODELO_NANO_POR_DEFECTO;
 }
 
 /** Fallbacks del modo estándar, en orden. */
@@ -98,7 +103,9 @@ async function llamarUnaVez(args: {
   // Esquema restringido (minItems/maxItems exactos) cuando el llamador aporta
   // los puntos de la rúbrica; si no, el esquema neutro tal cual.
   const esquema: EsquemaJson = args.solicitud.puntosRubrica?.length
-    ? construirEsquemaAnalisisRestringido(args.solicitud.puntosRubrica)
+    ? construirEsquemaAnalisisRestringido(args.solicitud.puntosRubrica, {
+        incluirTraza: args.solicitud.incluirTraza === true,
+      })
     : args.solicitud.esquema;
 
   const body: Record<string, unknown> = {
@@ -111,7 +118,11 @@ async function llamarUnaVez(args: {
     max_tokens: args.maxTokens,
     response_format: {
       type: "json_schema",
-      json_schema: { name: "analisis_pitch", strict: true, schema: esquema },
+      json_schema: {
+        name: args.solicitud.nombreEsquema ?? "analisis_pitch",
+        strict: true,
+        schema: esquema,
+      },
     },
   };
 
@@ -165,22 +176,25 @@ async function llamarUnaVez(args: {
 }
 
 /**
- * Crea un adaptador de Nebius. El `nivel` es interno (sin llamador que use
- * `ultra` todavía): solo deja la capacidad lista para la fase de UI.
+ * Crea un adaptador de Nebius según el nivel:
  *
  * - `estandar`: usa `MODEL` (`nvidia/nemotron-3-super-120b-a12b` por defecto) y
  *   manda `chat_template_kwargs: { enable_thinking: false }`.
  * - `ultra`: usa `NEBIUS_MODEL_ULTRA` y OMITE `chat_template_kwargs` (deja el
  *   razonamiento activo).
+ * - `rapido`: usa `NEBIUS_MODEL_NANO` y manda
+ *   `chat_template_kwargs: { enable_thinking: false }`.
  */
 export function crearProveedorNebius(nivel: NivelAnalisis = "estandar"): ProveedorModelo {
   const esUltra = nivel === "ultra";
+  const esRapido = nivel === "rapido";
 
   return {
     nombre: "nebius",
 
     listarModelos(): string[] {
       if (esUltra) return [obtenerModeloUltra()];
+      if (esRapido) return [obtenerModeloNano()];
       return [obtenerModeloEstandar(), ...listarFallbacks()];
     },
 
@@ -189,9 +203,16 @@ export function crearProveedorNebius(nivel: NivelAnalisis = "estandar"): Proveed
       solicitud: SolicitudModelo;
       signal: AbortSignal;
     }): Promise<string> {
-      // En ultra el modelo lo fija el nivel (un único modelo, sin fallbacks).
-      const modeloEfectivo = esUltra ? obtenerModeloUltra() : modelo;
-      const maxTokensInicial = leerEnteroPositivo(["MODEL_MAX_TOKENS"], 1024);
+      // En ultra/rápido el modelo lo fija el nivel (un único modelo, sin fallbacks).
+      const modeloEfectivo = esUltra
+        ? obtenerModeloUltra()
+        : esRapido
+          ? obtenerModeloNano()
+          : modelo;
+      const maxTokensInicial = leerEnteroPositivo(
+        ["MODEL_MAX_TOKENS"],
+        esUltra ? 2048 : 1024,
+      );
 
       const primera = await llamarUnaVez({
         modelo: modeloEfectivo,

@@ -12,6 +12,9 @@
 // Verifica el contrato exacto del adaptador (src/lib/proveedor-nebius.ts):
 // envoltorio response_format.json_schema {name, strict, schema} y
 // chat_template_kwargs {enable_thinking:false} en modo estándar.
+// Con --ultra usa el mismo esquema restringido de producción CON `traza`
+// (incluirTraza: true), el prompt de nivel ultra, nombre analisis_pitch_ultra
+// y validarAnalisis(..., { exigirTraza: true }).
 //
 // IMPORTANTE: el esquema NO se duplica aquí. Se importa la MISMA función que
 // usa el adaptador de producción (`construirEsquemaAnalisisRestringido`) y la
@@ -80,8 +83,9 @@ const baseUrl = (process.env.NEBIUS_BASE_URL?.trim() || BASE_URL_POR_DEFECTO).re
 const modelo = esUltra
   ? process.env.NEBIUS_MODEL_ULTRA?.trim() || MODELO_ULTRA_POR_DEFECTO
   : process.env.MODEL?.trim() || MODELO_POR_DEFECTO;
-const maxTokens = Number(process.env.MODEL_MAX_TOKENS) || 1024;
+const maxTokens = Number(process.env.MODEL_MAX_TOKENS) || (esUltra ? 2048 : 1024);
 const temperature = Number(process.env.MODEL_TEMPERATURE) || 0.7;
+const timeoutMs = esUltra ? 90_000 : 60_000;
 
 // --- Contexto de la prueba: la rúbrica REAL de producción (5 puntos) ---------
 const tipoPitch = "capital";
@@ -102,19 +106,30 @@ const prompt = construirPrompt({
   rubrica,
   tiempoMaximoSegundos: 60,
   tiempoRealSegundos: 48,
+  nivel: esUltra ? "ultra" : "estandar",
 });
 
 // --- Esquema EXACTO de producción (misma función que usa el adaptador) -------
-const esquema = construirEsquemaAnalisisRestringido(puntos);
+const esquema = construirEsquemaAnalisisRestringido(puntos, {
+  incluirTraza: esUltra,
+});
 const itemsRubrica = esquema.properties.rubrica.items;
+const nombreEsquema = esUltra ? "analisis_pitch_ultra" : "analisis_pitch";
 
 console.log("=== Esquema de producción (construirEsquemaAnalisisRestringido) ===");
 console.log(`puntos de la rúbrica (${puntos.length}): ${puntos.join(" | ")}`);
+console.log(`incluirTraza: ${esUltra}`);
+console.log(`required: ${JSON.stringify(esquema.required)}`);
+console.log(`properties: ${JSON.stringify(Object.keys(esquema.properties))}`);
 console.log(`rubrica.minItems === maxItems: ${esquema.properties.rubrica.minItems} === ${esquema.properties.rubrica.maxItems}`);
 console.log(`items.required: ${JSON.stringify(itemsRubrica.required)}`);
 console.log(`items.additionalProperties: ${itemsRubrica.additionalProperties}`);
 console.log(`items.properties: ${JSON.stringify(Object.keys(itemsRubrica.properties))}`);
 console.log(`items tiene "punto": ${Object.prototype.hasOwnProperty.call(itemsRubrica.properties, "punto")}`);
+if (esUltra) {
+  const trazaEsquema = esquema.properties.traza;
+  console.log(`traza.minItems === maxItems: ${trazaEsquema?.minItems} === ${trazaEsquema?.maxItems} (esperado: 4 === 8)`);
+}
 
 const body = {
   model: modelo,
@@ -126,7 +141,7 @@ const body = {
   max_tokens: maxTokens,
   response_format: {
     type: "json_schema",
-    json_schema: { name: "analisis_pitch", strict: true, schema: esquema },
+    json_schema: { name: nombreEsquema, strict: true, schema: esquema },
   },
 };
 
@@ -144,7 +159,7 @@ try {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 } catch (error) {
   console.error(`Error de red/timeout: ${error.message}`);
@@ -201,12 +216,16 @@ console.log(`\ncontent parsea como JSON: sí`);
 // --- Paso 2: validación REAL de producción (validarAnalisis) ----------------
 let valido = false;
 try {
-  const analisis = validarAnalisis(parseado, rubrica);
+  const analisis = validarAnalisis(parseado, rubrica, { exigirTraza: esUltra });
   valido = true;
   console.log("\nvalidarAnalisis(): OK");
   console.log(`  score: ${analisis.score}`);
   console.log(`  veredicto_corto: ${analisis.veredicto_corto}`);
   console.log(`  rubrica: ${analisis.rubrica.length} ítem(s)`);
+  if (esUltra) {
+    const n = analisis.traza?.length ?? 0;
+    console.log(`  traza: ${n} paso(s) (esperado: 4 a 8)`);
+  }
 } catch (error) {
   console.error(`\nvalidarAnalisis(): LANZÓ ${error.name}: ${error.message}`);
 }
@@ -224,6 +243,23 @@ if (Array.isArray(rubricaCruda)) {
   });
 }
 
-const ok = valido && finishReason !== "length" && Array.isArray(rubricaCruda) && rubricaCruda.length === puntos.length;
+const trazaCruda = parseado?.traza;
+if (esUltra) {
+  const nTraza = Array.isArray(trazaCruda) ? trazaCruda.length : 0;
+  const enRango = nTraza >= 4 && nTraza <= 8;
+  console.log(`traza es array: ${Array.isArray(trazaCruda)}`);
+  console.log(`traza.length: ${Array.isArray(trazaCruda) ? nTraza : "(no es array)"} (esperado: 4 a 8)`);
+  console.log(`traza en rango 4-8: ${enRango}`);
+}
+
+const trazaOk =
+  !esUltra ||
+  (Array.isArray(trazaCruda) && trazaCruda.length >= 4 && trazaCruda.length <= 8);
+const ok =
+  valido &&
+  finishReason !== "length" &&
+  Array.isArray(rubricaCruda) &&
+  rubricaCruda.length === puntos.length &&
+  trazaOk;
 console.log(`\nRESULTADO: ${ok ? "OK" : "FALLÓ"}`);
 process.exit(ok ? 0 : 1);

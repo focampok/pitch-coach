@@ -1,8 +1,11 @@
 import { proveedorGemini } from "./proveedor-gemini";
-import { proveedorNebius } from "./proveedor-nebius";
+import { crearProveedorNebius } from "./proveedor-nebius";
 import { ErrorModelo } from "./error-modelo";
 
 export { ErrorModelo };
+
+/** Modo de análisis. Gemini ignora el valor; Nebius elige modelo y razonamiento. */
+export type NivelAnalisis = "estandar" | "ultra" | "rapido";
 
 // Capa NEUTRA respecto al proveedor para invocar un modelo de lenguaje.
 // Todo lo que NO depende del proveedor vive aquí: reintentos con backoff,
@@ -29,6 +32,17 @@ export interface SolicitudModelo {
    * (Gemini) lo ignoran y siguen usando `esquema` tal cual.
    */
   puntosRubrica?: readonly string[];
+  /**
+   * Nombre del `json_schema` en proveedores OpenAI-compatible. Default
+   * `analisis_pitch`. Sparring usa otro nombre para no reutilizar el esquema
+   * de análisis.
+   */
+  nombreEsquema?: string;
+  /**
+   * Si true, el esquema restringido de análisis incluye `traza` (pasos de
+   * razonamiento). Solo el Análisis Ultra lo pide.
+   */
+  incluirTraza?: boolean;
 }
 
 /**
@@ -68,15 +82,16 @@ const PROVEEDOR_POR_DEFECTO: NombreProveedor = "nebius";
  * activo según `MODEL_PROVIDER`. Se resuelve en cada llamada para que un cambio
  * de variable de entorno (o un test) surta efecto sin reiniciar el módulo.
  */
-export function proveedorActivo(): ProveedorModelo {
+export function proveedorActivo(nivel: NivelAnalisis = "estandar"): ProveedorModelo {
   const configurado = (process.env.MODEL_PROVIDER ?? "").trim().toLowerCase();
   const nombre = (configurado || PROVEEDOR_POR_DEFECTO) as NombreProveedor;
 
   switch (nombre) {
     case "gemini":
+      // Gemini no tiene tiers de modelo/razonamiento: ignora `nivel` sin error.
       return proveedorGemini;
     case "nebius":
-      return proveedorNebius;
+      return crearProveedorNebius(nivel);
     default:
       throw new ErrorModelo(
         `MODEL_PROVIDER inválido: "${configurado}". Valores válidos: gemini, nebius.`,
@@ -84,8 +99,12 @@ export function proveedorActivo(): ProveedorModelo {
   }
 }
 
-/** Timeout de cada intento (un análisis debe responder en segundos). */
-const TIMEOUT_MS = 20_000;
+/** Timeout de cada intento. Ultra deja razonar y necesita más margen. */
+const TIMEOUT_MS: Record<NivelAnalisis, number> = {
+  estandar: 20_000,
+  rapido: 20_000,
+  ultra: 90_000,
+};
 
 /** Códigos HTTP transitorios que tiene sentido reintentar. */
 const ESTADOS_REINTENTABLES = new Set([408, 429, 500, 502, 503, 504]);
@@ -173,8 +192,11 @@ function parsearRespuesta<T>(texto: string | null, modelo: string): T {
  *    permanente (400/404) salta al siguiente modelo.
  * 4. Si todo falla, lanza `ErrorModelo` con el último detalle (server-side).
  */
-export async function llamarModelo<T>(entrada: EntradaLlamarModelo<T>): Promise<T> {
-  const proveedor = proveedorActivo();
+export async function llamarModelo<T>(
+  entrada: EntradaLlamarModelo<T>,
+  nivel: NivelAnalisis = "estandar",
+): Promise<T> {
+  const proveedor = proveedorActivo(nivel);
   const modelos = proveedor.listarModelos();
   const intentos = leerEnteroPositivo(
     ["MODEL_RETRY_ATTEMPTS", "GEMINI_RETRY_ATTEMPTS"],
@@ -197,7 +219,7 @@ export async function llamarModelo<T>(entrada: EntradaLlamarModelo<T>): Promise<
         const texto = await proveedor.enviar({
           modelo,
           solicitud: entrada,
-          signal: AbortSignal.timeout(TIMEOUT_MS),
+          signal: AbortSignal.timeout(TIMEOUT_MS[nivel]),
         });
         const resultado = entrada.validar(parsearRespuesta<unknown>(texto, modelo));
         console.log(`[modelo] proveedor=${proveedor.nombre} modelo=${modelo}`);

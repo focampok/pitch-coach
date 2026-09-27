@@ -5,6 +5,7 @@ import SelectorTipoPitch from "@/components/SelectorTipoPitch";
 import SelectorDuracion from "@/components/SelectorDuracion";
 import GrabadorVoz from "@/components/GrabadorVoz";
 import { DashboardResultado } from "@/components/DashboardResultado";
+import { SparringCoach } from "@/components/SparringCoach";
 import { PATRONES_MULETILLAS } from "@/lib/muletillas";
 import type {
   TipoPitch,
@@ -29,12 +30,14 @@ export default function Home() {
   const [analisis, setAnalisis] = useState<ResultadoAnalisis | null>(null);
   const [analizando, setAnalizando] = useState(false);
   const [errorAnalisis, setErrorAnalisis] = useState<string | null>(null);
+  const [vozSesion, setVozSesion] = useState<"male" | "female" | "random">("random");
 
   const handleTranscripcionCompleta = useCallback(
     async (texto: string, tiempoReal: number) => {
       setTranscripcion(texto);
       setAnalisis(null);
       setErrorAnalisis(null);
+      setVozSesion("random");
       setAnalizando(true);
       try {
         const respuesta = await fetch("/api/analizar-pitch", {
@@ -118,10 +121,22 @@ export default function Home() {
       )}
       {analisis !== null && transcripcion !== null && (
         <DashboardResultado
+          key={transcripcion}
           transcripcion={transcripcion}
           resultado={analisis}
           tipoPitch={tipoPitch}
           muletillasPatterns={PATRONES_MULETILLAS}
+          vozSesion={vozSesion}
+          onVozUsada={setVozSesion}
+        />
+      )}
+      {analisis !== null && (
+        <SparringCoach
+          key={`sparring-${transcripcion}`}
+          tipoPitch={tipoPitch}
+          rubrica={analisis.rubrica}
+          vozSesion={vozSesion}
+          onVozUsada={setVozSesion}
         />
       )}
     </main>

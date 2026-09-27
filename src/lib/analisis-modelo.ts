@@ -1,5 +1,5 @@
 import type { PuntoRubrica } from "./rubricas";
-import { llamarModelo, type EsquemaJson } from "./modelo";
+import { llamarModelo, type EsquemaJson, type NivelAnalisis } from "./modelo";
 import type { PromptAnalisis } from "./prompts";
 import {
   ESQUEMA_ANALISIS,
@@ -22,14 +22,22 @@ import {
 export async function analizarConModelo(
   prompt: PromptAnalisis,
   rubrica: readonly PuntoRubrica[],
+  nivel: NivelAnalisis = "estandar",
 ): Promise<AnalisisModelo & { score: number }> {
-  return llamarModelo<AnalisisModelo & { score: number }>({
-    system: prompt.system,
-    user: prompt.user,
-    esquema: ESQUEMA_ANALISIS as EsquemaJson,
-    // Los adaptadores que usan salida estructurada estricta derivan de estos
-    // nombres un esquema con minItems/maxItems exactos. Gemini los ignora.
-    puntosRubrica: rubrica.map((punto) => punto.punto),
-    validar: (datos: unknown) => validarAnalisis(datos, rubrica),
-  });
+  const esUltra = nivel === "ultra";
+  return llamarModelo<AnalisisModelo & { score: number }>(
+    {
+      system: prompt.system,
+      user: prompt.user,
+      esquema: ESQUEMA_ANALISIS as EsquemaJson,
+      // Los adaptadores que usan salida estructurada estricta derivan de estos
+      // nombres un esquema con minItems/maxItems exactos. Gemini los ignora.
+      puntosRubrica: rubrica.map((punto) => punto.punto),
+      incluirTraza: esUltra,
+      nombreEsquema: esUltra ? "analisis_pitch_ultra" : "analisis_pitch",
+      validar: (datos: unknown) =>
+        validarAnalisis(datos, rubrica, { exigirTraza: esUltra }),
+    },
+    nivel,
+  );
 }

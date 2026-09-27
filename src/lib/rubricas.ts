@@ -108,3 +108,11 @@ export const RUBRICAS: Record<TipoPitch, readonly PuntoRubrica[]> = {
 export function obtenerRubrica(tipoPitch: TipoPitch): readonly PuntoRubrica[] {
   return RUBRICAS[tipoPitch];
 }
+
+/** Busca un punto de la rúbrica por su nombre visible. */
+export function obtenerPuntoRubrica(
+  tipoPitch: TipoPitch,
+  punto: string,
+): PuntoRubrica | undefined {
+  return RUBRICAS[tipoPitch].find((item) => item.punto === punto);
+}

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SolicitudModelo } from "@/lib/modelo";
-import { proveedorActivo } from "@/lib/modelo";
+import { llamarModelo, proveedorActivo } from "@/lib/modelo";
 import { ESQUEMA_ANALISIS } from "@/lib/validar-analisis";
 import { crearProveedorNebius, proveedorNebius } from "@/lib/proveedor-nebius";
 import { proveedorGemini } from "@/lib/proveedor-gemini";
@@ -25,10 +25,12 @@ const ENV_KEYS = [
   "NEBIUS_API_KEY",
   "NEBIUS_BASE_URL",
   "NEBIUS_MODEL_ULTRA",
+  "NEBIUS_MODEL_NANO",
   "MODEL",
   "MODEL_FALLBACK_MODELS",
   "MODEL_MAX_TOKENS",
   "MODEL_TEMPERATURE",
+  "MODEL_RETRY_ATTEMPTS",
   "GEMINI_API_KEY",
   "GEMINI_MODEL",
   "GEMINI_FALLBACK_MODELS",
@@ -158,7 +160,7 @@ describe("proveedor Nebius — contrato HTTP", () => {
   });
 });
 
-describe("proveedor Nebius — modos estandar y ultra", () => {
+describe("proveedor Nebius — modos estandar, ultra y rapido", () => {
   it("estandar usa MODEL y envía chat_template_kwargs", async () => {
     process.env.MODEL = "nvidia/nemotron-3-super-120b-a12b";
     process.env.MODEL_FALLBACK_MODELS = "fallback-a, fallback-b";
@@ -205,6 +207,46 @@ describe("proveedor Nebius — modos estandar y ultra", () => {
     const cuerpo = cuerpoDe(fetchMock);
     expect(cuerpo.model).toBe("nvidia/Nemotron-3-Ultra-550b-a55b");
     expect(cuerpo).not.toHaveProperty("chat_template_kwargs");
+  });
+
+  it("rapido usa NEBIUS_MODEL_NANO y envía chat_template_kwargs", async () => {
+    process.env.NEBIUS_MODEL_NANO = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
+    process.env.MODEL = "nvidia/nemotron-3-super-120b-a12b";
+    process.env.NEBIUS_API_KEY = "test-key";
+
+    const fetchMock = vi.fn().mockResolvedValue(respuestaNebius("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const proveedor = crearProveedorNebius("rapido");
+    expect(proveedor.listarModelos()).toEqual(["nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"]);
+
+    await proveedor.enviar({
+      modelo: "ignorado-en-rapido",
+      solicitud: SOLICITUD,
+      signal: AbortSignal.timeout(1000),
+    });
+
+    const cuerpo = cuerpoDe(fetchMock);
+    expect(cuerpo.model).toBe("nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B");
+    expect(cuerpo.chat_template_kwargs).toEqual({ enable_thinking: false });
+  });
+
+  it("rapido usa el default de Nano si NEBIUS_MODEL_NANO no está definida", async () => {
+    process.env.NEBIUS_API_KEY = "test-key";
+
+    const fetchMock = vi.fn().mockResolvedValue(respuestaNebius("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const proveedor = crearProveedorNebius("rapido");
+    expect(proveedor.listarModelos()).toEqual(["nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"]);
+
+    await proveedor.enviar({
+      modelo: "ignorado",
+      solicitud: SOLICITUD,
+      signal: AbortSignal.timeout(1000),
+    });
+
+    expect(cuerpoDe(fetchMock).model).toBe("nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B");
   });
 });
 
@@ -310,6 +352,37 @@ describe("modelo.ts — selección de proveedor por MODEL_PROVIDER", () => {
     process.env.MODEL_PROVIDER = "openai";
     expect(() => proveedorActivo()).toThrow(/MODEL_PROVIDER inválido/);
   });
+
+  it("proveedorActivo('rapido') con Nebius lista el modelo Nano", () => {
+    process.env.MODEL_PROVIDER = "nebius";
+    process.env.NEBIUS_MODEL_NANO = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
+    expect(proveedorActivo("rapido").listarModelos()).toEqual([
+      "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    ]);
+  });
+
+  it("proveedorActivo('ultra') con Nebius lista el modelo Ultra", () => {
+    process.env.MODEL_PROVIDER = "nebius";
+    process.env.NEBIUS_MODEL_ULTRA = "nvidia/Nemotron-3-Ultra-550b-a55b";
+    expect(proveedorActivo("ultra").listarModelos()).toEqual([
+      "nvidia/Nemotron-3-Ultra-550b-a55b",
+    ]);
+  });
+
+  it("llamarModelo propaga nivel 'rapido' hasta el modelo Nano", async () => {
+    process.env.MODEL_PROVIDER = "nebius";
+    process.env.NEBIUS_API_KEY = "test-key";
+    process.env.NEBIUS_MODEL_NANO = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
+    process.env.MODEL_RETRY_ATTEMPTS = "1";
+
+    const fetchMock = vi.fn().mockResolvedValue(respuestaNebius('{"ok":true}'));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const resultado = await llamarModelo({ ...SOLICITUD, validar: (d) => d }, "rapido");
+    expect(resultado).toEqual({ ok: true });
+    expect(cuerpoDe(fetchMock).model).toBe("nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B");
+    expect(cuerpoDe(fetchMock).chat_template_kwargs).toEqual({ enable_thinking: false });
+  });
 });
 
 describe("proveedor Gemini — no se rompió", () => {
@@ -338,5 +411,41 @@ describe("proveedor Gemini — no se rompió", () => {
     expect(url).toContain("gemini-3.5-flash:generateContent");
     expect(url).toContain("key=g-key");
     expect(proveedorGemini.nombre).toBe("gemini");
+  });
+
+  it("ignora el parámetro nivel (rapido/ultra) sin romperse", async () => {
+    process.env.MODEL_PROVIDER = "gemini";
+    process.env.GEMINI_API_KEY = "g-key";
+    process.env.GEMINI_MODEL = "gemini-2.0-flash";
+
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    for (const nivel of ["rapido", "ultra", "estandar"] as const) {
+      const proveedor = proveedorActivo(nivel);
+      expect(proveedor.nombre).toBe("gemini");
+      expect(proveedor.listarModelos()[0]).toBe("gemini-2.0-flash");
+
+      const texto = await proveedor.enviar({
+        modelo: "gemini-2.0-flash",
+        solicitud: { system: "S", user: "U", esquema: ESQUEMA_ANALISIS },
+        signal: AbortSignal.timeout(1000),
+      });
+      expect(texto).toBe('{"ok":true}');
+    }
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    for (const llamada of fetchMock.mock.calls) {
+      const [url] = llamada as [string];
+      expect(url).toContain("generativelanguage.googleapis.com");
+      expect(url).toContain("generateContent");
+    }
   });
 });

@@ -5,6 +5,7 @@ import {
   CLARIDAD_MAXIMA,
   ErrorValidacion,
   calcularScore,
+  construirEsquemaAnalisisRestringido,
   validarAnalisis,
 } from "@/lib/validar-analisis";
 
@@ -132,5 +133,59 @@ describe("validarAnalisis", () => {
       "Tracción",
     ]);
     expect(resultado.rubrica.every((r) => !("score" in r))).toBe(true);
+  });
+
+  it("incluye traza cuando viene un array de strings y exige si se pide", () => {
+    const conTraza = {
+      ...respuestaValida,
+      traza: [
+        "Busqué cifra de mercado: no hay número.",
+        "El problema sí está nombrado.",
+        "  ",
+        "Sin métricas de tracción.",
+      ],
+    };
+    const resultado = validarAnalisis(conTraza, RUBRICA);
+    expect(resultado.traza).toEqual([
+      "Busqué cifra de mercado: no hay número.",
+      "El problema sí está nombrado.",
+      "Sin métricas de tracción.",
+    ]);
+    expect(() => validarAnalisis(respuestaValida, RUBRICA, { exigirTraza: true })).toThrow(
+      ErrorValidacion,
+    );
+  });
+
+  it("lanza ErrorValidacion si se exige traza y viene un tipo inválido", () => {
+    expect(() =>
+      validarAnalisis({ ...respuestaValida, traza: "paso único" }, RUBRICA, {
+        exigirTraza: true,
+      }),
+    ).toThrow(ErrorValidacion);
+  });
+});
+
+describe("construirEsquemaAnalisisRestringido", () => {
+  const puntos = ["Problema", "Solución"];
+
+  it("en modo base no incluye traza", () => {
+    const esquema = construirEsquemaAnalisisRestringido(puntos) as {
+      required: string[];
+      properties: Record<string, unknown>;
+    };
+    expect(esquema.required).toEqual(["veredicto_corto", "claridad", "rubrica"]);
+    expect(esquema.properties).not.toHaveProperty("traza");
+  });
+
+  it("con incluirTraza exige traza de 4 a 8 pasos", () => {
+    const esquema = construirEsquemaAnalisisRestringido(puntos, {
+      incluirTraza: true,
+    }) as {
+      required: string[];
+      properties: { traza: { minItems?: number; maxItems?: number } };
+    };
+    expect(esquema.required).toEqual(["veredicto_corto", "claridad", "rubrica", "traza"]);
+    expect(esquema.properties.traza.minItems).toBe(4);
+    expect(esquema.properties.traza.maxItems).toBe(8);
   });
 });

@@ -1,8 +1,9 @@
 # Pitch Coach — Status del proyecto
 
-> **2026-08-30.** Qué está implementado, mapeado a `docs/alcance.md`.
+> **2026-09-26.** Qué está implementado, mapeado a `docs/alcance.md`.
 > El loop (voz → análisis → dashboard + veredicto a pedido) está cerrado
-> y verificado en Chrome.
+> y verificado en Chrome. Resolver hallazgos y Análisis Ultra están implementados;
+> la verificación de esos dos flujos en navegador queda para el mantenedor.
 
 ## Resumen rápido
 
@@ -17,8 +18,16 @@
   **Sin autoplay** — el usuario pulsa "Escuchar veredicto".
 - ✅ Tavily (§12): `/api/enriquecer` si hay puntos sin cumplir. Sin key,
   el dashboard no se rompe.
-- ✅ Tests unitarios (`npm test`, vitest) sobre la lógica de `src/lib/`.
-- ✅ Límites: transcripción máx. 8000 caracteres y rate limit por IP en memoria.
+- ✅ Tests unitarios (`npm test`, vitest) sobre la lógica de `src/lib/` y las
+  rutas de análisis/sparring (fetch mockeado; sin llamadas reales a proveedores).
+- ✅ Límites: transcripción máx. 8000 caracteres; respuesta de sparring máx.
+  2000; rate limit por IP en memoria.
+- ✅ Análisis Ultra: botón en el dashboard que reanaliza la misma transcripción
+  con nivel `ultra` (Nemotron Ultra, razonamiento activo). Se muestra además
+  del análisis estándar, con una traza de razonamiento (4–8 pasos).
+- ✅ Resolver hallazgos: hasta 3 preguntas de seguimiento sobre los primeros
+  puntos de rúbrica no cumplidos. Texto + "Escuchar pregunta" (misma voz de
+  sesión); no hay autoplay.
 - 🟡 El STT de Chrome casi nunca transcribe "eeee". Las muletillas léxicas sí.
 
 ## Leyenda
@@ -44,15 +53,16 @@
 | ✅ | Tipos (§13) | `src/types/pitch.ts` | `ResultadoAnalisis` y relacionados |
 | ✅ | Tiempo real (§7) | `GrabadorVoz.tsx` + `page.tsx` | contexto de Gemini + dashboard |
 | ✅ | Cliente del modelo (§13) | `src/lib/modelo.ts` + adaptadores | capa neutra + fábrica por `MODEL_PROVIDER`; backoff; timeout 20 s |
-| ✅ | Proveedor Nebius (por defecto) | `src/lib/proveedor-nebius.ts` | `/chat/completions` OpenAI-compatible; `json_schema` estricto (`{name, strict, schema}`); `enable_thinking: false`; reintento por `finish_reason: length`; modo `ultra` solo en librería (sin ruta ni botón) |
+| ✅ | Proveedor Nebius (por defecto) | `src/lib/proveedor-nebius.ts` | `/chat/completions` OpenAI-compatible; `json_schema` estricto (`{name, strict, schema}`); niveles `estandar` / `ultra` / `rapido`; `enable_thinking: false` en estándar y rápido; ultra omite el campo (razonamiento activo) |
 | ✅ | Proveedor Gemini (contingencia) | `src/lib/proveedor-gemini.ts` | `generateContent`; se activa con `MODEL_PROVIDER=gemini` |
-| ✅ | Esquema restringido | `src/lib/validar-analisis.ts` | `construirEsquemaAnalisisRestringido`: `rubrica` con `minItems === maxItems === puntos.length`; cada ítem con `additionalProperties: false` y `required: ["cumplido", "comentario"]` (sin `punto` ni `enum`: el nombre lo asigna el servidor por índice); generado una vez (caché) |
+| ✅ | Esquema restringido | `src/lib/validar-analisis.ts` | `construirEsquemaAnalisisRestringido`: `rubrica` con `minItems === maxItems === puntos.length`; cada ítem con `additionalProperties: false` y `required: ["cumplido", "comentario"]`; Ultra añade `traza` (4–8 pasos) al esquema y la exige en validación |
 | ✅ | Prompt (§7/§13) | `src/lib/prompts.ts` | español; transcripción como dato no confiable; pide rúbrica sin nombres + `claridad` + `veredicto_corto` |
-| ✅ | API `analizar-pitch` | `src/app/api/analizar-pitch/route.ts` | 400 / 413 / 429 / 502 (errores genéricos al cliente) |
-| ✅ | Dashboard | `DashboardResultado.tsx` + `dashboard-resultado.css` | incluye Tavily |
+| ✅ | API `analizar-pitch` | `src/app/api/analizar-pitch/route.ts` | acepta `nivel` opcional (`estandar` \| `ultra` \| `rapido`); 400 / 413 / 429 / 502 (errores genéricos al cliente); Ultra comparte el mismo rate limit |
+| ✅ | Dashboard | `DashboardResultado.tsx` + `dashboard-resultado.css` | incluye Tavily y botón **Análisis Ultra** |
+| ✅ | Resolver hallazgos (§9) | `SparringCoach.tsx` + `/api/sparring/pregunta` + `/api/sparring/evaluar` | copy visible "Resolver hallazgos"; APIs internas siguen en `/api/sparring/*`; hasta 3 puntos no cumplidos; nivel `rapido`; escuchar a pedido; grabador o texto de respaldo |
 | ✅ | TTS (§13) | `ReproductorVeredicto.tsx` + `elevenlabs.ts` + `/api/tts` | timeout 6 s; 413/429; `autoPlay={false}` |
 | ✅ | Tavily (§12) | `tavily.ts` + `/api/enriquecer` | best-effort; timeout 8 s |
-| ✅ | Límites | `src/lib/limites.ts` + `src/lib/rate-limit.ts` | transcripción máx. 8000; rate limit por IP en memoria (por instancia) |
+| ✅ | Límites | `src/lib/limites.ts` + `src/lib/rate-limit.ts` | transcripción máx. 8000; respuesta sparring máx. 2000; rate limit por IP en memoria (por instancia) |
 
 ### Muletillas (21 patrones)
 
@@ -69,7 +79,7 @@
 
 | Ítem | Notas |
 |---|---|
-| Segundo intento comparado en la misma sesión | No hay persistencia. |
+| Memoria de sesiones / panel de progreso | Sparring vive solo en memoria de la pestaña. |
 | Historial entre sesiones | Requiere usuarios o almacenamiento. |
 | Rúbricas custom / más idiomas | Hoy solo español y 4 rúbricas fijas. |
 | STT alternativo (Whisper, Scribe, etc.) | Hoy solo Web Speech API. |
@@ -80,8 +90,9 @@ En `.env.local` y en el host de deploy:
 
 - `MODEL_PROVIDER` — `nebius` (por defecto) o `gemini`.
 - **Nebius** (`MODEL_PROVIDER=nebius`): `NEBIUS_API_KEY` (requerida),
-  `NEBIUS_BASE_URL` (default `https://api.tokenfactory.nebius.com/v1`) y
-  `NEBIUS_MODEL_ULTRA` (default `nvidia/Nemotron-3-Ultra-550b-a55b`).
+  `NEBIUS_BASE_URL` (default `https://api.tokenfactory.nebius.com/v1`),
+  `NEBIUS_MODEL_ULTRA` (default `nvidia/Nemotron-3-Ultra-550b-a55b`) y
+  `NEBIUS_MODEL_NANO` (default `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`).
 - **Gemini** (`MODEL_PROVIDER=gemini`, contingencia manual):
   `GEMINI_API_KEY` (requerida en ese modo).
 - Configuración del modelo, compartida por el proveedor activo (todas
@@ -101,6 +112,8 @@ mantenedor con su clave): `scripts/smoke-nebius.mjs`.
 - Correr: `npm run dev` (sin Docker). Chrome para STT.
 - Red: STT, Gemini, ElevenLabs y Tavily necesitan internet. SpeechSynthesis
   cubre el veredicto si ElevenLabs no responde.
-- Tests: `npm test` (vitest, unitarios sobre `src/lib/`). El loop completo se
-  sigue verificando a mano en Chrome.
+- Tests: `npm test` (vitest; `src/lib/` y rutas de análisis/sparring con fetch
+  mockeado). El loop completo, Ultra y sparring se siguen verificando a mano
+  en Chrome.
+- Timeout del modelo: 20 s en `estandar`/`rapido`, 90 s en `ultra` (razonamiento).
 - `.env.local` no se commitea. `.env.example` sí, sin valores.

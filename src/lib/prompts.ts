@@ -1,5 +1,6 @@
 import type { PuntoRubrica } from "./rubricas";
 import type { TipoPitch } from "@/types/pitch";
+import type { NivelAnalisis } from "./modelo";
 
 // Construcción del prompt de análisis (docs/alcance.md §13).
 // El prompt separa la persona/instrucciones (system) del contenido del usuario
@@ -13,6 +14,8 @@ export interface DatosPrompt {
   tiempoMaximoSegundos: number;
   /** Tiempo real que duró el pitch, en segundos (docs/alcance.md §7). */
   tiempoRealSegundos: number;
+  /** Nivel del análisis. Ultra pide comentarios más largos y una traza. */
+  nivel?: NivelAnalisis;
 }
 
 /** Prompt dividido: la persona va al system, la transcripción al user. */
@@ -57,6 +60,7 @@ function construirSystem({
   rubrica,
   tiempoMaximoSegundos,
   tiempoRealSegundos,
+  nivel = "estandar",
 }: Omit<DatosPrompt, "transcripcion">): string {
   const puntos = rubrica
     .map(({ punto, queBuscar }, i) => `${i + 1}. ${punto} — qué buscar: ${queBuscar}`)
@@ -74,11 +78,12 @@ ${puntos}
 
 Instrucciones:
 - Evalúa CADA punto de la rúbrica contra la transcripción real del usuario.
-- Devuelve la rúbrica como un array con EXACTAMENTE ${rubrica.length} objeto(s), EN EL MISMO ORDEN en que se listaron los puntos arriba. Cada objeto lleva "cumplido" (true/false) y "comentario" (máx. 1 frase en español, explica por qué y, si falta, cómo cubrirlo). NO incluyas el nombre del punto: el orden basta.
+- Devuelve la rúbrica como un array con EXACTAMENTE ${rubrica.length} objeto(s), EN EL MISMO ORDEN en que se listaron los puntos arriba. Cada objeto lleva "cumplido" (true/false) y "comentario"${nivel === "ultra" ? " (2 a 4 frases en español: cita evidencia concreta de la transcripción —qué dijo o qué omitió— y explica por qué el punto se cubre o no; si falta, cómo cubrirlo)" : " (máx. 1 frase en español, explica por qué y, si falta, cómo cubrirlo)"}. NO incluyas el nombre del punto: el orden basta.
 - Devuelve "claridad", un entero de 0 a 20 que refleje qué tan claro y fluido fue el pitch.
 - Ten en cuenta el tiempo en tu feedback: si el usuario se quedó corto de tiempo antes de cubrir un punto clave, menciónalo; si terminó muy por debajo del límite, sugiere desarrollar más con profundidad; si administró bien el tiempo y cubrió todo, reconócelo.
 - Escribe un veredicto_corto de 1 a 2 frases en español, pensado para ser leído en voz alta después (tono de coach: directo, con chispa, pero sobrio).
-- El score NO lo calculas tú: el servidor lo deriva de los puntos cumplidos y la claridad.
+${nivel === "ultra" ? `- Este es un análisis ULTRA (razonamiento extendido). Devuelve además "traza": un array de 4 a 8 strings. Cada ítem es UN paso de tu razonamiento, en español, tipo log: qué buscaste, qué hallaste o faltó en la transcripción, y cómo decidiste cumplido true/false. No repitas el veredicto; muestra el proceso.
+` : ""}- El score NO lo calculas tú: el servidor lo deriva de los puntos cumplidos y la claridad.
 
 Responde ÚNICAMENTE con el JSON estructurado solicitado, en español, sin texto adicional.`;
 }

@@ -44,14 +44,66 @@ export interface ResultadoAnalisis {
   tiempo_real_segundos: number;
   /** Duración máxima seleccionada por el usuario, en segundos. */
   tiempo_maximo_segundos: number;
+  /**
+   * Pasos de razonamiento del Análisis Ultra (qué buscó, qué halló o faltó).
+   * Ausente en el análisis estándar.
+   */
+  traza?: string[];
 }
 
 // Cuerpo de la petición POST a /api/analizar-pitch. El frontend envía la
-// transcripción + contexto; el análisis (Gemini + muletillas) corre server-side.
+// transcripción + contexto; el análisis (modelo + muletillas) corre server-side.
 export interface SolicitudAnalisis {
   transcripcion: string;
   tipoPitch: TipoPitch;
   duracionMaxima: DuracionMaxima;
   /** Tiempo real que duró el pitch, en segundos (docs/alcance.md §7). */
   tiempoRealSegundos: number;
+  /**
+   * Nivel del modelo. Por defecto `estandar`. `ultra` reanaliza con razonamiento
+   * extendido (Nebius Ultra); Gemini ignora el valor.
+   */
+  nivel?: "estandar" | "ultra" | "rapido";
+}
+
+/** Cuerpo de POST /api/sparring/pregunta. */
+export interface SolicitudPreguntaSparring {
+  tipoPitch: TipoPitch;
+  /** Nombre del punto de rúbrica no cumplido (mismo texto que la rúbrica). */
+  punto: string;
+}
+
+/** Respuesta de POST /api/sparring/pregunta. */
+export interface RespuestaPreguntaSparring {
+  pregunta: string;
+}
+
+/** Cuerpo de POST /api/sparring/evaluar. */
+export interface SolicitudEvaluacionSparring {
+  tipoPitch: TipoPitch;
+  punto: string;
+  pregunta: string;
+  /** Respuesta hablada o escrita del usuario. */
+  respuesta: string;
+}
+
+/** Un turno de sparring (pregunta + respuesta + evaluación). */
+export interface TurnoSparring {
+  punto: string;
+  pregunta: string;
+  respuesta: string;
+  cumplido: boolean;
+  comentario: string;
+}
+
+/**
+ * Sparring completado en la sesión (solo en memoria; no se persiste).
+ * `preguntasHechas` es Y (preguntas hechas, máx. 3) y `puntosReforzados`
+ * es X (turnos con cumplido === true).
+ */
+export interface SparringCompletado {
+  tipoPitch: TipoPitch;
+  turnos: TurnoSparring[];
+  preguntasHechas: number;
+  puntosReforzados: number;
 }

@@ -29,6 +29,8 @@ Builders, emprendedores, estudiantes y profesionales que necesitan preparar un p
    - Genera un **score** y un **veredicto breve**.
 5. El **dashboard muestra el detalle** en texto: transcripción con muletillas resaltadas, puntos de rúbrica, score y tiempo usado.
 6. El usuario **puede escuchar al coach**: el `veredicto_corto` se convierte a voz (ElevenLabs, con fallback a SpeechSynthesis). No se reproduce solo al terminar el análisis.
+7. Si quiere más rigor, puede pedir **Análisis Ultra**: se reanaliza la misma transcripción con Nemotron Ultra (razonamiento activo). El resultado se muestra además del estándar, etiquetado, con una **traza** (log de 4–8 pasos: qué buscó, qué halló o faltó).
+8. Si quedó al menos un punto de rúbrica sin cubrir, puede **resolver hallazgos**: hasta 3 preguntas de seguimiento (una por punto no cumplido, en orden de rúbrica). Cada pregunta aparece en texto; el usuario puede escucharla (misma voz de la sesión) si quiere. Tras cada respuesta recibe feedback; al final ve cuántos hallazgos resolvió.
 
 ## 5. Modelo híbrido (voz + visual)
 
@@ -127,23 +129,26 @@ La implementación tiene **21 patrones** (oratoria LATAM) y umbral ≥3 para "pu
 
 Ciclo completo:
 
-**tipo de pitch + duración máxima → grabación (corte automático) → transcripción → análisis (muletillas + rúbrica + tiempo) → dashboard + veredicto a pedido**
+**tipo de pitch + duración máxima → grabación (corte automático) → transcripción → análisis (muletillas + rúbrica + tiempo) → dashboard + veredicto a pedido → [opcional] Análisis Ultra y/o resolver hallazgos**
 
 - [x] Selector de tipo de pitch (4 opciones fijas).
 - [x] Selector de duración máxima (presets de 1 a 7 minutos).
 - [x] Grabación con corte automático.
 - [x] Transcripción (Web Speech API).
 - [x] Detección de muletillas por conteo.
-- [x] Evaluación contra rúbrica vía Gemini (JSON estructurado).
+- [x] Evaluación contra rúbrica vía el proveedor activo (Nebius por defecto; Gemini de contingencia). JSON estructurado.
 - [x] Veredicto en voz (ElevenLabs, fallback SpeechSynthesis), a pedido.
 - [x] Dashboard: transcripción, muletillas resaltadas, rúbrica, score.
 - [x] Avatar con reacciones en vivo (§5.1).
 - [x] Sesión anónima, sin login.
+- [x] Análisis Ultra: reanálisis de la misma transcripción con razonamiento extendido (Nemotron Ultra).
+- [x] Resolver hallazgos: hasta 3 preguntas de seguimiento sobre puntos no cumplidos (orden de rúbrica), texto + escuchar a pedido, respuesta por voz o texto de respaldo.
 
 ## 10. Fuera de esta versión
 
 - Sistema de usuarios, login o perfiles.
-- Persistencia de historial entre sesiones (base de datos).
+- Persistencia de historial entre sesiones (base de datos). Sparring y Ultra viven solo en la pestaña.
+- Memoria de sesiones y panel de progreso (fase siguiente).
 - Comparar dos intentos en la misma sesión.
 - Edición o creación de rúbricas custom.
 - Soporte multi-idioma (solo español).
@@ -159,13 +164,16 @@ Ciclo completo:
 - La rúbrica marca puntos concretos cubiertos y faltantes.
 - El dashboard y el veredicto hablado (si se escucha) coinciden.
 - El avatar reacciona a algo real del pitch (ej. se estremece al decir "o sea").
+- Si pide Análisis Ultra, ve un segundo resultado etiquetado (con traza de razonamiento), no un reemplazo del primero.
+- Si hay puntos sin cubrir, puede resolver hallazgos (máx. 3) y ve cuántos resolvió.
 
 ## 12. Servicios externos
 
 Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 
-- **Gemini** — análisis del pitch (rúbrica, score, `veredicto_corto`). Requerido para el loop.
-- **ElevenLabs** — TTS del veredicto. Primera opción; **SpeechSynthesis es fallback obligatorio** y no se elimina.
+- **Nebius Token Factory** — análisis del pitch por defecto (Nemotron Super). Ultra usa Nemotron Ultra; sparring usa Nemotron Nano.
+- **Gemini** — respaldo manual de contingencia (`MODEL_PROVIDER=gemini`). Ignora el nivel (`estandar` / `ultra` / `rapido`).
+- **ElevenLabs** — TTS del veredicto y de las preguntas de sparring. Primera opción; **SpeechSynthesis es fallback obligatorio** y no se elimina.
 - **Tavily** — enriquecimiento opcional: si un punto de rúbrica no se cumplió, busca una estadística y la sugiere en el dashboard. Si no hay key o falla, el resto de la UI no se rompe.
 
 ## 13. Stack técnico
@@ -182,7 +190,8 @@ Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 - Fallback posible a futuro: Whisper (u otro STT) server-side, si Web Speech API no alcanza.
 
 ### Análisis (LLM)
-- **Gemini API** (Flash / Flash-Lite).
+- **Nebius Token Factory** por defecto (Nemotron Super / Ultra / Nano según el
+  nivel). Gemini sigue disponible como contingencia.
 - El prompt recibe transcripción + tipo + rúbrica + tiempo real vs. máximo. La
   transcripción se marca como **dato no confiable** entre delimitadores.
 - El modelo devuelve **solo** esta porción, en **JSON estructurado**:
@@ -198,13 +207,26 @@ Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 }
 ```
 
+En Análisis Ultra el modelo añade `"traza": ["paso 1", "..."]` (4 a 8 pasos de
+razonamiento). El análisis estándar no la pide.
+
 - El modelo **no** calcula el score, **no** nombra los puntos y **no** cuenta
   muletillas. El servidor asigna el nombre de cada punto desde la rúbrica por
   índice, calcula el score (`clamp(round(cumplidos / total * 80) + clamp(claridad, 0, 20), 0, 100)`)
   y cuenta las muletillas con `src/lib/muletillas.ts`.
 
+### Resolver hallazgos (interno: sparring)
+- Si hay puntos con `cumplido: false`, se ofrecen hasta 3 preguntas (los
+  primeros en el orden de la rúbrica).
+- Cada pregunta se genera y cada respuesta se evalúa con el nivel `rapido`
+  (Nano). El modelo de evaluación devuelve solo `{ cumplido, comentario }`.
+- La pregunta se muestra en texto. El usuario puede pulsar "Escuchar pregunta"
+  (misma voz de ElevenLabs de la sesión); no se reproduce sola.
+- El usuario responde por voz (mismo grabador) o con texto si no hay STT.
+
 ### Texto → voz (TTS)
-- **ElevenLabs** como primera opción (voz natural en español).
+- **ElevenLabs** como primera opción (voz natural en español). La voz se
+  reutiliza en el sparring de la misma sesión.
 - **SpeechSynthesis** nativa como fallback: si ElevenLabs falla o tarda, el loop no se corta.
 
 ### Muletillas

@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { ResultadoAnalisis, EvaluacionRubrica } from "@/types/pitch";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type {
+  DuracionMaxima,
+  EvaluacionRubrica,
+  ResultadoAnalisis,
+  SolicitudAnalisis,
+  TipoPitch,
+} from "@/types/pitch";
 import {
   PATRONES_MULETILLAS,
   resaltarMuletillas,
@@ -18,7 +24,11 @@ interface SugerenciaTavily {
 interface DashboardResultadoProps {
   transcripcion: string;
   resultado: ResultadoAnalisis;
-  tipoPitch: string;
+  tipoPitch: TipoPitch;
+  /** Voz de ElevenLabs de esta sesión (misma para veredicto y sparring). */
+  vozSesion?: "male" | "female" | "random";
+  /** Se llama cuando ElevenLabs resuelve la voz de la sesión. */
+  onVozUsada?: (voz: "male" | "female") => void;
   /**
    * Patrones reales de src/lib/muletillas.ts (única fuente de verdad).
    * Incluyen umbralMin para "pues"/"bueno" (≥3).
@@ -54,8 +64,13 @@ export function DashboardResultado({
   tipoPitch,
   muletillasPatterns = PATRONES_MULETILLAS,
   habilitarTavily = true,
+  vozSesion = "random",
+  onVozUsada,
 }: DashboardResultadoProps) {
   const [sugerencias, setSugerencias] = useState<SugerenciaTavily[]>([]);
+  const [analisisUltra, setAnalisisUltra] = useState<ResultadoAnalisis | null>(null);
+  const [analizandoUltra, setAnalizandoUltra] = useState(false);
+  const [errorUltra, setErrorUltra] = useState<string | null>(null);
 
   const puntosSinCumplir = useMemo(
     () => resultado.rubrica.filter((p) => !p.cumplido),
@@ -120,6 +135,36 @@ export function DashboardResultado({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [habilitarTavily, tipoPitch]);
 
+  const pedirAnalisisUltra = useCallback(async () => {
+    setAnalizandoUltra(true);
+    setErrorUltra(null);
+    try {
+      const duracionMaxima = (resultado.tiempo_maximo_segundos / 60) as DuracionMaxima;
+      const respuesta = await fetch("/api/analizar-pitch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcripcion,
+          tipoPitch,
+          duracionMaxima,
+          tiempoRealSegundos: resultado.tiempo_real_segundos,
+          nivel: "ultra",
+        } satisfies SolicitudAnalisis),
+      });
+      const cuerpo = (await respuesta.json()) as ResultadoAnalisis | { error: string };
+      if (!respuesta.ok || "error" in cuerpo) {
+        throw new Error("error" in cuerpo ? cuerpo.error : "Error al reanalizar el pitch.");
+      }
+      setAnalisisUltra(cuerpo);
+    } catch (error) {
+      setErrorUltra(
+        error instanceof Error ? error.message : "Error inesperado al reanalizar el pitch.",
+      );
+    } finally {
+      setAnalizandoUltra(false);
+    }
+  }, [resultado.tiempo_maximo_segundos, resultado.tiempo_real_segundos, tipoPitch, transcripcion]);
+
   const porcentajeTiempo = Math.min(
     100,
     Math.round(
@@ -142,6 +187,8 @@ export function DashboardResultado({
           <ReproductorVeredicto
             veredicto={resultado.veredicto_corto}
             autoPlay={false}
+            voz={vozSesion}
+            onVozUsada={onVozUsada}
           />
         </div>
       </header>
@@ -218,6 +265,67 @@ export function DashboardResultado({
           </ul>
         </section>
       )}
+
+      <section className="space-y-3">
+        <button
+          type="button"
+          onClick={pedirAnalisisUltra}
+          disabled={analizandoUltra}
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-60"
+        >
+          {analizandoUltra ? "Reanalizando con Nemotron Ultra…" : "Análisis Ultra"}
+        </button>
+        {errorUltra && (
+          <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {errorUltra}
+          </p>
+        )}
+        {analisisUltra !== null && (
+          <div className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+            <h3 className="text-base font-semibold text-zinc-900">
+              Análisis Ultra — razonamiento extendido con Nemotron Ultra
+            </h3>
+            <header className="pc-dashboard-header">
+              <div
+                className="pc-score"
+                style={{ borderColor: colorScore(analisisUltra.score) }}
+              >
+                <span className="pc-score-num">{analisisUltra.score}</span>
+                <span className="pc-score-max">/100</span>
+              </div>
+              <div className="pc-veredicto">
+                <p>{analisisUltra.veredicto_corto}</p>
+                <ReproductorVeredicto
+                  veredicto={analisisUltra.veredicto_corto}
+                  autoPlay={false}
+                  voz={vozSesion}
+                  onVozUsada={onVozUsada}
+                />
+              </div>
+            </header>
+            {analisisUltra.traza && analisisUltra.traza.length > 0 && (
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold text-zinc-800">
+                  Traza del razonamiento
+                </h3>
+                <ol className="list-decimal space-y-1.5 pl-5 text-sm text-zinc-700">
+                  {analisisUltra.traza.map((paso, indice) => (
+                    <li key={`${indice}-${paso.slice(0, 24)}`}>{paso}</li>
+                  ))}
+                </ol>
+              </section>
+            )}
+            <section className="pc-rubrica">
+              <h3>Rúbrica (Ultra)</h3>
+              <ul>
+                {analisisUltra.rubrica.map((item) => (
+                  <ItemRubrica key={item.punto} item={item} />
+                ))}
+              </ul>
+            </section>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -12,6 +12,15 @@ interface ReproductorVeredictoProps {
   autoPlay?: boolean;
   /** Se llama cuando termina de hablar (por cualquier fuente). */
   onFinish?: () => void;
+  /**
+   * Voz de ElevenLabs. `random` elige al azar; si la sesión ya tiene voz,
+   * pásala para reutilizarla (sparring).
+   */
+  voz?: "male" | "female" | "random";
+  /** Se llama con la voz efectivamente usada (header `X-Voice-Gender`). */
+  onVozUsada?: (voz: "male" | "female") => void;
+  /** Texto del botón en reposo. Default: "Escuchar veredicto". */
+  etiquetaInactivo?: string;
   className?: string;
 }
 
@@ -30,12 +39,16 @@ export function ReproductorVeredicto({
   veredicto,
   autoPlay = false,
   onFinish,
+  voz = "random",
+  onVozUsada,
+  etiquetaInactivo = "Escuchar veredicto",
   className,
 }: ReproductorVeredictoProps) {
   const [estado, setEstado] = useState<Estado>("inactivo");
   const [fuente, setFuente] = useState<Fuente>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const yaIntentadoRef = useRef(false);
+  const veredictoAnteriorRef = useRef(veredicto);
 
   const hablarConSpeechSynthesis = useCallback(
     (texto: string) => {
@@ -76,12 +89,17 @@ export function ReproductorVeredicto({
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ texto, voz: "random" }),
+          body: JSON.stringify({ texto, voz }),
           signal: controller.signal,
         });
         clearTimeout(timeout);
 
         if (!res.ok) throw new Error(`TTS respondió ${res.status}`);
+
+        const vozHeader = res.headers.get("X-Voice-Gender");
+        if (vozHeader === "male" || vozHeader === "female") {
+          onVozUsada?.(vozHeader);
+        }
 
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
@@ -110,7 +128,7 @@ export function ReproductorVeredicto({
         hablarConSpeechSynthesis(texto);
       }
     },
-    [hablarConSpeechSynthesis, onFinish]
+    [hablarConSpeechSynthesis, onFinish, onVozUsada, voz]
   );
 
   useEffect(() => {
@@ -128,13 +146,16 @@ export function ReproductorVeredicto({
     };
   }, [veredicto, autoPlay, reproducir]);
 
-  // Si cambia el veredicto (nuevo intento en la misma sesión), permite reintentar.
+  // Si cambia el veredicto (nuevo intento), permite un autoplay nuevo.
+  // No resetear en el mismo montaje: eso reabría el guard y disparaba un eco.
   useEffect(() => {
+    if (veredictoAnteriorRef.current === veredicto) return;
+    veredictoAnteriorRef.current = veredicto;
     yaIntentadoRef.current = false;
   }, [veredicto]);
 
   const etiquetaEstado: Record<Estado, string> = {
-    inactivo: "Escuchar veredicto",
+    inactivo: etiquetaInactivo,
     cargando: "Conectando con el coach…",
     hablando: fuente === "elevenlabs" ? "Hablando (ElevenLabs)" : "Hablando",
     error: "No se pudo reproducir — reintentar",

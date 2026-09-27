@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SolicitudAnalisis, ResultadoAnalisis } from "@/types/pitch";
+import type { NivelAnalisis } from "@/lib/modelo";
 import { obtenerRubrica } from "@/lib/rubricas";
 import { construirPrompt } from "@/lib/prompts";
 import { analizarConModelo } from "@/lib/analisis-modelo";
@@ -16,6 +17,7 @@ import {
 
 const TIPOS_PITCH_VALIDOS = new Set<string>(["capital", "educacion", "innovacion", "tecnologia"]);
 const DURACIONES_VALIDAS = new Set<number>([1, 2, 3, 4, 5, 6, 7]);
+const NIVELES_VALIDOS = new Set<NivelAnalisis>(["estandar", "ultra", "rapido"]);
 
 const MENSAJE_ERROR_ANALISIS =
   "No se pudo analizar el pitch en este momento. Inténtalo de nuevo en unos segundos.";
@@ -37,7 +39,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: errorValidacion }, { status: 400 });
   }
 
-  const { transcripcion, tipoPitch, duracionMaxima, tiempoRealSegundos } =
+  const { transcripcion, tipoPitch, duracionMaxima, tiempoRealSegundos, nivel } =
     body as SolicitudAnalisis;
 
   // Límite duro de entrada: se corta antes de gastar cuota del modelo.
@@ -52,10 +54,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     rubrica,
     tiempoMaximoSegundos: duracionMaxima * 60,
     tiempoRealSegundos,
+    nivel: nivel ?? "estandar",
   });
 
   try {
-    const analisis = await analizarConModelo(prompt, rubrica);
+    const analisis = await analizarConModelo(prompt, rubrica, nivel ?? "estandar");
 
     // Las muletillas se recalculan server-side sobre la transcripción
     // (docs/alcance.md §8: no requieren IA). El conteo server-side es la fuente
@@ -69,6 +72,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       muletillas,
       tiempo_real_segundos: tiempoRealSegundos,
       tiempo_maximo_segundos: duracionMaxima * 60,
+      ...(analisis.traza ? { traza: analisis.traza } : {}),
     };
 
     return NextResponse.json(resultado);
@@ -103,6 +107,9 @@ function validarSolicitud(body: Partial<SolicitudAnalisis>): string | null {
     body.tiempoRealSegundos < 0
   ) {
     return "tiempoRealSegundos inválido. Debe ser un número no negativo.";
+  }
+  if (body.nivel !== undefined && !NIVELES_VALIDOS.has(body.nivel as NivelAnalisis)) {
+    return "Nivel inválido. Debe ser estandar, ultra o rapido.";
   }
   return null;
 }
