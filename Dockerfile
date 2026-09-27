@@ -26,6 +26,26 @@ ARG SENTRY_ORG
 ARG SENTRY_PROJECT
 ARG SENTRY_RELEASE
 
+# Espejos NEXT_PUBLIC_* del navegador. NO son opcionales de verdad: Next.js
+# reemplaza las referencias a `process.env.NEXT_PUBLIC_*` por su literal en
+# build-time, y si el valor no está presente el reemplazo NO ocurre — la
+# referencia queda como lectura a un objeto `env` en runtime, que en el
+# navegador no tiene el valor. Resultado: el SDK arranca sin DSN y el cliente
+# no reporta nada (ni error boundaries, ni sesiones, ni el túnel /monitoring).
+#
+# Eso fue exactamente lo que pasó en el primer deploy: el bundle desplegado
+# tenía `dsn: _.default.env.NEXT_PUBLIC_SENTRY_DSN`, sin ningún DSN inlineado.
+#
+# NEXT_PUBLIC_SENTRY_DSN es la que importa: mismo valor que SENTRY_DSN (un DSN
+# de Sentry es una clave de ingesta PÚBLICA por diseño). Las otras dos pueden
+# quedar sin definir y sus defaults son los correctos (encendido, y entorno
+# `production` vía NODE_ENV); se declaran igual para que el interruptor maestro
+# y la etiqueta de entorno documentados en .env.example funcionen también en el
+# navegador sin tocar código.
+ARG NEXT_PUBLIC_SENTRY_DSN
+ARG NEXT_PUBLIC_SENTRY_ENABLED
+ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 

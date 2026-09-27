@@ -472,19 +472,52 @@ y esto en Sentry, desde el mismo binario minificado
 
 Con comentarios originales y línea correcta.
 
-### Producción: dos cosas sin hacer
+### Producción: los `ARG` del build
 
-1. **El `Dockerfile` ahora declara `ARG`** para `SENTRY_AUTH_TOKEN`,
-   `SENTRY_ORG`, `SENTRY_PROJECT` y `SENTRY_RELEASE` en la etapa `builder`.
-   Railway **no** expone las variables del servicio a un build por Dockerfile sin
-   declararlas con `ARG`. Sin esto el build no ve el token y los stack traces de
-   producción salen minificados. Los `ARG` están puestos pero **inertes** hasta
-   que Railway tenga las variables.
+**Verificado en un deploy real** (issue `PITCH-COACH-5`, 2026-09-27): el stack
+trace llegó con el código original (`../../../src/lib/modelo.ts:255`) y el
+`release` con el SHA del commit. Eso prueba que Railway **sí** pasa las
+variables del servicio como build args cuando están declaradas con `ARG` — la
+única vía posible, porque Railway construye clonando el repo y los archivos
+`.env*` con valores están gitignoreados.
+
+Declarados en la etapa `builder`:
+
+1. **`SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_RELEASE`** —
+   para la subida de source maps. Sin el token, el build avisa *"No auth token
+   provided. Will not upload source maps"* y los stack traces de producción
+   salen minificados.
 2. **`SENTRY_RELEASE` hay que pasarlo explícito** como
    `${{RAILWAY_GIT_COMMIT_SHA}}`. El `.dockerignore` excluye `.git`, así que la
    detección automática por SHA de git no encuentra nada y todos los eventos
    caerían en un release desconocido. Por la misma razón, los commits no se
-   vincularán al release en producción (en local sí lo hacen).
+   vinculan al release en producción (en local sí lo hacen).
+3. **`NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENABLED`,
+   `NEXT_PUBLIC_SENTRY_ENVIRONMENT`** — los espejos del navegador. Se agregaron
+   después de encontrar el agujero que se describe abajo.
+
+#### El agujero que esto cerraba (encontrado en producción)
+
+En el primer deploy, **el cliente no reportaba nada**: sin `POST /monitoring` en
+DevTools y sin eventos de navegador. La causa, leída en los chunks desplegados:
+
+```js
+{ dsn: _.default.env.NEXT_PUBLIC_SENTRY_DSN, ... }
+```
+
+**Sin ningún DSN inlineado.** Next.js reemplaza `process.env.NEXT_PUBLIC_*` por
+su literal en build-time, pero **solo si el valor está presente**; si no, deja
+una lectura a un objeto `env` en runtime, que en el navegador no tiene el valor.
+Como `.dockerignore` excluye `.env.local` y el Dockerfile no declaraba esos
+`ARG`, el build nunca veía la variable.
+
+Verificado en local con un build centinela: con `NEXT_PUBLIC_SENTRY_DSN`
+definida en el build, el bundle contiene el literal
+(`dsn:"https://…@o1.ingest.de.sentry.io/1"`); sin ella, la lectura en runtime.
+
+> **Alcance:** esto afecta a **cualquier** `NEXT_PUBLIC_*` que agregue el
+> proyecto. Si se suma una nueva, hay que declararla también como `ARG` o no
+> llegará al navegador.
 
 ---
 
@@ -558,8 +591,11 @@ reales en el proyecto (región EU); conviene cerrarlos.
 - **Nada de esto corrió en Railway.** Los `ARG` del Dockerfile están validados
   por documentación y por el comportamiento del plugin en local, no por un
   deploy real.
-- **El camino de error de cliente NO se probó en un build de producción**, solo
-  contra `npm run dev`. Tampoco la verificación de `static` en el cliente.
+- **El camino de error de cliente NO se probó en un build de producción** (solo
+  contra `npm run dev`), y en el primer deploy **no habría podido**: el cliente
+  no tenía DSN por el problema de los `ARG` (§6). Ya está corregido en el
+  `Dockerfile`; falta confirmarlo con el próximo deploy — la señal es un
+  `POST /monitoring` en DevTools al cargar la app.
 - **Tres categorías de `dataCollection` siguen sin auditar**: `cookies`,
   `urlQueryParams` y `httpHeaders.response`. `httpBodies` se auditó sin fuga
   (§3.6.1) y `genAI` resultó inerte por construcción, verificado (§3.6.2). Ver
