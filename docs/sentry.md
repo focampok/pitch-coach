@@ -519,6 +519,12 @@ definida en el build, el bundle contiene el literal
 > proyecto. Si se suma una nueva, hay que declararla también como `ARG` o no
 > llegará al navegador.
 
+**Confirmado en producción el 2026-09-27:** con las variables y los `ARG`
+nuevos, el cliente reporta. Verificado por dos vías independientes: `POST
+/monitoring` visible en DevTools, y spans de navegador llegando a Sentry con
+`environment: production`, `transaction: "/"` y
+`auto.pageload.nextjs.app_router_instrumentation`.
+
 ---
 
 ## 7. Los commits de la rama
@@ -592,10 +598,11 @@ reales en el proyecto (región EU); conviene cerrarlos.
   por documentación y por el comportamiento del plugin en local, no por un
   deploy real.
 - **El camino de error de cliente NO se probó en un build de producción** (solo
-  contra `npm run dev`), y en el primer deploy **no habría podido**: el cliente
-  no tenía DSN por el problema de los `ARG` (§6). Ya está corregido en el
-  `Dockerfile`; falta confirmarlo con el próximo deploy — la señal es un
-  `POST /monitoring` en DevTools al cargar la app.
+  contra `npm run dev`). El *transporte* del cliente en producción sí está
+  verificado (§6), pero disparar un error de render en producción requeriría
+  shipear una página que falle; no hay forma de provocarlo a demanda.
+- **El cliente de producción no lleva `release`** (ver §10). Falta decidir si
+  importa.
 - **Tres categorías de `dataCollection` siguen sin auditar**: `cookies`,
   `urlQueryParams` y `httpHeaders.response`. `httpBodies` se auditó sin fuga
   (§3.6.1) y `genAI` resultó inerte por construcción, verificado (§3.6.2). Ver
@@ -692,8 +699,22 @@ reales en el proyecto (región EU); conviene cerrarlos.
 
 ## 10. Lo que queda pendiente
 
-- **Railway:** cargar `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`,
-  `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` y `SENTRY_RELEASE`.
+- **El cliente de producción no lleva `release`.** Verificado en los chunks
+  desplegados: el código del cliente es
+  `release: process.env._sentryRelease || i_._sentryRelease`, y **no hay ninguna
+  definición de `_sentryRelease` en el bundle** — ni el SHA del commit, ni una
+  asignación, ni nada inyectado en el HTML. En desarrollo sí lleva release,
+  porque el plugin lo detecta de git, que en Railway no existe.
+  Consecuencia probable: los eventos de cliente quedan sin release, así que se
+  pierden las funciones que dependen de él (detección de regresiones, "qué
+  release lo introdujo") y **muy probablemente los stack traces del navegador
+  salgan minificados**, porque los source maps se asocian a un release.
+  La causa no se pudo determinar desde afuera: el servidor **sí** tiene release
+  (`cb206b7a…`) y el cliente no, lo que sugiere que el servidor lo obtiene en
+  **runtime** (variable de servicio de Railway) y el cliente, que lo necesita en
+  **build-time**, no lo recibe por esa vía.
+  **Comprobación de 5 segundos:** en Sentry, abrir cualquier transacción de
+  navegador de producción y mirar el campo `Release`.
 - **Migrar a `beforeSendSpan` antes de subir a la v12 del SDK** (§9.7). Hoy el
   filtro de transacciones funciona vía `beforeSendTransaction` + `static`, pero
   esa opción se elimina en v12. En `"stream"` el callback recibe
@@ -707,11 +728,12 @@ reales en el proyecto (región EU); conviene cerrarlos.
   `dataCollection.genAI: { inputs: false, outputs: false }` **antes** del cambio:
   es lo único que impide que los prompts —con la transcripción— viajen a Sentry
   como atributos de span, que no pasan por `beforeSend`. Ver §3.6.2.
-- **Issues de prueba en Sentry: cerrados.** Los cuatro del proyecto están en
-  `resolved` —`PITCH-COACH-1` y `PITCH-COACH-2` de las fases anteriores, y
-  `PITCH-COACH-3` y `PITCH-COACH-4` (los dos del camino de error de cliente,
-  cerrados con un comentario que explica que eran pruebas y que el componente ya
-  no existe)—. No queda ninguno abierto.
+- **Issues de prueba en Sentry.** `PITCH-COACH-1` y `PITCH-COACH-2` (fases
+  anteriores) y `PITCH-COACH-3` y `PITCH-COACH-4` (camino de error de cliente)
+  están en `resolved`, con un comentario que explica que eran pruebas. Queda
+  **`PITCH-COACH-5`**, la prueba del `MODEL` inventado que confirmó que el
+  servidor reporta en producción: es un artefacto de verificación, no un fallo
+  real, y se puede cerrar.
 - **Decidido: `docs/sentry.md` entra a la rama.** Es el registro de decisión de
   la fase; el resumen corto y estable vive en `docs/status.md` §5. Si en algún
   momento divergen, manda `status.md`.

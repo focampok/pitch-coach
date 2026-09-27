@@ -197,6 +197,18 @@ agrega un `extra` nuevo en alguna ruta, revisar antes esta sección.
   `http.client`, sin ningún atributo `gen_ai.*`. Ver `docs/sentry.md` §3.6.2.
 - El modo `static` **no pierde telemetría**: mismas trazas y mismos spans (36 en
   la home del navegador), solo cambia el sobre en que viajan.
+- **Producción, las dos vías** (verificado en Railway el 2026-09-27): el
+  servidor reporta con el resumen sanitizado, `environment: production`,
+  `release` con el SHA del commit y los stack traces **desminificados** (los
+  source maps suben en el build). Y el cliente reporta: llegan spans de
+  navegador con `auto.pageload.nextjs.app_router_instrumentation` y se ve el
+  `POST /monitoring` en DevTools. Antes de esto, el cliente no reportaba nada
+  porque faltaban los `ARG NEXT_PUBLIC_*` en el `Dockerfile` — ver
+  `docs/sentry.md` §6.
+- **Un cabo suelto, con evidencia:** el cliente de producción **no lleva
+  `release`**, así que los stack traces del navegador probablemente salgan
+  minificados. El servidor sí lo lleva. Comprobación y detalle, en
+  `docs/sentry.md` §10.
 
 > **⚠️ Trampa latente de `genAI`.** Las integraciones de IA **se registran por
 > defecto** igual: son no-ops solo mientras el paquete del vendor no exista. Si
