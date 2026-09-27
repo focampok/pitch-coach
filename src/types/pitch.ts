@@ -64,6 +64,12 @@ export interface SolicitudAnalisis {
    * extendido (Nebius Ultra); Gemini ignora el valor.
    */
   nivel?: "estandar" | "ultra" | "rapido";
+  /**
+   * Nombres de puntos de rúbrica no cubiertos en el intento anterior del mismo
+   * tipo. Solo nombres. El servidor ignora cualquier string que no coincida
+   * exactamente con un punto de la rúbrica de `tipoPitch`.
+   */
+  puntosNoCumplidosPrevios?: string[];
 }
 
 /** Cuerpo de POST /api/sparring/pregunta. */
@@ -97,9 +103,11 @@ export interface TurnoSparring {
 }
 
 /**
- * Sparring completado en la sesión (solo en memoria; no se persiste).
+ * Sparring completado en la sesión. El objeto completo (pregunta, respuesta,
+ * comentario) vive solo en memoria de la pestaña.
  * `preguntasHechas` es Y (preguntas hechas, máx. 3) y `puntosReforzados`
- * es X (turnos con cumplido === true).
+ * es X (turnos con cumplido === true). El historial local, si se guarda,
+ * persiste únicamente esos conteos y `{ punto, cumplido }` por turno.
  */
 export interface SparringCompletado {
   tipoPitch: TipoPitch;

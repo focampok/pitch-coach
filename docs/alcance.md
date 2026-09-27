@@ -143,12 +143,12 @@ Ciclo completo:
 - [x] Sesión anónima, sin login.
 - [x] Análisis Ultra: reanálisis de la misma transcripción con razonamiento extendido (Nemotron Ultra).
 - [x] Resolver hallazgos: hasta 3 preguntas de seguimiento sobre puntos no cumplidos (orden de rúbrica), texto + escuchar a pedido, respuesta por voz o texto de respaldo.
+- [x] Historial local y panel "Tu progreso": las últimas 20 prácticas de este navegador (fecha, tipo, duración, score, claridad, rúbrica sin comentario, conteo de muletillas, si se usó Ultra y, si se completó, el resumen de hallazgos). No hay cuentas ni copia en servidor.
 
 ## 10. Fuera de esta versión
 
 - Sistema de usuarios, login o perfiles.
-- Persistencia de historial entre sesiones (base de datos). Sparring y Ultra viven solo en la pestaña.
-- Memoria de sesiones y panel de progreso (fase siguiente).
+- Persistencia en servidor y sincronización entre navegadores o dispositivos. El historial que sí existe es local (`localStorage` de este navegador) y no guarda transcripción, comentarios, traza de Ultra, preguntas, respuestas ni audio.
 - Comparar dos intentos en la misma sesión.
 - Edición o creación de rúbricas custom.
 - Soporte multi-idioma (solo español).
@@ -166,6 +166,7 @@ Ciclo completo:
 - El avatar reacciona a algo real del pitch (ej. se estremece al decir "o sea").
 - Si pide Análisis Ultra, ve un segundo resultado etiquetado (con traza de razonamiento), no un reemplazo del primero.
 - Si hay puntos sin cubrir, puede resolver hallazgos (máx. 3) y ve cuántos resolvió.
+- "Tu progreso" lista intentos de este navegador (score y cobertura) sin mostrar la transcripción ni los comentarios.
 
 ## 12. Servicios externos
 

@@ -16,6 +16,11 @@ export interface DatosPrompt {
   tiempoRealSegundos: number;
   /** Nivel del análisis. Ultra pide comentarios más largos y una traza. */
   nivel?: NivelAnalisis;
+  /**
+   * Nombres de puntos de la rúbrica que no se cubrieron en el intento anterior.
+   * Solo nombres ya validados contra la rúbrica; nunca texto del usuario.
+   */
+  puntosNoCumplidosPrevios?: readonly string[];
 }
 
 /** Prompt dividido: la persona va al system, la transcripción al user. */
@@ -61,12 +66,17 @@ function construirSystem({
   tiempoMaximoSegundos,
   tiempoRealSegundos,
   nivel = "estandar",
+  puntosNoCumplidosPrevios,
 }: Omit<DatosPrompt, "transcripcion">): string {
   const puntos = rubrica
     .map(({ punto, queBuscar }, i) => `${i + 1}. ${punto} — qué buscar: ${queBuscar}`)
     .join("\n");
 
   const tiempo = `${tiempoRealSegundos} segundos de ${tiempoMaximoSegundos} segundos disponibles`;
+  const notaPrevios =
+    puntosNoCumplidosPrevios && puntosNoCumplidosPrevios.length > 0
+      ? `- En el intento anterior de este mismo tipo, estos puntos de la rúbrica quedaron sin cubrir: ${puntosNoCumplidosPrevios.map((punto) => neutralizarDelimitadores(punto)).join("; ")}. Si esta vez la transcripción sí los cubre, reconócelo en una frase del veredicto. No inventes citas de intentos anteriores.\n`
+      : "";
 
   return `Eres Pitch Coach, un entrenador de pitches que evalúa de forma objetiva y da feedback accionable en español.
 
@@ -83,7 +93,7 @@ Instrucciones:
 - Ten en cuenta el tiempo en tu feedback: si el usuario se quedó corto de tiempo antes de cubrir un punto clave, menciónalo; si terminó muy por debajo del límite, sugiere desarrollar más con profundidad; si administró bien el tiempo y cubrió todo, reconócelo.
 - Escribe un veredicto_corto de 1 a 2 frases en español, pensado para ser leído en voz alta después (tono de coach: directo, con chispa, pero sobrio).
 ${nivel === "ultra" ? `- Este es un análisis ULTRA (razonamiento extendido). Devuelve además "traza": un array de 4 a 8 strings. Cada ítem es UN paso de tu razonamiento, en español, tipo log: qué buscaste, qué hallaste o faltó en la transcripción, y cómo decidiste cumplido true/false. No repitas el veredicto; muestra el proceso.
-` : ""}- El score NO lo calculas tú: el servidor lo deriva de los puntos cumplidos y la claridad.
+` : ""}${notaPrevios}- El score NO lo calculas tú: el servidor lo deriva de los puntos cumplidos y la claridad.
 
 Responde ÚNICAMENTE con el JSON estructurado solicitado, en español, sin texto adicional.`;
 }

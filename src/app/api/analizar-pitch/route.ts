@@ -55,6 +55,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     tiempoMaximoSegundos: duracionMaxima * 60,
     tiempoRealSegundos,
     nivel: nivel ?? "estandar",
+    puntosNoCumplidosPrevios: filtrarPuntosPrevios(body.puntosNoCumplidosPrevios, rubrica),
   });
 
   try {
@@ -82,6 +83,28 @@ export async function POST(request: Request): Promise<NextResponse> {
     console.error("[/api/analizar-pitch] fallo el análisis:", error);
     return NextResponse.json({ error: MENSAJE_ERROR_ANALISIS }, { status: 502 });
   }
+}
+
+/**
+ * Deja solo nombres que coinciden exactamente con un punto de la rúbrica.
+ * Cualquier otro texto (instrucciones, transcripción, comentarios) se descarta.
+ */
+function filtrarPuntosPrevios(
+  valor: unknown,
+  rubrica: readonly { punto: string }[],
+): string[] {
+  if (!Array.isArray(valor)) return [];
+  const permitidos = new Set(rubrica.map((punto) => punto.punto));
+  const vistos = new Set<string>();
+  const salida: string[] = [];
+  for (const item of valor.slice(0, rubrica.length)) {
+    if (typeof item !== "string") continue;
+    const nombre = item.trim();
+    if (!permitidos.has(nombre) || vistos.has(nombre)) continue;
+    vistos.add(nombre);
+    salida.push(nombre);
+  }
+  return salida;
 }
 
 /** Valida los campos de la solicitud; devuelve un mensaje de error o null. */

@@ -19,7 +19,7 @@ interface SparringCoachProps {
   rubrica: EvaluacionRubrica[];
   vozSesion: "male" | "female" | "random";
   onVozUsada?: (voz: "male" | "female") => void;
-  /** Recibe el objeto de sparring completado (solo en memoria de la sesión). */
+  /** Avisa que "Resolver hallazgos" terminó. El padre decide qué persistir. */
   onCompletado?: (sparring: SparringCompletado) => void;
 }
 

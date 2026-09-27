@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   DuracionMaxima,
   EvaluacionRubrica,
@@ -36,6 +36,8 @@ interface DashboardResultadoProps {
   muletillasPatterns?: readonly PatronMuletilla[];
   /** Si se permite pedir enriquecimiento con Tavily (opcional, §12). */
   habilitarTavily?: boolean;
+  /** Se llama una vez, cuando Análisis Ultra termina bien. */
+  onUltraCompletado?: () => void;
 }
 
 function colorScore(score: number): string {
@@ -66,6 +68,7 @@ export function DashboardResultado({
   habilitarTavily = true,
   vozSesion = "random",
   onVozUsada,
+  onUltraCompletado,
 }: DashboardResultadoProps) {
   const [sugerencias, setSugerencias] = useState<SugerenciaTavily[]>([]);
   const [analisisUltra, setAnalisisUltra] = useState<ResultadoAnalisis | null>(null);
@@ -135,7 +138,18 @@ export function DashboardResultado({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [habilitarTavily, tipoPitch]);
 
+  const abortUltra = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortUltra.current?.abort();
+    };
+  }, []);
+
   const pedirAnalisisUltra = useCallback(async () => {
+    abortUltra.current?.abort();
+    const controlador = new AbortController();
+    abortUltra.current = controlador;
     setAnalizandoUltra(true);
     setErrorUltra(null);
     try {
@@ -150,20 +164,30 @@ export function DashboardResultado({
           tiempoRealSegundos: resultado.tiempo_real_segundos,
           nivel: "ultra",
         } satisfies SolicitudAnalisis),
+        signal: controlador.signal,
       });
       const cuerpo = (await respuesta.json()) as ResultadoAnalisis | { error: string };
+      if (controlador.signal.aborted) return;
       if (!respuesta.ok || "error" in cuerpo) {
         throw new Error("error" in cuerpo ? cuerpo.error : "Error al reanalizar el pitch.");
       }
       setAnalisisUltra(cuerpo);
+      onUltraCompletado?.();
     } catch (error) {
+      if (controlador.signal.aborted) return;
       setErrorUltra(
         error instanceof Error ? error.message : "Error inesperado al reanalizar el pitch.",
       );
     } finally {
-      setAnalizandoUltra(false);
+      if (!controlador.signal.aborted) setAnalizandoUltra(false);
     }
-  }, [resultado.tiempo_maximo_segundos, resultado.tiempo_real_segundos, tipoPitch, transcripcion]);
+  }, [
+    onUltraCompletado,
+    resultado.tiempo_maximo_segundos,
+    resultado.tiempo_real_segundos,
+    tipoPitch,
+    transcripcion,
+  ]);
 
   const porcentajeTiempo = Math.min(
     100,

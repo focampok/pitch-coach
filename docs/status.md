@@ -1,9 +1,10 @@
 # Pitch Coach — Status del proyecto
 
-> **2026-09-26.** Qué está implementado, mapeado a `docs/alcance.md`.
+> **2026-09-27.** Qué está implementado, mapeado a `docs/alcance.md`.
 > El loop (voz → análisis → dashboard + veredicto a pedido) está cerrado
-> y verificado en Chrome. Resolver hallazgos y Análisis Ultra están implementados;
-> la verificación de esos dos flujos en navegador queda para el mantenedor.
+> y verificado en Chrome. Resolver hallazgos, Análisis Ultra y el panel
+> "Tu progreso" están implementados; la verificación de esos flujos en
+> navegador queda para el mantenedor.
 
 ## Resumen rápido
 
@@ -18,8 +19,9 @@
   **Sin autoplay** — el usuario pulsa "Escuchar veredicto".
 - ✅ Tavily (§12): `/api/enriquecer` si hay puntos sin cumplir. Sin key,
   el dashboard no se rompe.
-- ✅ Tests unitarios (`npm test`, vitest) sobre la lógica de `src/lib/` y las
-  rutas de análisis/sparring (fetch mockeado; sin llamadas reales a proveedores).
+- ✅ Tests unitarios (`npm test`, vitest) sobre la lógica de `src/lib/`
+  (incluido el historial local) y las rutas de análisis/sparring (fetch
+  mockeado; sin llamadas reales a proveedores).
 - ✅ Límites: transcripción máx. 8000 caracteres; respuesta de sparring máx.
   2000; rate limit por IP en memoria.
 - ✅ Análisis Ultra: botón en el dashboard que reanaliza la misma transcripción
@@ -28,6 +30,10 @@
 - ✅ Resolver hallazgos: hasta 3 preguntas de seguimiento sobre los primeros
   puntos de rúbrica no cumplidos. Texto + "Escuchar pregunta" (misma voz de
   sesión); no hay autoplay.
+- ✅ Historial local: las últimas 20 prácticas se guardan en `localStorage`
+  de este navegador (sin cuenta y sin servidor). El panel "Tu progreso"
+  las lista. No se guardan transcripción, comentarios, traza, preguntas,
+  respuestas ni audio.
 - 🟡 El STT de Chrome casi nunca transcribe "eeee". Las muletillas léxicas sí.
 
 ## Leyenda
@@ -47,7 +53,7 @@
 | ✅ | Muletillas (§8) | `src/lib/muletillas.ts` | 21 patrones; `PATRONES_MULETILLAS` es la fuente de verdad |
 | ✅ | UI | `src/app/page.tsx` | selectores + grabador + `DashboardResultado` |
 | ✅ | Avatar (§5.1) | `CoachAvatar.tsx` + `reacciones.ts` + `types/coach.ts` | 5 estados |
-| ✅ | Sesión anónima | `src/app/page.tsx` | sin login ni persistencia |
+| ✅ | Sesión anónima | `src/app/page.tsx` | sin login. El historial vive en `localStorage` de este navegador, no en el servidor |
 | ✅ | Deploy | `Dockerfile` + `railway.toml` | standalone; healthcheck `/` |
 | ✅ | Rúbricas (§6) | `src/lib/rubricas.ts` | 4 tipos × 5 puntos |
 | ✅ | Tipos (§13) | `src/types/pitch.ts` | `ResultadoAnalisis` y relacionados |
@@ -56,13 +62,15 @@
 | ✅ | Proveedor Nebius (por defecto) | `src/lib/proveedor-nebius.ts` | `/chat/completions` OpenAI-compatible; `json_schema` estricto (`{name, strict, schema}`); niveles `estandar` / `ultra` / `rapido`; `enable_thinking: false` en estándar y rápido; ultra omite el campo (razonamiento activo) |
 | ✅ | Proveedor Gemini (contingencia) | `src/lib/proveedor-gemini.ts` | `generateContent`; se activa con `MODEL_PROVIDER=gemini` |
 | ✅ | Esquema restringido | `src/lib/validar-analisis.ts` | `construirEsquemaAnalisisRestringido`: `rubrica` con `minItems === maxItems === puntos.length`; cada ítem con `additionalProperties: false` y `required: ["cumplido", "comentario"]`; Ultra añade `traza` (4–8 pasos) al esquema y la exige en validación |
-| ✅ | Prompt (§7/§13) | `src/lib/prompts.ts` | español; transcripción como dato no confiable; pide rúbrica sin nombres + `claridad` + `veredicto_corto` |
+| ✅ | Prompt (§7/§13) | `src/lib/prompts.ts` | español; transcripción como dato no confiable; pide rúbrica sin nombres + `claridad` + `veredicto_corto`. Si hay un intento previo del mismo tipo, el análisis principal puede mencionar solo los nombres de puntos no cubiertos |
 | ✅ | API `analizar-pitch` | `src/app/api/analizar-pitch/route.ts` | acepta `nivel` opcional (`estandar` \| `ultra` \| `rapido`); 400 / 413 / 429 / 502 (errores genéricos al cliente); Ultra comparte el mismo rate limit |
 | ✅ | Dashboard | `DashboardResultado.tsx` + `dashboard-resultado.css` | incluye Tavily y botón **Análisis Ultra** |
 | ✅ | Resolver hallazgos (§9) | `SparringCoach.tsx` + `/api/sparring/pregunta` + `/api/sparring/evaluar` | copy visible "Resolver hallazgos"; APIs internas siguen en `/api/sparring/*`; hasta 3 puntos no cumplidos; nivel `rapido`; escuchar a pedido; grabador o texto de respaldo |
 | ✅ | TTS (§13) | `ReproductorVeredicto.tsx` + `elevenlabs.ts` + `/api/tts` | timeout 6 s; 413/429; `autoPlay={false}` |
 | ✅ | Tavily (§12) | `tavily.ts` + `/api/enriquecer` | best-effort; timeout 8 s |
 | ✅ | Límites | `src/lib/limites.ts` + `src/lib/rate-limit.ts` | transcripción máx. 8000; respuesta sparring máx. 2000; rate limit por IP en memoria (por instancia) |
+| ✅ | Historial local | `src/lib/historial-sesiones.ts` + `src/types/historial.ts` | clave `pitch-coach:historial-sesiones`; últimas 20; FIFO. Campos: fecha, tipo, duración, score, claridad (reconstruida del score), rúbrica `{punto, cumplido}`, conteo de muletillas, `ultraUsado`, y —si se completó— hallazgos `{preguntasHechas, puntosReforzados, puntos: [{punto, cumplido}]}`. Ultra no guarda score ni rúbrica propios |
+| ✅ | Panel "Tu progreso" | `PanelProgreso.tsx` | enlace en la página principal; lista reciente primero (fecha, tipo, score, cobertura `n/5`, Ultra, hallazgos); "Borrar historial" con `confirm()` |
 
 ### Muletillas (21 patrones)
 
@@ -79,8 +87,7 @@
 
 | Ítem | Notas |
 |---|---|
-| Memoria de sesiones / panel de progreso | Sparring vive solo en memoria de la pestaña. |
-| Historial entre sesiones | Requiere usuarios o almacenamiento. |
+| Historial entre dispositivos o cuentas | El progreso queda en el `localStorage` de este navegador. No hay cuentas ni sincronización. |
 | Rúbricas custom / más idiomas | Hoy solo español y 4 rúbricas fijas. |
 | STT alternativo (Whisper, Scribe, etc.) | Hoy solo Web Speech API. |
 
