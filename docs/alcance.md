@@ -22,7 +22,7 @@ Builders, emprendedores, estudiantes y profesionales que necesitan preparar un p
 
 1. El usuario elige el **tipo de pitch** (capital / educación / innovación / tecnología) y la **duración máxima**, mediante presets de 1 a 7 minutos.
 2. Presiona grabar y **pitchea en voz alta**. La grabación se **corta automáticamente** al alcanzar la duración máxima.
-3. El sistema **transcribe el audio a texto** en tiempo real. Mientras graba, el **avatar escucha y reacciona** (muletillas, frases de impacto, silencios) — ver §5.1.
+3. El sistema **graba el audio** (MediaRecorder) y, al detener, **lo transcribe** en el servidor (ElevenLabs Scribe). Mientras graba, el **avatar escucha**; las muletillas se cuentan sobre la transcripción final — ver §5.1.
 4. El sistema analiza la transcripción:
    - Detecta **muletillas** (conteo por palabra/frase).
    - Evalúa el contenido contra la **rúbrica del tipo elegido**.
@@ -36,24 +36,26 @@ Builders, emprendedores, estudiantes y profesionales que necesitan preparar un p
 
 Se **practica en voz** y el resultado se ve y se puede oír:
 
-- **Canal visual:** durante la grabación, transcripción y muletillas en vivo + avatar. Al terminar, dashboard con rúbrica, score y mejoras. Es el canal principal del resultado.
+- **Canal visual:** durante la grabación, avatar + cronómetro. Al terminar, transcripción, dashboard con rúbrica, score y muletillas. Es el canal principal del resultado.
 - **Canal auditivo (a pedido):** el usuario pulsa "Escuchar veredicto". Si ElevenLabs falla, SpeechSynthesis cubre; si ambos fallan, el dashboard sigue ahí.
 
 Nunca se depende de un solo canal.
 
 ### 5.1 Coach visual (avatar reactivo)
 
-Personaje estilizado (SVG inline) que **escucha en vivo** y reacciona con micro-gestos. **Toda reacción se dispara por un dato real y es verificable en pantalla.**
+Personaje estilizado (SVG inline) que **escucha durante la grabación** y reacciona con micro-gestos. **Toda reacción se dispara por un dato real y es verificable en pantalla.**
+
+En esta fase la transcripción llega **después de detener** (grabar → transcribir → mostrar el texto completo). El avatar permanece en `escuchando` mientras se graba y **asiente al terminar**. Las reacciones a muletillas y frases de impacto sobre texto intermedio quedan para cuando exista STT en vivo (Scribe Realtime); hoy el refuerzo está en el dashboard.
 
 #### Estados (uno activo a la vez)
 
 | Estado | Disparador | Gesto | Refuerzo en dashboard |
 |---|---|---|---|
-| `Escuchando` (idle) | grabando con texto normal | postura atenta, parpadeo sutil | transcripción en vivo |
-| `Estremecido` | muletilla detectada en texto intermedio | leve retroceso / ceja levantada | la muletilla y su contador se muestran |
-| `Sorprendido` | frase de impacto (keyword matching local) | expresión de sorpresa | la frase aparece en la transcripción |
-| `Asintiendo` | fin de grabación | pequeño asentimiento | score y resumen |
-| `MirandoReloj` | silencio prolongado (~3s sin texto nuevo) | gesto de espera / mira el reloj | barra de tiempo |
+| `Escuchando` (idle) | grabando | postura atenta, parpadeo sutil | cronómetro / “Grabando” |
+| `Estremecido` | muletilla en texto (reservado a STT en vivo) | leve retroceso / ceja levantada | la muletilla y su contador se muestran |
+| `Sorprendido` | frase de impacto (reservado a STT en vivo) | expresión de sorpresa | la frase aparece en la transcripción |
+| `Asintiendo` | fin de grabación / texto enviado | pequeño asentimiento | score y resumen |
+| `MirandoReloj` | silencio prolongado (reservado a STT en vivo) | gesto de espera / mira el reloj | barra de tiempo |
 
 #### Reglas de diseño
 
@@ -65,8 +67,8 @@ Personaje estilizado (SVG inline) que **escucha en vivo** y reacciona con micro-
 
 #### Dependencia con el resto del sistema
 
-- Usa los **interim results** de la Web Speech API y la misma lógica regex de `src/lib/muletillas.ts` — **sin IA en tiempo real**. Gemini queda reservado al análisis final.
-- Las "frases de impacto" son **keyword matching local** sobre el texto intermedio, no una llamada al LLM por cada fragmento.
+- Las muletillas y frases de impacto son **keyword matching local** (`src/lib/muletillas.ts`, `src/lib/reacciones.ts`) — **sin IA en tiempo real**. El modelo queda reservado al análisis final.
+- En esta fase ese matching corre sobre la **transcripción completa** (dashboard). El STT en vivo (Scribe Realtime) y el selector de idioma quedan fuera de esta versión.
 
 ## 6. Rúbricas por tipo de pitch
 
@@ -134,7 +136,7 @@ Ciclo completo:
 - [x] Selector de tipo de pitch (4 opciones fijas).
 - [x] Selector de duración máxima (presets de 1 a 7 minutos).
 - [x] Grabación con corte automático.
-- [x] Transcripción (Web Speech API).
+- [x] Transcripción (MediaRecorder + ElevenLabs Scribe, con texto de respaldo si no hay micrófono).
 - [x] Detección de muletillas por conteo.
 - [x] Evaluación contra rúbrica vía el proveedor activo (Nebius por defecto; Gemini de contingencia). JSON estructurado.
 - [x] Veredicto en voz (ElevenLabs, fallback SpeechSynthesis), a pedido.
@@ -174,7 +176,7 @@ Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 
 - **Nebius Token Factory** — análisis del pitch por defecto (Nemotron Super). Ultra usa Nemotron Ultra; sparring usa Nemotron Nano.
 - **Gemini** — respaldo manual de contingencia (`MODEL_PROVIDER=gemini`). Ignora el nivel (`estandar` / `ultra` / `rapido`).
-- **ElevenLabs** — TTS del veredicto y de las preguntas de sparring. Primera opción; **SpeechSynthesis es fallback obligatorio** y no se elimina.
+- **ElevenLabs** — TTS del veredicto y de las preguntas de sparring (SpeechSynthesis es fallback obligatorio) y **STT (Scribe)** de la grabación. El audio del usuario no se escribe a disco ni se adjunta a logs o a Sentry.
 - **Tavily** — enriquecimiento opcional: si un punto de rúbrica no se cumplió, busca una estadística y la sugiere en el dashboard. Si no hay key o falla, el resto de la UI no se rompe.
 
 ## 13. Stack técnico
@@ -184,11 +186,11 @@ Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 - **Tailwind CSS**.
 
 ### Voz → texto (STT)
-- **Web Speech API** (`SpeechRecognition`), sin dependencias.
-- Soporte fiable en Chrome / Chromium / Edge. Brave no lo expone; Firefox lo trae deshabilitado.
-- Requiere internet (Chrome procesa el audio en servidores de Google).
-- `GrabadorVoz.tsx` muestra un mensaje claro si el navegador no soporta reconocimiento.
-- Fallback posible a futuro: Whisper (u otro STT) server-side, si Web Speech API no alcanza.
+- **MediaRecorder** en el cliente (Chrome, Firefox, Safari, Brave, móvil) y **ElevenLabs Scribe** (`POST /v1/speech-to-text`, `scribe_v2`) en `/api/transcribir`.
+- Flujo de esta fase: grabar → detener → transcribir → mostrar el texto completo. Sin palabra por palabra en vivo.
+- Scribe acepta `audio/webm` (Chrome/Firefox) y `audio/mp4` (Safari) sin transcodificar.
+- Si `getUserMedia` no existe o el permiso se niega, hay un **campo de texto de respaldo** (pitch principal y Resolver hallazgos).
+- El audio se procesa **en memoria** y se descarta al obtener el texto: no se escribe a disco ni se adjunta a logs, breadcrumbs o Sentry.
 
 ### Análisis (LLM)
 - **Nebius Token Factory** por defecto (Nemotron Super / Ultra / Nano según el
@@ -223,7 +225,7 @@ razonamiento). El análisis estándar no la pide.
   (Nano). El modelo de evaluación devuelve solo `{ cumplido, comentario }`.
 - La pregunta se muestra en texto. El usuario puede pulsar "Escuchar pregunta"
   (misma voz de ElevenLabs de la sesión); no se reproduce sola.
-- El usuario responde por voz (mismo grabador) o con texto si no hay STT.
+- El usuario responde por voz (mismo grabador) o con el texto de respaldo si no hay micrófono.
 
 ### Texto → voz (TTS)
 - **ElevenLabs** como primera opción (voz natural en español). La voz se
@@ -234,7 +236,7 @@ razonamiento). El análisis estándar no la pide.
 - Regex / keyword matching. No requiere LLM.
 
 ### Avatar
-- SVG inline + CSS transforms. Matching local sobre interim results. Respeta `prefers-reduced-motion`.
+- SVG inline + CSS transforms. Escucha durante la grabación; matching local de muletillas sobre la transcripción final. Respeta `prefers-reduced-motion`.
 
 ### Deploy
 - Un solo servicio Next.js (p. ej. Railway). HTTPS hace falta para el micrófono fuera de localhost.

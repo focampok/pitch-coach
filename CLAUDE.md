@@ -67,7 +67,7 @@ pitch-coach/
 │   ├── components/
 │   │   ├── SelectorTipoPitch.tsx
 │   │   ├── SelectorDuracion.tsx
-│   │   ├── GrabadorVoz.tsx           # Web Speech API (STT) + coach visual
+│   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe (STT) + coach visual
 │   │   ├── CoachAvatar.tsx
 │   │   ├── ResumenMuletillas.tsx
 │   │   ├── ReproductorVeredicto.tsx  # stub: ElevenLabs TTS + fallback SpeechSynthesis
@@ -80,8 +80,7 @@ pitch-coach/
 │   │   └── prompts.ts
 │   └── types/
 │       ├── pitch.ts
-│       ├── coach.ts
-│       └── web-speech.d.ts
+│       └── coach.ts
 └── public/
 ```
 
@@ -91,7 +90,7 @@ El proyecto debe tener un `README.md` en la raíz, con al menos:
 
 - Nombre del proyecto y una línea que explique qué hace (ver `docs/alcance.md` sección 2, "Concepto").
 - Licencia (MIT) y que el proyecto es open source.
-- Stack técnico resumido (Next.js, Gemini API, Web Speech API, ElevenLabs, Tavily, Railway).
+- Stack técnico resumido (Next.js, Nebius/Gemini, MediaRecorder, ElevenLabs Scribe/TTS, Tavily, Railway).
 - Instrucciones de setup local:
   - Clonar el repo.
   - `npm install`.
