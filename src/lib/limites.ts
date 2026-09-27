@@ -48,3 +48,41 @@ export function excedeLimitePuntoSparring(texto: string): boolean {
 export function excedeLimitePreguntaSparring(texto: string): boolean {
   return texto.length > MAX_PREGUNTA_SPARRING_CARACTERES;
 }
+
+/**
+ * Tope de audio para /api/transcribir.
+ *
+ * El preset más largo es 7 minutos. MediaRecorder (webm/opus o mp4/AAC) ronda
+ * 32–128 kbps; a 256 kbps × 7 min ≈ 13.4 MB. 20 MB deja margen para Safari y
+ * el overhead de multipart, y sigue muy por debajo del tope de Scribe (GB).
+ */
+export const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
+
+export const MENSAJE_AUDIO_GRANDE =
+  "El audio supera el tamaño máximo permitido. Acorta la grabación.";
+
+const MIME_AUDIO_PERMITIDOS = new Set([
+  "audio/webm",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/mpeg",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/x-m4a",
+  "audio/aac",
+  "audio/flac",
+  "video/webm",
+  "video/mp4",
+]);
+
+/** true si el MIME es uno de los que Scribe acepta sin transcodificar. */
+export function mimeAudioPermitido(tipo: string): boolean {
+  const base = tipo.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (base === "") return true;
+  return MIME_AUDIO_PERMITIDOS.has(base);
+}
+
+/** true si el audio excede el tope de bytes. */
+export function excedeLimiteAudio(bytes: number): boolean {
+  return bytes > MAX_AUDIO_BYTES;
+}

@@ -59,7 +59,7 @@ import { IP_HEADER_NAMES } from "./sentry-options";
  *   respuesta      → TurnoSparring.respuesta / SolicitudEvaluacionSparring
  *   veredicto      → texto del veredicto
  *   veredicto_corto→ ResultadoAnalisis.veredicto_corto
- *   audio          → buffer devuelto por /api/tts
+ *   audio          → buffer de /api/tts y campo multipart de /api/transcribir
  */
 export const SENSITIVE_KEYS: readonly string[] = [
   "transcripcion",

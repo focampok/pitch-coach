@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAX_AUDIO_BYTES,
   MAX_PREGUNTA_SPARRING_CARACTERES,
   MAX_RESPUESTA_SPARRING_CARACTERES,
   MAX_TRANSCRIPCION_CARACTERES,
+  excedeLimiteAudio,
   excedeLimitePreguntaSparring,
   excedeLimiteRespuestaSparring,
   excedeLimiteTranscripcion,
+  mimeAudioPermitido,
 } from "@/lib/limites";
 
 describe("excedeLimiteTranscripcion", () => {
@@ -42,5 +45,28 @@ describe("límites de sparring", () => {
     expect(excedeLimitePreguntaSparring("a".repeat(MAX_PREGUNTA_SPARRING_CARACTERES + 1))).toBe(
       true,
     );
+  });
+});
+
+describe("límites de audio (Scribe)", () => {
+  it("permite un archivo justo en el máximo", () => {
+    expect(excedeLimiteAudio(MAX_AUDIO_BYTES)).toBe(false);
+  });
+
+  it("rechaza un byte por encima del máximo", () => {
+    expect(excedeLimiteAudio(MAX_AUDIO_BYTES + 1)).toBe(true);
+  });
+
+  it("acepta webm y mp4 con o sin codecs", () => {
+    expect(mimeAudioPermitido("audio/webm")).toBe(true);
+    expect(mimeAudioPermitido("audio/webm;codecs=opus")).toBe(true);
+    expect(mimeAudioPermitido("audio/mp4")).toBe(true);
+    expect(mimeAudioPermitido("video/mp4")).toBe(true);
+    expect(mimeAudioPermitido("")).toBe(true);
+  });
+
+  it("rechaza un MIME que Scribe no lista", () => {
+    expect(mimeAudioPermitido("application/pdf")).toBe(false);
+    expect(mimeAudioPermitido("image/png")).toBe(false);
   });
 });
