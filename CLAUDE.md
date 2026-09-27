@@ -29,9 +29,10 @@
 - Archivo `.env.example` sí se comitea, con las mismas keys pero sin valores reales (o con placeholders), para que quede documentado qué variables necesita el proyecto.
 - Variables esperadas (ir actualizando esta lista conforme se agreguen):
  - `GEMINI_API_KEY` — clave de la API de Gemini, usada únicamente en API routes (server-side), nunca expuesta al cliente.
- - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y, opcionalmente, Scribe STT), usada únicamente en API routes (server-side), nunca expuesta al cliente.
+ - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y STT Scribe), usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - `ELEVENLABS_VOICE_ID_MALE` — Voice ID de la voz de hombre (VoiceLab). Solo server-side.
  - `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID de la voz de mujer (VoiceLab). Solo server-side.
+ - `ELEVENLABS_SCRIBE_MODEL` — modelo batch de Scribe (default `scribe_v2`). Solo server-side.
  - `TAVILY_API_KEY` — clave de Tavily (búsqueda de estadísticas para sugerencias), usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - En Railway, las variables de entorno se configuran directamente en el panel del proyecto (Settings → Variables), replicando las mismas keys que en `.env.local`.
  - Cualquier variable que empiece con `NEXT_PUBLIC_` queda expuesta al navegador — **nunca usar ese prefijo para API keys o secretos**.

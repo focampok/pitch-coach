@@ -114,6 +114,7 @@ En `.env.local` y en el host de deploy:
   `GEMINI_FALLBACK_MODELS` y `GEMINI_RETRY_*` siguen funcionando como alias,
   pero **solo aplican cuando el proveedor activo es Gemini**.
 - `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID_MALE`, `ELEVENLABS_VOICE_ID_FEMALE` — TTS y STT (Scribe); sin Voice IDs, SpeechSynthesis. Sin API key, el STT falla y hay texto de respaldo.
+- `ELEVENLABS_SCRIBE_MODEL` — modelo batch de Scribe (default `scribe_v2`)
 - `TAVILY_API_KEY` — sugerencias; sin ella, esa sección no aparece
 
 Prueba de humo manual contra Nebius real (fuera de vitest, la ejecuta el

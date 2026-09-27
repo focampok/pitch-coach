@@ -100,6 +100,7 @@ Variables en Settings → Variables (las mismas que `.env.local`):
 - `ELEVENLABS_API_KEY`
 - `ELEVENLABS_VOICE_ID_MALE`
 - `ELEVENLABS_VOICE_ID_FEMALE`
+- `ELEVENLABS_SCRIBE_MODEL` (opcional; default `scribe_v2`)
 - `TAVILY_API_KEY`
 
 ## Contribuir
