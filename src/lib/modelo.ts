@@ -78,11 +78,6 @@ export type NombreProveedor = "gemini" | "nebius";
 const PROVEEDOR_POR_DEFECTO: NombreProveedor = "nebius";
 
 /**
- * Fábrica simple (sin librerías nuevas): devuelve el adaptador del proveedor
- * activo según `MODEL_PROVIDER`. Se resuelve en cada llamada para que un cambio
- * de variable de entorno (o un test) surta efecto sin reiniciar el módulo.
- */
-/**
  * Nombre del proveedor configurado, sin construir el adaptador.
  *
  * A diferencia de `proveedorActivo()`, NO lanza ante un valor inválido: se usa
@@ -95,6 +90,11 @@ export function nombreProveedorActivo(): NombreProveedor {
   return PROVEEDOR_POR_DEFECTO;
 }
 
+/**
+ * Fábrica simple (sin librerías nuevas): devuelve el adaptador del proveedor
+ * activo según `MODEL_PROVIDER`. Se resuelve en cada llamada para que un cambio
+ * de variable de entorno (o un test) surta efecto sin reiniciar el módulo.
+ */
 export function proveedorActivo(nivel: NivelAnalisis = "estandar"): ProveedorModelo {
   const configurado = (process.env.MODEL_PROVIDER ?? "").trim().toLowerCase();
   const nombre = (configurado || PROVEEDOR_POR_DEFECTO) as NombreProveedor;
