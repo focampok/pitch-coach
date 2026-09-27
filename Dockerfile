@@ -26,6 +26,19 @@ ARG SENTRY_ORG
 ARG SENTRY_PROJECT
 ARG SENTRY_RELEASE
 
+# El SHA del commit, tal como lo provee Railway. Se declara por separado de
+# SENTRY_RELEASE a propósito: `getSentryRelease()` de @sentry/node lo lee
+# directamente (es una de las variables de CI que reconoce), así que declararlo
+# alcanza sin necesidad de crear una variable con referencia ${{...}}.
+#
+# POR QUÉ HACE FALTA
+# El release del CLIENTE se resuelve en build-time
+# (`releaseName = release.name ?? getSentryRelease() ?? getGitRevision()`), y en
+# un build por Dockerfile no hay `.git`. El del SERVIDOR no lo necesita: Railway
+# inyecta RAILWAY_GIT_COMMIT_SHA en el contenedor en runtime y el SDK lo lee
+# solo. Por eso el servidor tenía release y el cliente no.
+ARG RAILWAY_GIT_COMMIT_SHA
+
 # Espejos NEXT_PUBLIC_* del navegador. NO son opcionales de verdad: Next.js
 # reemplaza las referencias a `process.env.NEXT_PUBLIC_*` por su literal en
 # build-time, y si el valor no está presente el reemplazo NO ocurre — la
