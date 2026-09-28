@@ -3,29 +3,34 @@ import type { SolicitudAnalisis, ResultadoAnalisis } from "@/types/pitch";
 import type { NivelAnalisis } from "@/lib/modelo";
 import { nombreProveedorActivo } from "@/lib/modelo";
 import { reportarFallo } from "@/lib/sentry-reporte";
-import { obtenerRubrica } from "@/lib/rubricas";
+import { obtenerRubrica, type PuntoRubrica } from "@/lib/rubricas";
 import { construirPrompt } from "@/lib/prompts";
 import { analizarConModelo } from "@/lib/analisis-modelo";
 import { detectarMuletillas } from "@/lib/muletillas";
 import { limitar } from "@/lib/rate-limit";
+import { diccionario, type Diccionario } from "@/lib/diccionarios";
+import { idiomaDeCabecera } from "@/lib/idiomas";
+import { resolverIdiomaDeRuta } from "@/lib/idioma-ruta";
 import {
-  MENSAJE_TRANSCRIPCION_LARGA,
   excedeLimiteTranscripcion,
 } from "@/lib/limites";
 
 // API route del análisis del pitch (docs/alcance.md §13). Recibe la
 // transcripción + contexto, llama al modelo server-side (la clave nunca sale
 // del servidor), recalcula muletillas y devuelve el ResultadoAnalisis completo.
+//
+// Contrato bilingüe: el campo `idioma` del cuerpo ('es' | 'en'; ausente → 'es',
+// otro valor → 400) gobierna los mensajes de error que devuelve esta ruta.
 
 const TIPOS_PITCH_VALIDOS = new Set<string>(["capital", "educacion", "innovacion", "tecnologia"]);
 const DURACIONES_VALIDAS = new Set<number>([1, 2, 3, 4, 5, 6, 7]);
 const NIVELES_VALIDOS = new Set<NivelAnalisis>(["estandar", "ultra", "rapido"]);
 
-const MENSAJE_ERROR_ANALISIS =
-  "No se pudo analizar el pitch en este momento. Inténtalo de nuevo en unos segundos.";
+type TextosApi = Diccionario["api"];
 
 export async function POST(request: Request): Promise<NextResponse> {
   // Rate limit por IP (en memoria, por instancia — ver src/lib/rate-limit.ts).
+  // El 429 sale en el idioma de la cabecera X-Idioma: corre antes del cuerpo.
   const bloqueo = limitar(request, "analizar-pitch");
   if (bloqueo) return bloqueo as NextResponse;
 
@@ -33,10 +38,16 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     body = (await request.json()) as Partial<SolicitudAnalisis>;
   } catch {
-    return NextResponse.json({ error: "Cuerpo de la petición inválido (JSON requerido)." }, { status: 400 });
+    // Sin cuerpo legible no hay campo `idioma`: manda la cabecera.
+    const textos = diccionario(idiomaDeCabecera(request));
+    return NextResponse.json({ error: textos.api.jsonInvalido }, { status: 400 });
   }
 
-  const errorValidacion = validarSolicitud(body);
+  const idiomaRuta = resolverIdiomaDeRuta(body.idioma, request);
+  if (idiomaRuta.tipo === "invalido") return idiomaRuta.respuesta;
+  const { idioma, textos } = idiomaRuta;
+
+  const errorValidacion = validarSolicitud(body, textos.api);
   if (errorValidacion) {
     return NextResponse.json({ error: errorValidacion }, { status: 400 });
   }
@@ -46,27 +57,28 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   // Límite duro de entrada: se corta antes de gastar cuota del modelo.
   if (excedeLimiteTranscripcion(transcripcion)) {
-    return NextResponse.json({ error: MENSAJE_TRANSCRIPCION_LARGA }, { status: 413 });
+    return NextResponse.json({ error: textos.api.transcripcionLarga }, { status: 413 });
   }
 
   const rubrica = obtenerRubrica(tipoPitch);
   const prompt = construirPrompt({
     transcripcion,
-    tipoPitch,
+    tipoNombre: textos.comun.tipoPitch[tipoPitch],
     rubrica,
     tiempoMaximoSegundos: duracionMaxima * 60,
     tiempoRealSegundos,
+    idioma,
     nivel: nivel ?? "estandar",
     puntosNoCumplidosPrevios: filtrarPuntosPrevios(body.puntosNoCumplidosPrevios, rubrica),
   });
 
   try {
-    const analisis = await analizarConModelo(prompt, rubrica, nivel ?? "estandar");
+    const analisis = await analizarConModelo(prompt, rubrica, idioma, nivel ?? "estandar");
 
     // Las muletillas se recalculan server-side sobre la transcripción
     // (docs/alcance.md §8: no requieren IA). El conteo server-side es la fuente
     // de verdad del JSON final.
-    const muletillas = detectarMuletillas(transcripcion);
+    const muletillas = detectarMuletillas(transcripcion, idioma);
 
     const resultado: ResultadoAnalisis = {
       score: analisis.score,
@@ -93,20 +105,21 @@ export async function POST(request: Request): Promise<NextResponse> {
       { proveedor, nivel: nivelEfectivo },
       { proveedor, nivel: nivelEfectivo },
     );
-    return NextResponse.json({ error: MENSAJE_ERROR_ANALISIS }, { status: 502 });
+    return NextResponse.json({ error: textos.api.analisisFallido }, { status: 502 });
   }
 }
 
 /**
- * Deja solo nombres que coinciden exactamente con un punto de la rúbrica.
- * Cualquier otro texto (instrucciones, transcripción, comentarios) se descarta.
+ * Deja solo ids que coinciden exactamente con un punto de la rúbrica.
+ * Cualquier otro texto (instrucciones, transcripción, comentarios, el nombre
+ * en español de una entrada vieja) se descarta.
  */
 function filtrarPuntosPrevios(
   valor: unknown,
-  rubrica: readonly { punto: string }[],
+  rubrica: readonly PuntoRubrica[],
 ): string[] {
   if (!Array.isArray(valor)) return [];
-  const permitidos = new Set(rubrica.map((punto) => punto.punto));
+  const permitidos = new Set(rubrica.map((punto) => punto.id));
   const vistos = new Set<string>();
   const salida: string[] = [];
   for (const item of valor.slice(0, rubrica.length)) {
@@ -120,31 +133,34 @@ function filtrarPuntosPrevios(
 }
 
 /** Valida los campos de la solicitud; devuelve un mensaje de error o null. */
-function validarSolicitud(body: Partial<SolicitudAnalisis>): string | null {
+function validarSolicitud(
+  body: Partial<SolicitudAnalisis>,
+  textos: TextosApi,
+): string | null {
   if (typeof body.transcripcion !== "string" || body.transcripcion.trim() === "") {
-    return "La transcripción es obligatoria y no puede estar vacía.";
+    return textos.transcripcionObligatoria;
   }
   if (
     typeof body.tipoPitch !== "string" ||
     !TIPOS_PITCH_VALIDOS.has(body.tipoPitch as string)
   ) {
-    return "Tipo de pitch inválido. Debe ser capital, educacion, innovacion o tecnologia.";
+    return textos.tipoPitchInvalido;
   }
   if (
     typeof body.duracionMaxima !== "number" ||
     !DURACIONES_VALIDAS.has(body.duracionMaxima)
   ) {
-    return "Duración máxima inválida. Debe ser un preset de 1 a 7 minutos.";
+    return textos.duracionInvalida;
   }
   if (
     typeof body.tiempoRealSegundos !== "number" ||
     !Number.isFinite(body.tiempoRealSegundos) ||
     body.tiempoRealSegundos < 0
   ) {
-    return "tiempoRealSegundos inválido. Debe ser un número no negativo.";
+    return textos.tiempoRealInvalido;
   }
   if (body.nivel !== undefined && !NIVELES_VALIDOS.has(body.nivel as NivelAnalisis)) {
-    return "Nivel inválido. Debe ser estandar, ultra o rapido.";
+    return textos.nivelInvalido;
   }
   return null;
 }

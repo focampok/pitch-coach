@@ -9,6 +9,9 @@
  * sustituir este módulo por un almacén compartido (Redis, etc.).
  */
 
+import { diccionario } from "./diccionarios";
+import { idiomaDeCabecera } from "./idiomas";
+
 /** Ventana de conteo. */
 export const VENTANA_MS = 10 * 60 * 1000; // 10 minutos
 
@@ -85,6 +88,10 @@ export function obtenerIp(request: Request): string {
 /**
  * Aplica el rate limit a una petición. Devuelve `null` si puede continuar o un
  * `Response` 429 con `Retry-After` si se excedió.
+ *
+ * El mensaje va en el idioma de la cabecera `X-Idioma`: esta función corre
+ * ANTES de que la ruta lea el cuerpo (así no se parsean 20 MB de audio bajo
+ * abuso), así que el campo `idioma` del cuerpo todavía no está disponible.
  */
 export function limitar(
   request: Request,
@@ -94,11 +101,10 @@ export function limitar(
   const resultado = consumir(`${ambito}:${obtenerIp(request)}`, ahora);
   if (resultado.permitido) return null;
 
+  const textos = diccionario(idiomaDeCabecera(request));
+
   return new Response(
-    JSON.stringify({
-      error:
-        "Demasiadas solicitudes. Espera un momento y vuelve a intentarlo.",
-    }),
+    JSON.stringify({ error: textos.api.demasiadasSolicitudes }),
     {
       status: 429,
       headers: {

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { cabecerasJson, etiquetaIdioma } from "@/lib/idiomas";
+import { useIdioma } from "./ProveedorIdioma";
 
 type Estado = "inactivo" | "cargando" | "hablando" | "error";
 type Fuente = "elevenlabs" | "speechSynthesis" | null;
@@ -19,7 +21,7 @@ interface ReproductorVeredictoProps {
   voz?: "male" | "female" | "random";
   /** Se llama con la voz efectivamente usada (header `X-Voice-Gender`). */
   onVozUsada?: (voz: "male" | "female") => void;
-  /** Texto del botón en reposo. Default: "Escuchar veredicto". */
+  /** Texto del botón en reposo. Default: el del diccionario del idioma activo. */
   etiquetaInactivo?: string;
   className?: string;
 }
@@ -41,9 +43,11 @@ export function ReproductorVeredicto({
   onFinish,
   voz = "random",
   onVozUsada,
-  etiquetaInactivo = "Escuchar veredicto",
+  etiquetaInactivo,
   className,
 }: ReproductorVeredictoProps) {
+  const { idioma, textos } = useIdioma();
+  const etiquetaReposo = etiquetaInactivo ?? textos.reproductor.escucharVeredicto;
   const [estado, setEstado] = useState<Estado>("inactivo");
   const [fuente, setFuente] = useState<Fuente>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -58,7 +62,7 @@ export function ReproductorVeredicto({
       }
       window.speechSynthesis.cancel(); // por si quedó algo pendiente
       const utterance = new SpeechSynthesisUtterance(texto);
-      utterance.lang = "es-419";
+      utterance.lang = etiquetaIdioma(idioma);
       utterance.rate = 1;
       utterance.onstart = () => {
         setFuente("speechSynthesis");
@@ -74,7 +78,7 @@ export function ReproductorVeredicto({
       };
       window.speechSynthesis.speak(utterance);
     },
-    [onFinish]
+    [idioma, onFinish]
   );
 
   const reproducir = useCallback(
@@ -88,8 +92,8 @@ export function ReproductorVeredicto({
 
         const res = await fetch("/api/tts", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ texto, voz }),
+          headers: cabecerasJson(idioma),
+          body: JSON.stringify({ texto, voz, idioma }),
           signal: controller.signal,
         });
         clearTimeout(timeout);
@@ -128,7 +132,7 @@ export function ReproductorVeredicto({
         hablarConSpeechSynthesis(texto);
       }
     },
-    [hablarConSpeechSynthesis, onFinish, onVozUsada, voz]
+    [hablarConSpeechSynthesis, idioma, onFinish, onVozUsada, voz]
   );
 
   useEffect(() => {
@@ -155,10 +159,13 @@ export function ReproductorVeredicto({
   }, [veredicto]);
 
   const etiquetaEstado: Record<Estado, string> = {
-    inactivo: etiquetaInactivo,
-    cargando: "Conectando con el coach…",
-    hablando: fuente === "elevenlabs" ? "Hablando (ElevenLabs)" : "Hablando",
-    error: "No se pudo reproducir — reintentar",
+    inactivo: etiquetaReposo,
+    cargando: textos.reproductor.conectando,
+    hablando:
+      fuente === "elevenlabs"
+        ? textos.reproductor.hablandoElevenlabs
+        : textos.reproductor.hablando,
+    error: textos.reproductor.error,
   };
 
   return (

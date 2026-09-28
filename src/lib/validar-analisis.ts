@@ -1,3 +1,4 @@
+import type { Idioma } from "@/types/idioma";
 import type { EvaluacionRubrica } from "@/types/pitch";
 import type { PuntoRubrica } from "./rubricas";
 import type { EsquemaJson } from "./modelo";
@@ -5,10 +6,10 @@ import type { EsquemaJson } from "./modelo";
 // Validación y cálculo del score del análisis. Módulo PURO: no hace I/O, no
 // lee variables de entorno y no conoce el proveedor del modelo.
 //
-// El modelo NO decide el score ni los nombres de los puntos: devuelve, en el
+// El modelo NO decide el score ni los puntos de la rúbrica: devuelve, en el
 // mismo orden que la rúbrica, solo { cumplido, comentario } por punto, más
-// `claridad` (entero 0-20) y `veredicto_corto`. El servidor reconstruye los
-// nombres desde RUBRICAS por índice y calcula el score de forma determinista.
+// `claridad` (entero 0-20) y `veredicto_corto`. El servidor asigna el id de
+// cada punto desde RUBRICAS por índice y calcula el score de forma determinista.
 //
 // Cualquier desviación de forma (número de ítems distinto al de la rúbrica,
 // tipos incorrectos) se lanza como error de validación: la capa de modelo lo
@@ -38,73 +39,95 @@ export class ErrorValidacion extends Error {
 }
 
 /**
- * Esquema neutro (JSON Schema) que el adaptador traduce al dialecto del
- * proveedor. `rubrica` debe traer exactamente un ítem por punto de la rúbrica,
- * en el mismo orden — la longitud se verifica en `validarAnalisis`, no aquí.
+ * Descripciones del esquema, por idioma.
+ *
+ * Importan más de lo que parecen: son INSTRUCCIONES para el modelo, no solo
+ * documentación. Ahí es donde se le dice en qué idioma tiene que escribir el
+ * veredicto y los comentarios, así que tienen que viajar con el idioma de la
+ * petición — si no, en inglés el modelo seguiría contestando en español.
+ *
+ * Los NOMBRES de los campos (`cumplido`, `comentario`, `claridad`,
+ * `veredicto_corto`, `traza`) no se traducen nunca: son el contrato del JSON.
  */
-export const ESQUEMA_ANALISIS: EsquemaJson = {
-  type: "object",
-  properties: {
-    veredicto_corto: {
-      type: "string",
-      description:
-        "Veredicto de 1 a 2 frases en español, para leer en voz alta, tono de coach.",
-    },
-    claridad: {
-      type: "integer",
-      description: "Claridad y fluidez de la exposición, entero de 0 a 20.",
-    },
-    rubrica: {
-      type: "array",
-      description:
-        "Un objeto por cada punto de la rúbrica, EN EL MISMO ORDEN en que se listaron. No incluir el nombre del punto.",
-      items: {
-        type: "object",
-        properties: {
-          cumplido: {
-            type: "boolean",
-            description: "true si la transcripción cubre este punto.",
-          },
-          comentario: {
-            type: "string",
-            description: "Comentario breve en español (máx. 1 frase).",
-          },
-        },
-      },
-    },
-    traza: {
-      type: "array",
-      description:
-        "Pasos de razonamiento (4 a 8): qué buscaste, qué hallaste o faltó, y cómo decidiste cada punto.",
-      items: { type: "string" },
-    },
+interface DescripcionesEsquema {
+  veredictoCorto: string;
+  claridad: string;
+  rubrica: string;
+  cumplido: string;
+  comentario: string;
+  comentarioUltra: string;
+  traza: string;
+}
+
+const DESCRIPCIONES_ESQUEMA: Record<Idioma, DescripcionesEsquema> = {
+  es: {
+    veredictoCorto:
+      "Veredicto de 1 a 2 frases en español, para leer en voz alta, tono de coach.",
+    claridad: "Claridad y fluidez de la exposición, entero de 0 a 20.",
+    rubrica:
+      "Un objeto por cada punto de la rúbrica, EN EL MISMO ORDEN en que se listaron. No incluir el nombre del punto.",
+    cumplido: "true si la transcripción cubre este punto.",
+    comentario: "Comentario breve en español (máx. 1 frase).",
+    comentarioUltra:
+      "Comentario en español (2 a 4 frases): cita evidencia de la transcripción y explica por qué.",
+    traza:
+      "Pasos de razonamiento (4 a 8): qué buscaste, qué hallaste o faltó, y cómo decidiste cada punto.",
+  },
+  en: {
+    veredictoCorto:
+      "Verdict of 1 to 2 sentences in English, to be read aloud, coach tone.",
+    claridad: "How clear and fluent the delivery was, integer from 0 to 20.",
+    rubrica:
+      "One object per rubric point, IN THE SAME ORDER the points were listed. Do not include the point name.",
+    cumplido: "true if the transcript covers this point.",
+    comentario: "Short comment in English (1 sentence max).",
+    comentarioUltra:
+      "Comment in English (2 to 4 sentences): quote evidence from the transcript and explain why.",
+    traza:
+      "Reasoning steps (4 to 8): what you looked for, what you found or missed, and how you decided each point.",
   },
 };
 
-/** Vista tipada mínima del esquema base, para derivar el restringido. */
-interface VistaEsquemaBase {
-  properties: {
-    veredicto_corto: Record<string, unknown>;
-    claridad: Record<string, unknown>;
-    rubrica: {
-      description?: string;
-      items: {
-        properties: {
-          cumplido: Record<string, unknown>;
-          comentario: Record<string, unknown>;
-        };
-      };
-    };
-    traza: Record<string, unknown>;
+/**
+ * Esquema neutro (JSON Schema) que el adaptador traduce al dialecto del
+ * proveedor, con las descripciones en `idioma`. `rubrica` debe traer
+ * exactamente un ítem por punto de la rúbrica, en el mismo orden — la longitud
+ * se verifica en `validarAnalisis`, no aquí.
+ */
+export function esquemaAnalisis(idioma: Idioma): EsquemaJson {
+  const textos = DESCRIPCIONES_ESQUEMA[idioma];
+
+  return {
+    type: "object",
+    properties: {
+      veredicto_corto: { type: "string", description: textos.veredictoCorto },
+      claridad: { type: "integer", description: textos.claridad },
+      rubrica: {
+        type: "array",
+        description: textos.rubrica,
+        items: {
+          type: "object",
+          properties: {
+            cumplido: { type: "boolean", description: textos.cumplido },
+            comentario: { type: "string", description: textos.comentario },
+          },
+        },
+      },
+      traza: {
+        type: "array",
+        description: textos.traza,
+        items: { type: "string" },
+      },
+    },
   };
 }
 
 // Caché para que el esquema con restricciones se genere UNA sola vez por
-// conjunto de puntos de rúbrica (clave = nombres de los puntos, en orden).
+// combinación de idioma, traza y conjunto de puntos de rúbrica.
 const CACHE_ESQUEMA_RESTRINGIDO = new Map<string, EsquemaJson>();
 
 /**
- * Esquema restringido (JSON Schema estándar) derivado de `ESQUEMA_ANALISIS`,
+ * Esquema restringido (JSON Schema estándar) derivado de `esquemaAnalisis`,
  * pensado para proveedores con salida estructurada estricta (Nebius /
  * OpenAI-compatible con `response_format.json_schema` + `strict: true`).
  *
@@ -113,28 +136,29 @@ const CACHE_ESQUEMA_RESTRINGIDO = new Map<string, EsquemaJson>();
  * - `required` + `additionalProperties: false` (lo exige el modo estricto).
  *
  * Los ítems de `rubrica` son solo `{ cumplido, comentario }`: el modelo NUNCA
- * nombra los puntos. El servidor asigna cada nombre desde la rúbrica por
- * índice, así que aquí no se declara el campo ni un `enum` de nombres. `puntos`
- * solo fija la longitud exacta del array.
+ * nombra los puntos. El servidor asigna cada id desde la rúbrica por índice,
+ * así que aquí no se declara el campo ni un `enum` de nombres. `puntos` solo
+ * fija la longitud exacta del array.
  *
- * El adaptador de Nebius lo usa; Gemini sigue usando `ESQUEMA_ANALISIS`.
+ * El adaptador de Nebius lo usa; Gemini sigue usando `esquemaAnalisis`.
  */
 export function construirEsquemaAnalisisRestringido(
   puntos: readonly string[],
-  opciones: { incluirTraza?: boolean } = {},
+  opciones: { idioma: Idioma; incluirTraza?: boolean },
 ): EsquemaJson {
-  const clave = `${opciones.incluirTraza ? "traza" : "base"}\u0000${puntos.join("\u0000")}`;
+  const conTraza = opciones.incluirTraza === true;
+  const clave = `${opciones.idioma}\u0000${conTraza ? "traza" : "base"}\u0000${puntos.join("\u0000")}`;
   const enCache = CACHE_ESQUEMA_RESTRINGIDO.get(clave);
   if (enCache) return enCache;
 
-  const base = ESQUEMA_ANALISIS as unknown as VistaEsquemaBase;
+  const textos = DESCRIPCIONES_ESQUEMA[opciones.idioma];
 
   const properties: Record<string, unknown> = {
-    veredicto_corto: { ...base.properties.veredicto_corto },
-    claridad: { ...base.properties.claridad },
+    veredicto_corto: { type: "string", description: textos.veredictoCorto },
+    claridad: { type: "integer", description: textos.claridad },
     rubrica: {
       type: "array",
-      description: base.properties.rubrica.description,
+      description: textos.rubrica,
       minItems: puntos.length,
       maxItems: puntos.length,
       items: {
@@ -142,15 +166,10 @@ export function construirEsquemaAnalisisRestringido(
         additionalProperties: false,
         required: ["cumplido", "comentario"],
         properties: {
-          cumplido: { ...base.properties.rubrica.items.properties.cumplido },
+          cumplido: { type: "boolean", description: textos.cumplido },
           comentario: {
-            ...base.properties.rubrica.items.properties.comentario,
-            ...(opciones.incluirTraza
-              ? {
-                  description:
-                    "Comentario en español (2 a 4 frases): cita evidencia de la transcripción y explica por qué.",
-                }
-              : {}),
+            type: "string",
+            description: conTraza ? textos.comentarioUltra : textos.comentario,
           },
         },
       },
@@ -158,10 +177,10 @@ export function construirEsquemaAnalisisRestringido(
   };
   const required = ["veredicto_corto", "claridad", "rubrica"];
 
-  if (opciones.incluirTraza) {
+  if (conTraza) {
     properties.traza = {
       type: "array",
-      description: base.properties.traza.description,
+      description: textos.traza,
       minItems: 4,
       maxItems: 8,
       items: { type: "string" },
@@ -270,8 +289,8 @@ export function validarAnalisis(
       throw new ErrorValidacion(`El ítem ${indice + 1} no trae "cumplido" como booleano.`);
     }
     return {
-      // El nombre lo pone el servidor desde RUBRICAS, nunca el modelo.
-      punto: punto.punto,
+      // El id lo pone el servidor desde RUBRICAS, nunca el modelo.
+      punto: punto.id,
       cumplido: item.cumplido,
       comentario: typeof item.comentario === "string" ? item.comentario : "",
     };

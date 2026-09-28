@@ -1,9 +1,12 @@
+import type { Idioma } from "@/types/idioma";
 import type {
   HallazgosHistorial,
   PuntoHistorial,
   SesionGuardada,
 } from "@/types/historial";
 import type { ConteoMuletillas, DuracionMaxima, ResultadoAnalisis, TipoPitch } from "@/types/pitch";
+import { IDIOMA_POR_DEFECTO, esIdioma } from "./idiomas";
+import { idDePunto } from "./rubricas";
 import { COBERTURA_MAXIMA } from "./validar-analisis";
 
 // Historial local de sesiones (localStorage del navegador).
@@ -11,6 +14,12 @@ import { COBERTURA_MAXIMA } from "./validar-analisis";
 // Privacidad: solo se persisten los campos de `SesionGuardada`. Aunque el
 // llamador adjunte transcripción, comentarios, traza, preguntas, respuestas
 // o audio, `normalizarSesion` los descarta antes de escribir.
+//
+// COMPATIBILIDAD
+// Las sesiones guardadas antes del modo bilingüe no tienen `idioma` y guardan
+// el NOMBRE del punto en español en lugar de su id. Al leerlas se normalizan
+// (idioma → "es", nombre → id) sin romper: si un nombre ya no corresponde a
+// ningún punto de la rúbrica, se conserva tal cual y se muestra así.
 
 /** Clave con prefijo del proyecto para no chocar con otras apps del dominio. */
 export const CLAVE_HISTORIAL_SESIONES = "pitch-coach:historial-sesiones";
@@ -99,19 +108,35 @@ function esDuracion(valor: unknown): valor is DuracionMaxima {
   return typeof valor === "number" && DURACIONES.has(valor as DuracionMaxima);
 }
 
-function normalizarPunto(valor: unknown): PuntoHistorial | null {
+/**
+ * Idioma de una sesión guardada.
+ *
+ * Una entrada sin `idioma` es anterior al modo bilingüe: se asume español, el
+ * único idioma que existía entonces. Un valor inválido (dato manipulado) cae al
+ * mismo default en vez de descartar la sesión: perder una práctica entera por un
+ * campo que sabemos completar sería peor que el dato faltante.
+ */
+function normalizarIdioma(valor: unknown): Idioma {
+  return esIdioma(valor) ? valor : IDIOMA_POR_DEFECTO;
+}
+
+/**
+ * Normaliza un punto al id de la rúbrica de ese tipo.
+ * Acepta el id actual o el nombre en español de una entrada vieja.
+ */
+function normalizarPunto(valor: unknown, tipoPitch: TipoPitch): PuntoHistorial | null {
   if (valor === null || typeof valor !== "object") return null;
   const item = valor as Record<string, unknown>;
   if (typeof item.punto !== "string" || item.punto.trim() === "") return null;
   if (typeof item.cumplido !== "boolean") return null;
-  return { punto: item.punto, cumplido: item.cumplido };
+  return { punto: idDePunto(tipoPitch, item.punto), cumplido: item.cumplido };
 }
 
-function normalizarPuntos(valor: unknown): PuntoHistorial[] | null {
+function normalizarPuntos(valor: unknown, tipoPitch: TipoPitch): PuntoHistorial[] | null {
   if (!Array.isArray(valor)) return null;
   const puntos: PuntoHistorial[] = [];
   for (const item of valor) {
-    const punto = normalizarPunto(item);
+    const punto = normalizarPunto(item, tipoPitch);
     if (!punto) return null;
     puntos.push(punto);
   }
@@ -128,7 +153,10 @@ function normalizarMuletillas(valor: unknown): ConteoMuletillas | null {
   return salida;
 }
 
-function normalizarHallazgos(valor: unknown): HallazgosHistorial | null {
+function normalizarHallazgos(
+  valor: unknown,
+  tipoPitch: TipoPitch,
+): HallazgosHistorial | null {
   if (valor === null || typeof valor !== "object") return null;
   const datos = valor as Record<string, unknown>;
   if (typeof datos.preguntasHechas !== "number" || !Number.isFinite(datos.preguntasHechas)) {
@@ -137,7 +165,7 @@ function normalizarHallazgos(valor: unknown): HallazgosHistorial | null {
   if (typeof datos.puntosReforzados !== "number" || !Number.isFinite(datos.puntosReforzados)) {
     return null;
   }
-  const puntos = normalizarPuntos(datos.puntos);
+  const puntos = normalizarPuntos(datos.puntos, tipoPitch);
   if (!puntos) return null;
   return {
     preguntasHechas: datos.preguntasHechas,
@@ -155,7 +183,8 @@ export function normalizarSesion(valor: unknown): SesionGuardada | null {
   if (!esDuracion(datos.duracionMaxima)) return null;
   if (typeof datos.score !== "number" || !Number.isFinite(datos.score)) return null;
   if (typeof datos.claridad !== "number" || !Number.isFinite(datos.claridad)) return null;
-  const rubrica = normalizarPuntos(datos.rubrica);
+  // El tipo se resuelve antes: los puntos se normalizan contra SU rúbrica.
+  const rubrica = normalizarPuntos(datos.rubrica, datos.tipoPitch);
   if (!rubrica) return null;
   const muletillas = normalizarMuletillas(datos.muletillas);
   if (!muletillas) return null;
@@ -164,6 +193,7 @@ export function normalizarSesion(valor: unknown): SesionGuardada | null {
   const sesion: SesionGuardada = {
     fecha: datos.fecha,
     tipoPitch: datos.tipoPitch,
+    idioma: normalizarIdioma(datos.idioma),
     duracionMaxima: datos.duracionMaxima,
     score: datos.score,
     claridad: datos.claridad,
@@ -173,7 +203,7 @@ export function normalizarSesion(valor: unknown): SesionGuardada | null {
   };
 
   if (datos.hallazgos !== undefined) {
-    const hallazgos = normalizarHallazgos(datos.hallazgos);
+    const hallazgos = normalizarHallazgos(datos.hallazgos, datos.tipoPitch);
     if (hallazgos) sesion.hallazgos = hallazgos;
   }
 
@@ -240,11 +270,17 @@ export function agregarSesion(entrada: SesionGuardada): void {
 }
 
 /**
- * Nombres de puntos que quedaron sin cubrir en la sesión más reciente de
- * este tipo. Solo nombres de rúbrica: nada de comentarios ni transcripción.
+ * Ids de los puntos que quedaron sin cubrir en la sesión más reciente de este
+ * tipo Y este idioma. Solo ids de rúbrica: nada de comentarios ni transcripción.
+ *
+ * El idioma entra en el filtro porque los puntos no cubiertos se le recuerdan
+ * al modelo en el prompt: mezclar idiomas haría que una práctica en inglés
+ * condicionara una en español.
  */
-export function nombresNoCumplidosPrevios(tipo: TipoPitch): string[] {
-  const previa = obtenerSesiones().find((sesion) => sesion.tipoPitch === tipo);
+export function puntosNoCumplidosPrevios(tipo: TipoPitch, idioma: Idioma): string[] {
+  const previa = obtenerSesiones().find(
+    (sesion) => sesion.tipoPitch === tipo && sesion.idioma === idioma,
+  );
   if (!previa) return [];
   return previa.rubrica.filter((punto) => !punto.cumplido).map((punto) => punto.punto);
 }
@@ -275,12 +311,13 @@ export function borrarHistorial(): void {
  * `score − cobertura`, la inversa de `calcularScore`
  * (cobertura = round(cumplidos / total × COBERTURA_MAXIMA)).
  *
- * Copia solo punto y cumplido de la rúbrica, y el conteo de muletillas.
+ * Copia solo el id y cumplido de la rúbrica, y el conteo de muletillas.
  * No copia veredicto, comentarios ni traza.
  */
 export function construirSesionGuardada(datos: {
   fecha: string;
   tipoPitch: TipoPitch;
+  idioma: Idioma;
   duracionMaxima: DuracionMaxima;
   resultado: ResultadoAnalisis;
 }): SesionGuardada | null {
@@ -290,6 +327,7 @@ export function construirSesionGuardada(datos: {
   return normalizarSesion({
     fecha: datos.fecha,
     tipoPitch: datos.tipoPitch,
+    idioma: datos.idioma,
     duracionMaxima: datos.duracionMaxima,
     score: datos.resultado.score,
     claridad: datos.resultado.score - cobertura,

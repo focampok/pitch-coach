@@ -2,6 +2,7 @@
 
 import type { DuracionMaxima } from "@/types/pitch";
 import { DURACIONES_MAXIMAS } from "@/types/pitch";
+import { useTextos } from "./ProveedorIdioma";
 
 interface SelectorDuracionProps {
   value: DuracionMaxima;
@@ -12,6 +13,8 @@ export default function SelectorDuracion({
   value,
   onChange,
 }: SelectorDuracionProps) {
+  const textos = useTextos();
+
   return (
     <div className="flex flex-wrap gap-2">
       {DURACIONES_MAXIMAS.map((duracion) => {
@@ -29,7 +32,7 @@ export default function SelectorDuracion({
                 : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
             }`}
           >
-            {duracion} {duracion === 1 ? "minuto" : "minutos"}
+            {textos.comun.minutos(duracion)}
           </button>
         );
       })}

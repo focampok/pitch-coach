@@ -1,3 +1,4 @@
+import type { Idioma } from "@/types/idioma";
 import { proveedorGemini } from "./proveedor-gemini";
 import { crearProveedorNebius } from "./proveedor-nebius";
 import { ErrorModelo } from "./error-modelo";
@@ -23,13 +24,20 @@ export type EsquemaJson = Record<string, unknown>;
 export interface SolicitudModelo {
   system: string;
   user: string;
+  /**
+   * Idioma de la petición. Lo necesitan los adaptadores para construir el
+   * esquema con sus descripciones en ese idioma (son instrucciones para el
+   * modelo, no documentación).
+   */
+  idioma: Idioma;
   /** Esquema que el modelo debe respetar. El adaptador lo traduce a su dialecto. */
   esquema: EsquemaJson;
   /**
-   * Nombres de los puntos de la rúbrica, en orden. Es dato OPCIONAL: los
+   * Ids de los puntos de la rúbrica, en orden. Es dato OPCIONAL: los
    * adaptadores que lo aprovechan (Nebius) derivan de él un esquema
    * restringido con `minItems === maxItems === puntos.length`; los que no
-   * (Gemini) lo ignoran y siguen usando `esquema` tal cual.
+   * (Gemini) lo ignoran y siguen usando `esquema` tal cual. Solo importa la
+   * longitud y el orden: el nombre del punto nunca viaja al modelo.
    */
   puntosRubrica?: readonly string[];
   /**

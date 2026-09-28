@@ -2,6 +2,8 @@
 // El código se escribe en inglés; los valores de dominio (nombres de puntos,
 // veredictos) van en español por ser contenido visible del producto.
 
+import type { Idioma } from "./idioma";
+
 export type TipoPitch = "capital" | "educacion" | "innovacion" | "tecnologia";
 
 // Duración máxima del pitch en minutos. Solo se aceptan presets fijos de
@@ -55,6 +57,11 @@ export interface ResultadoAnalisis {
 // transcripción + contexto; el análisis (modelo + muletillas) corre server-side.
 export interface SolicitudAnalisis {
   transcripcion: string;
+  /**
+   * Idioma de la petición: gobierna los mensajes de error de la ruta y el
+   * idioma en que se pide el análisis. Ausente en el servidor vale "es".
+   */
+  idioma: Idioma;
   tipoPitch: TipoPitch;
   duracionMaxima: DuracionMaxima;
   /** Tiempo real que duró el pitch, en segundos (docs/alcance.md §7). */
@@ -75,6 +82,8 @@ export interface SolicitudAnalisis {
 /** Cuerpo de POST /api/sparring/pregunta. */
 export interface SolicitudPreguntaSparring {
   tipoPitch: TipoPitch;
+  /** Idioma de la petición (mensajes de error y salida del modelo). */
+  idioma: Idioma;
   /** Nombre del punto de rúbrica no cumplido (mismo texto que la rúbrica). */
   punto: string;
 }
@@ -87,6 +96,8 @@ export interface RespuestaPreguntaSparring {
 /** Cuerpo de POST /api/sparring/evaluar. */
 export interface SolicitudEvaluacionSparring {
   tipoPitch: TipoPitch;
+  /** Idioma de la petición (mensajes de error y salida del modelo). */
+  idioma: Idioma;
   punto: string;
   pregunta: string;
   /** Respuesta hablada o escrita del usuario. */

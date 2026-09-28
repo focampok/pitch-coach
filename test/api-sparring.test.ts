@@ -69,7 +69,7 @@ describe("POST /api/sparring/pregunta", () => {
     const res = await POST_PREGUNTA(
       peticion("http://localhost/api/sparring/pregunta", {
         tipoPitch: "capital",
-        punto: "El ask",
+        punto: "ask",
       }),
     );
     expect(res.status).toBe(200);
@@ -103,7 +103,7 @@ describe("POST /api/sparring/pregunta", () => {
     const res = await POST_PREGUNTA(
       peticion("http://localhost/api/sparring/pregunta", {
         tipoPitch: "capital",
-        punto: "El ask",
+        punto: "ask",
       }),
     );
     expect(res.status).toBe(502);
@@ -127,7 +127,7 @@ describe("POST /api/sparring/evaluar", () => {
     const res = await POST_EVALUAR(
       peticion("http://localhost/api/sparring/evaluar", {
         tipoPitch: "capital",
-        punto: "El ask",
+        punto: "ask",
         pregunta: "¿Cuánto capital buscas y para qué?",
         respuesta: "Pedimos 200 mil dólares para contratar dos ingenieros.",
       }),
@@ -149,7 +149,7 @@ describe("POST /api/sparring/evaluar", () => {
     const res = await POST_EVALUAR(
       peticion("http://localhost/api/sparring/evaluar", {
         tipoPitch: "capital",
-        punto: "El ask",
+        punto: "ask",
         pregunta: "¿Cuánto?",
         respuesta: "x".repeat(MAX_RESPUESTA_SPARRING_CARACTERES + 1),
       }),
@@ -169,7 +169,7 @@ describe("POST /api/sparring/evaluar", () => {
     const bloqueada = await POST_EVALUAR(
       peticion("http://localhost/api/sparring/evaluar", {
         tipoPitch: "capital",
-        punto: "El ask",
+        punto: "ask",
         pregunta: "¿Cuánto?",
         respuesta: "Todavía no lo sé.",
       }),

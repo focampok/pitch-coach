@@ -16,7 +16,7 @@ La idea central:
 
 ## 3. Usuario objetivo
 
-Builders, emprendedores, estudiantes y profesionales que necesitan preparar un pitch — de capital, educativo, de innovación o técnico — y quieren practicar con retroalimentación objetiva antes de presentar frente a una audiencia real. Mercado: **LATAM**, interfaz y feedback en español.
+Builders, emprendedores, estudiantes y profesionales que necesitan preparar un pitch — de capital, educativo, de innovación o técnico — y quieren practicar con retroalimentación objetiva antes de presentar frente a una audiencia real. Mercado: **LATAM**, con interfaz y feedback en **español e inglés** (§15).
 
 ## 4. Experiencia principal (loop del usuario)
 
@@ -45,7 +45,7 @@ Nunca se depende de un solo canal.
 
 Personaje estilizado (SVG inline) que **escucha durante la grabación** y reacciona con micro-gestos. **Toda reacción se dispara por un dato real y es verificable en pantalla.**
 
-En esta fase la transcripción llega **después de detener** (grabar → transcribir → mostrar el texto completo). El avatar permanece en `escuchando` mientras se graba y **asiente al terminar**. Las reacciones a muletillas y frases de impacto sobre texto intermedio quedan para cuando exista STT en vivo (Scribe Realtime); hoy el refuerzo está en el dashboard.
+En esta fase la transcripción llega **después de detener** (grabar → transcribir → mostrar el texto completo). El avatar permanece en `escuchando` mientras se graba y **asiente al terminar**, con una de tres frases en el idioma de la sesión (`MENSAJES_ASINTIENDO`). El motor que estremecía, se sorprendía o miraba el reloj está **apagado**: no tiene llamador, porque dependía de resultados intermedios que este flujo ya no produce. Su reactivación prevista es el rediseño de UX con STT en vivo (Scribe Realtime). No hay fecha de calendario. Hoy el refuerzo de muletillas está en el dashboard.
 
 #### Estados (uno activo a la vez)
 
@@ -67,12 +67,14 @@ En esta fase la transcripción llega **después de detener** (grabar → transcr
 
 #### Dependencia con el resto del sistema
 
-- Las muletillas y frases de impacto son **keyword matching local** (`src/lib/muletillas.ts`, `src/lib/reacciones.ts`) — **sin IA en tiempo real**. El modelo queda reservado al análisis final.
-- En esta fase ese matching corre sobre la **transcripción completa** (dashboard). El STT en vivo (Scribe Realtime) y el selector de idioma quedan fuera de esta versión.
+- Las muletillas son **keyword matching local** (`src/lib/muletillas.ts`) — **sin IA**. El modelo queda reservado al análisis final. Hay una lista por idioma: 21 patrones en español y la lista en inglés de §8.
+- Ese matching corre sobre la **transcripción completa** (dashboard). El motor de reacciones sobre texto intermedio está apagado hasta el rediseño con Scribe Realtime.
 
 ## 6. Rúbricas por tipo de pitch
 
 Cada tipo tiene 5 puntos fijos que la IA busca en la transcripción. Van **hardcodeadas**; no hay rúbricas custom en esta versión.
+
+Cada punto tiene un **id estable** —es lo que viaja por la API y lo que se guarda en el historial— y su nombre y descripción "qué buscar" traducidos a cada idioma. Traducir un punto no invalida los datos ya guardados. Los ids por tipo están en §15; los nombres de abajo son los del español.
 
 ### Capital
 1. Problema claro
@@ -125,7 +127,9 @@ Lista base:
 - "digamos"
 - "en ese sentido"
 
-La implementación tiene **21 patrones** (oratoria LATAM) y umbral ≥3 para "pues" y "bueno". La misma lista (`PATRONES_MULETILLAS` en `src/lib/muletillas.ts`) sirve para el conteo y para el resaltado.
+La implementación en español tiene **21 patrones** (oratoria LATAM) y umbral ≥3 para "pues" y "bueno". La misma lista (`PATRONES_MULETILLAS`) sirve para el conteo y para el resaltado. "eeee / ehh" solo cuenta si Scribe escribe el relleno.
+
+En inglés, `patronesMuletillas("en")`: "um", "uh", "you know", "I mean", "actually", "basically", "kind of" / "sort of", más "well", "like", "so" y "right?" con contexto. "like", "so" y "right" no se marcan por la palabra suelta (tienen uso legítimo: "I like", "and so on", "the right market", "right now"). Se marcan al inicio de cláusula, entre comas, repetidas, o —"right"— como coletilla ("right?"). "um" / "uh" tienen la misma limitación que "eeee": dependen de que Scribe las transcriba. "you know" puede coincidir con "do you know"; es un falso positivo conocido, del mismo tipo que "este" en español. El análisis y el resaltado usan el idioma de la sesión.
 
 ## 9. Alcance actual
 
@@ -141,7 +145,7 @@ Ciclo completo:
 - [x] Evaluación contra rúbrica vía el proveedor activo (Nebius por defecto; Gemini de contingencia). JSON estructurado.
 - [x] Veredicto en voz (ElevenLabs, fallback SpeechSynthesis), a pedido.
 - [x] Dashboard: transcripción, muletillas resaltadas, rúbrica, score.
-- [x] Avatar con reacciones en vivo (§5.1).
+- [x] Avatar que escucha y asiente al terminar (§5.1). El motor de reacciones en vivo está apagado hasta el rediseño con STT en vivo.
 - [x] Sesión anónima, sin login.
 - [x] Análisis Ultra: reanálisis de la misma transcripción con razonamiento extendido (Nemotron Ultra).
 - [x] Resolver hallazgos: hasta 3 preguntas de seguimiento sobre puntos no cumplidos (orden de rúbrica), texto + escuchar a pedido, respuesta por voz o texto de respaldo.
@@ -153,7 +157,8 @@ Ciclo completo:
 - Persistencia en servidor y sincronización entre navegadores o dispositivos. El historial que sí existe es local (`localStorage` de este navegador) y no guarda transcripción, comentarios, traza de Ultra, preguntas, respuestas ni audio.
 - Comparar dos intentos en la misma sesión.
 - Edición o creación de rúbricas custom.
-- Soporte multi-idioma (solo español).
+- Idiomas nuevos más allá de español e inglés (§15).
+- Motor de reacciones del avatar (estremecido / sorprendido / mirandoReloj), apagado hasta el rediseño de UX con Scribe Realtime. No hay fecha de calendario.
 - Análisis de video, lenguaje corporal o expresión facial.
 - Avatar 3D o "talking head".
 - Backend separado — todo corre en Next.js con API routes.
@@ -195,8 +200,10 @@ Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 ### Análisis (LLM)
 - **Nebius Token Factory** por defecto (Nemotron Super / Ultra / Nano según el
   nivel). Gemini sigue disponible como contingencia.
-- El prompt recibe transcripción + tipo + rúbrica + tiempo real vs. máximo. La
-  transcripción se marca como **dato no confiable** entre delimitadores.
+- El prompt recibe transcripción + tipo + rúbrica + tiempo real vs. máximo, y el
+  **idioma** de la petición: las instrucciones y la salida van en ese idioma
+  (§15). La transcripción se marca como **dato no confiable** entre delimitadores,
+  que no se traducen.
 - El modelo devuelve **solo** esta porción, en **JSON estructurado**:
 
 ```json
@@ -214,7 +221,7 @@ En Análisis Ultra el modelo añade `"traza": ["paso 1", "..."]` (4 a 8 pasos de
 razonamiento). El análisis estándar no la pide.
 
 - El modelo **no** calcula el score, **no** nombra los puntos y **no** cuenta
-  muletillas. El servidor asigna el nombre de cada punto desde la rúbrica por
+  muletillas. El servidor asigna el **id** de cada punto desde la rúbrica por
   índice, calcula el score (`clamp(round(cumplidos / total * 80) + clamp(claridad, 0, 20), 0, 100)`)
   y cuenta las muletillas con `src/lib/muletillas.ts`.
 
@@ -228,15 +235,16 @@ razonamiento). El análisis estándar no la pide.
 - El usuario responde por voz (mismo grabador) o con el texto de respaldo si no hay micrófono.
 
 ### Texto → voz (TTS)
-- **ElevenLabs** como primera opción (voz natural en español). La voz se
-  reutiliza en el sparring de la misma sesión.
+- **ElevenLabs** como primera opción (voz natural). La voz se reutiliza en el
+  sparring de la misma sesión: el género queda fijo y el idioma elige el par
+  de Voice IDs (§15).
 - **SpeechSynthesis** nativa como fallback: si ElevenLabs falla o tarda, el loop no se corta.
 
 ### Muletillas
 - Regex / keyword matching. No requiere LLM.
 
 ### Avatar
-- SVG inline + CSS transforms. Escucha durante la grabación; matching local de muletillas sobre la transcripción final. Respeta `prefers-reduced-motion`.
+- SVG inline + CSS transforms. Escucha durante la grabación y asiente al terminar, en el idioma de la sesión. El motor de reacciones sobre texto intermedio está apagado (§5.1). Respeta `prefers-reduced-motion`.
 
 ### Deploy
 - Un solo servicio Next.js (p. ej. Railway). HTTPS hace falta para el micrófono fuera de localhost.
@@ -245,3 +253,104 @@ razonamiento). El análisis estándar no la pide.
 
 - Ejecución nativa (`npm run dev`). El `Dockerfile` es solo para el deploy, no para desarrollar.
 - Las keys van en `.env.local` (no se commitea). `.env.example` documenta los nombres, sin valores.
+
+## 15. Modo bilingüe (es / en)
+
+El producto funciona en **español e inglés**. Un único valor `idioma` (`'es' | 'en'`)
+gobierna lo que se lee y lo que se escucha: interfaz, rúbricas, prompts,
+mensajes de error, el par de voces de ElevenLabs, el hint de Scribe, las
+muletillas y las tres frases de asintiendo.
+
+### Registro de idiomas
+
+`src/lib/idiomas.ts` es la fuente de verdad de qué idiomas existen: código,
+nombre, etiqueta BCP-47 (`es-419` / `en-US`) y `codigoStt` (el hint
+`language_code` de Scribe, ISO 639-1). Los Voice IDs no viven en el registro:
+son variables de entorno (`ELEVENLABS_VOICE_ID_MALE` / `_FEMALE` en español,
+`ELEVENLABS_VOICE_ID_EN_MALE` / `_EN_FEMALE` en inglés). Las muletillas viven
+en `src/lib/muletillas.ts`. Agregar un idioma nuevo debe ser **agregar datos**
+(registro, diccionario, par de voces, patrones), no tocar componentes.
+
+Los textos viven en diccionarios tipados (`src/lib/diccionario-es.ts`,
+`src/lib/diccionario-en.ts`, y el selector en `src/lib/diccionarios.ts`). El
+inglés está tipado contra `typeof es`, así que una clave faltante o de más falla
+el build; un test verifica lo mismo en runtime, incluida la aridad de las
+funciones de plural.
+
+### Cómo se elige el idioma
+
+1. El guardado en `localStorage` (`pitch-coach:idioma`), si lo hay.
+2. Si no, `navigator.languages[0]`: `es*` → español, cualquier otra cosa → inglés.
+3. Si no hay ninguna señal, español (también es el valor del servidor).
+
+La home es **estática** (se prerenderiza en build), así que el servidor no puede
+leer `localStorage` ni `navigator`. Por eso un script en el `<head>` fija
+`<html lang>` **antes del primer paint**, y el árbol de React arranca con el
+mismo idioma por defecto que el servidor —sin advertencia de hidratación— para
+corregirse en un *layout effect*, que React ejecuta antes de que el navegador
+pinte. El resultado: primer frame ya en el idioma correcto, y la home sigue
+sirviéndose estática.
+
+### Ids estables de los puntos de rúbrica
+
+Los ids son un **contrato**: viajan por la API y quedan guardados en el historial
+de cada usuario, así que renombrar uno rompe datos ya persistidos (hay un test que
+fija la lista para que el cambio sea deliberado). Son únicos **dentro de cada
+tipo**, no entre tipos.
+
+| Tipo | Ids (en orden) |
+|---|---|
+| Capital | `problema`, `mercado`, `solucion`, `traccion`, `ask` |
+| Educación | `objetivo`, `estructura`, `ejemplo`, `conocimiento-previo`, `llamado-accion` |
+| Innovación | `problema-oportunidad`, `diferenciador`, `validacion`, `impacto`, `proximos-pasos` |
+| Tecnología | `problema-tecnico`, `funcionamiento`, `diferenciador-tecnico`, `estado`, `stack` |
+
+El modelo nunca ve un id: el servidor asigna el id por índice y el prompt solo
+lleva los nombres visibles del idioma elegido.
+
+### Historial y continuidad
+
+Cada sesión guarda el **id** de cada punto y el **idioma** en que se practicó.
+Las entradas anteriores al modo bilingüe (nombre en español, sin `idioma`) se
+leen sin romper: el nombre se mapea a su id y el idioma se asume español, que es
+el único que existía. Un valor que no corresponde a ningún punto se conserva tal
+cual y se muestra así.
+
+La continuidad —qué puntos quedaron sin cubrir en el intento anterior— solo mira
+sesiones del **mismo tipo de pitch y del mismo idioma**, para que una práctica en
+inglés no condicione una en español.
+
+### Contrato de las API
+
+Todas las rutas reciben `idioma` (`'es' | 'en'`); ausente vale `'es'` y cualquier
+otro valor es un **400**. Los mensajes genéricos, los 413 y el 429 se devuelven en
+ese idioma. En `/api/transcribir` el idioma va como **campo del FormData**, porque
+su cuerpo es multipart y no JSON.
+
+El **429** es el único caso especial: lo arma el rate limit, que corre *antes* de
+leer el cuerpo (a propósito: no se parsean 20 MB de audio bajo abuso), así que
+toma el idioma de la cabecera `X-Idioma` que el cliente manda en cada petición.
+Cuando el cuerpo sí se puede leer, manda el cuerpo.
+
+`/api/enriquecer` acepta y valida el campo, pero todavía no lo usa: localizar la
+consulta y los resultados de Tavily es una fase propia.
+
+### Voz
+
+El veredicto y las preguntas de Resolver hallazgos pasan por `/api/tts`. El
+género (`male` / `female` / `random`) es el de la sesión y no cambia al
+cambiar de idioma; el idioma elige el par de Voice IDs. Si faltan las variables
+del idioma, el cliente cae a SpeechSynthesis.
+
+Scribe (`POST /v1/speech-to-text`) acepta `language_code` opcional (ISO 639-1 o
+639-3). Si se omite, autodetecta. Pitch Coach manda el idioma de la sesión
+(`es` o `en`) porque ya se conoce y el hint puede mejorar la transcripción.
+`ELEVENLABS_SCRIBE_MODEL` solo elige el modelo (default `scribe_v2`).
+`no_verbatim` se deja apagado: ese flag borra muletillas.
+
+### Fuera de esta fase
+
+- Motor de reacciones del avatar (estremecido / sorprendido / mirandoReloj).
+  Apagado. La reactivación prevista es el rediseño de UX con Scribe Realtime;
+  no hay fecha de calendario.
+- Traducción de la consulta de Tavily.

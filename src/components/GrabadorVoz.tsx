@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DuracionMaxima } from "@/types/pitch";
 import type { EstadoCoach } from "@/types/coach";
-import { MENSAJES_COACH } from "@/lib/reacciones";
+import { MENSAJES_ASINTIENDO } from "@/lib/reacciones";
 import CoachAvatar from "./CoachAvatar";
+import { cabecerasIdioma } from "@/lib/idiomas";
+import { useIdioma } from "./ProveedorIdioma";
 
 type EstadoGrabador = "inactivo" | "grabando" | "transcribiendo" | "finalizado";
 
@@ -58,6 +60,7 @@ export default function GrabadorVoz({
   duracionMaxima,
   onTranscripcionCompleta,
 }: GrabadorVozProps) {
+  const { idioma, textos } = useIdioma();
   const [estado, setEstado] = useState<EstadoGrabador>("inactivo");
   const [transcripcionFinal, setTranscripcionFinal] = useState("");
   const [textoRespaldo, setTextoRespaldo] = useState("");
@@ -94,11 +97,11 @@ export default function GrabadorVoz({
       setTranscripcionFinal(texto);
       setEstado("finalizado");
       setEstadoCoach("asintiendo");
-      const opciones = MENSAJES_COACH.asintiendo;
+      const opciones = MENSAJES_ASINTIENDO[idioma];
       setMensajeCoach(opciones[Math.floor(Math.random() * opciones.length)]);
       onTranscripcionCompleta(texto, tiempoRealSegundos);
     },
-    [onTranscripcionCompleta],
+    [idioma, onTranscripcionCompleta],
   );
 
   const transcribirBlob = useCallback(
@@ -112,14 +115,16 @@ export default function GrabadorVoz({
       try {
         const form = new FormData();
         form.append("audio", blob, nombreArchivo(blob.type || mimeRef.current));
+        form.append("idioma", idioma);
         const respuesta = await fetch("/api/transcribir", {
           method: "POST",
+          headers: cabecerasIdioma(idioma),
           body: form,
           signal: controller.signal,
         });
         const cuerpo = (await respuesta.json()) as { texto?: string; error?: string };
         if (!respuesta.ok || typeof cuerpo.texto !== "string") {
-          throw new Error(cuerpo.error ?? "No se pudo transcribir el audio.");
+          throw new Error(cuerpo.error ?? textos.grabador.errorTranscripcion);
         }
         const texto = cuerpo.texto.trim();
         finalizarConTexto(texto, tiempoRealSegundos);
@@ -128,7 +133,7 @@ export default function GrabadorVoz({
         setError(
           err instanceof Error
             ? err.message
-            : "No se pudo transcribir el audio. Intenta de nuevo o escribe el texto.",
+            : textos.grabador.errorTranscripcionInesperado,
         );
         setEstado("inactivo");
         setMostrarRespaldo(true);
@@ -136,7 +141,7 @@ export default function GrabadorVoz({
         setMensajeCoach(null);
       }
     },
-    [finalizarConTexto],
+    [finalizarConTexto, idioma, textos],
   );
 
   const detenerGrabacion = useCallback(() => {
@@ -156,7 +161,7 @@ export default function GrabadorVoz({
   const iniciarGrabacion = useCallback(async () => {
     if (!capturaDisponible()) {
       setMostrarRespaldo(true);
-      setError("No se pudo acceder al micrófono. Puedes escribir el texto.");
+      setError(textos.grabador.errorMicrofonoSinSoporte);
       return;
     }
 
@@ -170,9 +175,7 @@ export default function GrabadorVoz({
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
       setMostrarRespaldo(true);
-      setError(
-        "No se pudo acceder al micrófono. Permite el acceso o escribe el texto.",
-      );
+      setError(textos.grabador.errorMicrofonoSinPermiso);
       return;
     }
 
@@ -191,7 +194,7 @@ export default function GrabadorVoz({
 
     recorder.onerror = () => {
       soltarMicrófono();
-      setError("Ocurrió un error durante la grabación. Intenta de nuevo.");
+      setError(textos.grabador.errorGrabacion);
       setEstado("inactivo");
       setMostrarRespaldo(true);
     };
@@ -206,7 +209,7 @@ export default function GrabadorVoz({
       });
       soltarMicrófono();
       if (blob.size === 0) {
-        setError("No se capturó audio. Intenta de nuevo o escribe el texto.");
+        setError(textos.grabador.errorSinAudio);
         setEstado("inactivo");
         setMostrarRespaldo(true);
         return;
@@ -218,7 +221,7 @@ export default function GrabadorVoz({
       recorder.start();
     } catch {
       soltarMicrófono();
-      setError("No se pudo iniciar la grabación. Intenta de nuevo o escribe el texto.");
+      setError(textos.grabador.errorInicioGrabacion);
       setMostrarRespaldo(true);
       return;
     }
@@ -231,17 +234,17 @@ export default function GrabadorVoz({
     setEstadoCoach("escuchando");
     setMensajeCoach(null);
     setMostrarRespaldo(false);
-  }, [duracionMaxima, soltarMicrófono, transcribirBlob]);
+  }, [duracionMaxima, soltarMicrófono, textos, transcribirBlob]);
 
   const enviarTextoRespaldo = useCallback(() => {
     const texto = textoRespaldo.trim();
     if (texto === "") {
-      setError("El texto está vacío. Escribe tu pitch o respuesta.");
+      setError(textos.grabador.errorTextoVacio);
       return;
     }
     setError(null);
     finalizarConTexto(texto, 0);
-  }, [finalizarConTexto, textoRespaldo]);
+  }, [finalizarConTexto, textos, textoRespaldo]);
 
   const reiniciar = useCallback(() => {
     abortTranscripcionRef.current?.abort();
@@ -291,11 +294,11 @@ export default function GrabadorVoz({
   return (
     <section className="w-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-zinc-800">Grabación</h2>
+        <h2 className="text-lg font-semibold text-zinc-800">{textos.grabador.titulo}</h2>
         {estado === "grabando" && (
           <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">
             <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-            Grabando
+            {textos.grabador.grabando}
           </span>
         )}
         {estado === "transcribiendo" && (
@@ -304,7 +307,7 @@ export default function GrabadorVoz({
             className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700"
           >
             <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-            Transcribiendo…
+            {textos.grabador.transcribiendo}
           </span>
         )}
       </div>
@@ -316,7 +319,7 @@ export default function GrabadorVoz({
       {estado === "grabando" && (
         <div className="mt-4">
           <div className="flex items-baseline justify-between text-sm text-zinc-500">
-            <span>Tiempo restante</span>
+            <span>{textos.grabador.tiempoRestante}</span>
             <span className="font-mono text-2xl font-semibold tabular-nums text-zinc-900">
               {formatoTiempo(tiempoRestante)}
             </span>
@@ -332,19 +335,19 @@ export default function GrabadorVoz({
 
       <div className="mt-4 min-h-32 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          {estado === "finalizado" ? "Transcripción final" : "Transcripción"}
+          {estado === "finalizado" ? textos.grabador.transcripcionFinal : textos.grabador.transcripcion}
         </p>
         {transcripcionFinal ? (
           <p className="whitespace-pre-wrap text-zinc-800">{transcripcionFinal}</p>
         ) : (
           <p className="text-zinc-400">
             {estado === "grabando"
-              ? "Grabando… la transcripción aparecerá al terminar."
+              ? textos.grabador.esperandoGrabacion
               : estado === "transcribiendo"
-                ? "Transcribiendo el audio…"
+                ? textos.grabador.transcribiendoAudio
                 : estado === "finalizado"
-                  ? "No se capturó ninguna transcripción."
-                  : "Aquí se mostrará la transcripción de tu pitch."}
+                  ? textos.grabador.sinTranscripcion
+                  : textos.grabador.transcripcionVacia}
           </p>
         )}
       </div>
@@ -362,21 +365,21 @@ export default function GrabadorVoz({
         >
           <p className="text-sm text-zinc-600">
             {soporte
-              ? "Si no puedes usar el micrófono, escribe el texto."
-              : "Este navegador no puede grabar audio. Escribe el texto."}
+              ? textos.grabador.ayudaRespaldo
+              : textos.grabador.ayudaSinSoporte}
           </p>
           <textarea
             value={textoRespaldo}
             onChange={(event) => setTextoRespaldo(event.target.value)}
             rows={4}
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-zinc-800"
-            placeholder="Escribe tu pitch o respuesta…"
+            placeholder={textos.grabador.placeholderRespaldo}
           />
           <button
             type="submit"
             className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
           >
-            Enviar texto
+            {textos.grabador.enviarTexto}
           </button>
         </form>
       )}
@@ -394,7 +397,7 @@ export default function GrabadorVoz({
             onClick={() => void iniciarGrabacion()}
             className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
           >
-            Comenzar a grabar
+            {textos.grabador.comenzar}
           </button>
         )}
         {estado === "grabando" && (
@@ -403,12 +406,12 @@ export default function GrabadorVoz({
             onClick={detenerGrabacion}
             className="rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700"
           >
-            Detener grabación
+            {textos.grabador.detener}
           </button>
         )}
         {estado === "transcribiendo" && (
           <p className="text-sm text-zinc-500" role="status">
-            Transcribiendo… espera un momento.
+            {textos.grabador.transcribiendoEspera}
           </p>
         )}
         {estado === "finalizado" && (
@@ -417,7 +420,7 @@ export default function GrabadorVoz({
             onClick={reiniciar}
             className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
           >
-            Grabar de nuevo
+            {textos.grabador.grabarDeNuevo}
           </button>
         )}
       </div>

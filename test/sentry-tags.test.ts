@@ -146,7 +146,7 @@ describe("tags operativos en eventos de servidor", () => {
     const res = await postPregunta(
       peticion(
         "/api/sparring/pregunta",
-        { tipoPitch: "capital", punto: "Problema claro" },
+        { tipoPitch: "capital", punto: "problema" },
         "10.0.0.4"
       )
     );
@@ -163,7 +163,7 @@ describe("tags operativos en eventos de servidor", () => {
         "/api/sparring/evaluar",
         {
           tipoPitch: "capital",
-          punto: "Problema claro",
+          punto: "problema",
           pregunta: "¿Cuál es el problema?",
           respuesta: "No lo tengo claro.",
         },

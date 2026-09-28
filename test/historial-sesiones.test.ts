@@ -7,7 +7,7 @@ import {
   agregarSesion,
   borrarHistorial,
   construirSesionGuardada,
-  nombresNoCumplidosPrevios,
+  puntosNoCumplidosPrevios,
   obtenerSesiones,
 } from "@/lib/historial-sesiones";
 import { calcularScore } from "@/lib/validar-analisis";
@@ -52,12 +52,13 @@ function sesion(fecha: string, cambios: Partial<SesionGuardada> = {}): SesionGua
   return {
     fecha,
     tipoPitch: "capital",
+    idioma: "es",
     duracionMaxima: 3,
     score: 46,
     claridad: 14,
     rubrica: [
-      { punto: "Problema claro", cumplido: true },
-      { punto: "El ask", cumplido: false },
+      { punto: "problema", cumplido: true },
+      { punto: "ask", cumplido: false },
     ],
     muletillas: { "o sea": 2 },
     ultraUsado: false,
@@ -170,11 +171,11 @@ describe("historial de sesiones", () => {
       score: 46,
       veredicto_corto: "VEREDICTO_SECRETO",
       rubrica: [
-        { punto: "Problema claro", cumplido: true, comentario: "COMENTARIO_SECRETO" },
-        { punto: "Tamaño del mercado / oportunidad", cumplido: false, comentario: "COMENTARIO_SECRETO" },
-        { punto: "Solución / diferenciador", cumplido: true, comentario: "COMENTARIO_SECRETO" },
-        { punto: "Tracción o evidencia", cumplido: false, comentario: "COMENTARIO_SECRETO" },
-        { punto: "El ask", cumplido: false, comentario: "COMENTARIO_SECRETO" },
+        { punto: "problema", cumplido: true, comentario: "COMENTARIO_SECRETO" },
+        { punto: "mercado", cumplido: false, comentario: "COMENTARIO_SECRETO" },
+        { punto: "solucion", cumplido: true, comentario: "COMENTARIO_SECRETO" },
+        { punto: "traccion", cumplido: false, comentario: "COMENTARIO_SECRETO" },
+        { punto: "ask", cumplido: false, comentario: "COMENTARIO_SECRETO" },
       ],
       muletillas: { "o sea": 2 },
       tiempo_real_segundos: 40,
@@ -184,6 +185,7 @@ describe("historial de sesiones", () => {
     const guardada = construirSesionGuardada({
       fecha: "2026-09-27T12:00:00.000Z",
       tipoPitch: "capital",
+      idioma: "es",
       duracionMaxima: 3,
       resultado,
     });
@@ -192,22 +194,22 @@ describe("historial de sesiones", () => {
     expect(guardada?.claridad).toBe(resultado.score - cobertura);
     expect(guardada?.ultraUsado).toBe(false);
     expect(guardada?.rubrica).toEqual([
-      { punto: "Problema claro", cumplido: true },
-      { punto: "Tamaño del mercado / oportunidad", cumplido: false },
-      { punto: "Solución / diferenciador", cumplido: true },
-      { punto: "Tracción o evidencia", cumplido: false },
-      { punto: "El ask", cumplido: false },
+      { punto: "problema", cumplido: true },
+      { punto: "mercado", cumplido: false },
+      { punto: "solucion", cumplido: true },
+      { punto: "traccion", cumplido: false },
+      { punto: "ask", cumplido: false },
     ]);
     expectSinSecretos(JSON.stringify(guardada));
   });
 
   it("la claridad reconstruida sigue a calcularScore si cambia COBERTURA_MAXIMA", () => {
     const rubrica: ResultadoAnalisis["rubrica"] = [
-      { punto: "Problema claro", cumplido: true, comentario: "" },
-      { punto: "Tamaño del mercado / oportunidad", cumplido: false, comentario: "" },
-      { punto: "Solución / diferenciador", cumplido: true, comentario: "" },
-      { punto: "Tracción o evidencia", cumplido: false, comentario: "" },
-      { punto: "El ask", cumplido: false, comentario: "" },
+      { punto: "problema", cumplido: true, comentario: "" },
+      { punto: "mercado", cumplido: false, comentario: "" },
+      { punto: "solucion", cumplido: true, comentario: "" },
+      { punto: "traccion", cumplido: false, comentario: "" },
+      { punto: "ask", cumplido: false, comentario: "" },
     ];
     const claridad = 14;
     const cumplidos = rubrica.filter((item) => item.cumplido).length;
@@ -215,6 +217,7 @@ describe("historial de sesiones", () => {
     const guardada = construirSesionGuardada({
       fecha: "2026-09-27T13:00:00.000Z",
       tipoPitch: "capital",
+      idioma: "es",
       duracionMaxima: 3,
       resultado: {
         score,
@@ -275,6 +278,7 @@ describe("historial de sesiones", () => {
         "duracionMaxima",
         "fecha",
         "hallazgos",
+        "idioma",
         "muletillas",
         "rubrica",
         "score",
@@ -311,7 +315,7 @@ describe("historial de sesiones", () => {
     });
     expectSinSecretos(crudo());
     expect(obtenerSesiones()[0]?.hallazgos?.puntos).toEqual([
-      { punto: "El ask", cumplido: true },
+      { punto: "ask", cumplido: true },
     ]);
   });
 
@@ -330,27 +334,137 @@ describe("historial de sesiones", () => {
     expectSinSecretos(crudo());
   });
 
-  it("nombresNoCumplidosPrevios devuelve solo puntos no cubiertos del mismo tipo", () => {
+  it("puntosNoCumplidosPrevios devuelve solo ids no cubiertos del mismo tipo e idioma", () => {
     agregarSesion(
       sesion("vieja", {
-        rubrica: [{ punto: "Problema claro", cumplido: false }],
+        rubrica: [{ punto: "problema", cumplido: false }],
       }),
     );
     agregarSesion(
       sesion("reciente", {
         rubrica: [
-          { punto: "Problema claro", cumplido: true },
-          { punto: "El ask", cumplido: false },
+          { punto: "problema", cumplido: true },
+          { punto: "ask", cumplido: false },
         ],
       }),
     );
     agregarSesion(
       sesion("otro-tipo", {
         tipoPitch: "educacion",
-        rubrica: [{ punto: "Objetivo de aprendizaje claro", cumplido: false }],
+        rubrica: [{ punto: "objetivo", cumplido: false }],
       }),
     );
-    expect(nombresNoCumplidosPrevios("capital")).toEqual(["El ask"]);
-    expect(JSON.stringify(nombresNoCumplidosPrevios("capital"))).not.toContain("COMENTARIO");
+    agregarSesion(
+      sesion("otro-idioma", {
+        idioma: "en",
+        rubrica: [{ punto: "mercado", cumplido: false }],
+      }),
+    );
+
+    expect(puntosNoCumplidosPrevios("capital", "es")).toEqual(["ask"]);
+    expect(puntosNoCumplidosPrevios("capital", "en")).toEqual(["mercado"]);
+    expect(puntosNoCumplidosPrevios("educacion", "es")).toEqual(["objetivo"]);
+    expect(
+      JSON.stringify(puntosNoCumplidosPrevios("capital", "es")),
+    ).not.toContain("COMENTARIO");
+  });
+});
+
+describe("el storage guarda ids, nunca nombres traducidos", () => {
+  it("persiste el id de cada punto, no su nombre visible", () => {
+    const guardada = construirSesionGuardada({
+      fecha: "2026-09-27T12:00:00.000Z",
+      tipoPitch: "capital",
+      idioma: "en",
+      duracionMaxima: 3,
+      resultado: {
+        score: 60,
+        veredicto_corto: "ok",
+        rubrica: [
+          { punto: "problema", cumplido: true, comentario: "" },
+          { punto: "mercado", cumplido: false, comentario: "" },
+        ],
+        muletillas: {},
+        tiempo_real_segundos: 40,
+        tiempo_maximo_segundos: 180,
+      },
+    });
+    expect(guardada?.rubrica).toEqual([
+      { punto: "problema", cumplido: true },
+      { punto: "mercado", cumplido: false },
+    ]);
+
+    agregarSesion(guardada as SesionGuardada);
+    expect(crudo()).toContain('"punto":"problema"');
+    // Ni el nombre en español ni el nombre en inglés llegan al storage.
+    expect(crudo()).not.toContain("Problema claro");
+    expect(crudo()).not.toContain("Clear problem");
+    expect(crudo()).toContain('"idioma":"en"');
+  });
+});
+
+describe("compatibilidad con entradas viejas del historial", () => {
+  /** Entrada tal como la escribía la versión anterior al modo bilingüe. */
+  const ENTRADA_VIEJA = {
+    fecha: "2026-09-20T10:00:00.000Z",
+    tipoPitch: "capital",
+    duracionMaxima: 3,
+    score: 46,
+    claridad: 14,
+    rubrica: [
+      { punto: "Problema claro", cumplido: true },
+      // Un nombre que ya no corresponde a ningún punto de la rúbrica.
+      { punto: "Punto retirado", cumplido: false },
+      { punto: "El ask", cumplido: false },
+    ],
+    muletillas: { "o sea": 2 },
+    ultraUsado: false,
+  };
+
+  it("lee sin romper, mapea nombres en español a ids y asume español", () => {
+    localStorage.setItem(CLAVE_HISTORIAL_SESIONES, JSON.stringify([ENTRADA_VIEJA]));
+
+    const sesiones = obtenerSesiones();
+    expect(sesiones).toHaveLength(1);
+    expect(sesiones[0]?.idioma).toBe("es");
+    expect(sesiones[0]?.rubrica).toEqual([
+      { punto: "problema", cumplido: true },
+      { punto: "Punto retirado", cumplido: false },
+      { punto: "ask", cumplido: false },
+    ]);
+  });
+
+  it("reescribe la entrada normalizada, conservando lo que no supo mapear", () => {
+    localStorage.setItem(CLAVE_HISTORIAL_SESIONES, JSON.stringify([ENTRADA_VIEJA]));
+    obtenerSesiones();
+
+    const reescrito = JSON.parse(crudo()) as { rubrica: { punto: string }[] }[];
+    expect(reescrito[0]?.rubrica.map((punto) => punto.punto)).toEqual([
+      "problema",
+      "Punto retirado",
+      "ask",
+    ]);
+  });
+
+  it("la continuidad también funciona con una entrada vieja ya normalizada", () => {
+    localStorage.setItem(CLAVE_HISTORIAL_SESIONES, JSON.stringify([ENTRADA_VIEJA]));
+    expect(puntosNoCumplidosPrevios("capital", "es")).toEqual([
+      "Punto retirado",
+      "ask",
+    ]);
+  });
+
+  it("una sesión vieja no alimenta la continuidad de otro idioma", () => {
+    localStorage.setItem(CLAVE_HISTORIAL_SESIONES, JSON.stringify([ENTRADA_VIEJA]));
+    expect(puntosNoCumplidosPrevios("capital", "en")).toEqual([]);
+  });
+
+  it("actualizar una sesión no le cambia el idioma", () => {
+    localStorage.setItem(CLAVE_HISTORIAL_SESIONES, JSON.stringify([ENTRADA_VIEJA]));
+    actualizarSesion("2026-09-20T10:00:00.000Z", { ultraUsado: true });
+
+    const sesiones = obtenerSesiones();
+    expect(sesiones[0]?.idioma).toBe("es");
+    expect(sesiones[0]?.ultraUsado).toBe(true);
   });
 });

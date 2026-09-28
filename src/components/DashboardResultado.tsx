@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Idioma } from "@/types/idioma";
 import type {
   DuracionMaxima,
   EvaluacionRubrica,
@@ -9,10 +10,13 @@ import type {
   TipoPitch,
 } from "@/types/pitch";
 import {
-  PATRONES_MULETILLAS,
+  patronesMuletillas,
   resaltarMuletillas,
   type PatronMuletilla,
 } from "@/lib/muletillas";
+import { cabecerasJson } from "@/lib/idiomas";
+import { etiquetaPunto } from "@/lib/rubricas";
+import { useIdioma } from "./ProveedorIdioma";
 import { ReproductorVeredicto } from "./ReproductorVeredicto";
 
 interface SugerenciaTavily {
@@ -30,8 +34,8 @@ interface DashboardResultadoProps {
   /** Se llama cuando ElevenLabs resuelve la voz de la sesión. */
   onVozUsada?: (voz: "male" | "female") => void;
   /**
-   * Patrones reales de src/lib/muletillas.ts (única fuente de verdad).
-   * Incluyen umbralMin para "pues"/"bueno" (≥3).
+   * Patrones de src/lib/muletillas.ts para el idioma de la sesión.
+   * En español incluyen umbralMin para "pues"/"bueno" (≥3).
    */
   muletillasPatterns?: readonly PatronMuletilla[];
   /** Si se permite pedir enriquecimiento con Tavily (opcional, §12). */
@@ -46,12 +50,20 @@ function colorScore(score: number): string {
   return "#e03131"; // rojo
 }
 
-function ItemRubrica({ item }: { item: EvaluacionRubrica }) {
+function ItemRubrica({
+  item,
+  idioma,
+  tipoPitch,
+}: {
+  item: EvaluacionRubrica;
+  idioma: Idioma;
+  tipoPitch: TipoPitch;
+}) {
   return (
     <li className={`pc-rubrica-item ${item.cumplido ? "cumplido" : "faltante"}`}>
       <span aria-hidden="true">{item.cumplido ? "✅" : "⬜"}</span>
       <div>
-        <p className="pc-rubrica-punto">{item.punto}</p>
+        <p className="pc-rubrica-punto">{etiquetaPunto(item.punto, idioma, tipoPitch)}</p>
         {item.comentario && (
           <p className="pc-rubrica-comentario">{item.comentario}</p>
         )}
@@ -64,12 +76,14 @@ export function DashboardResultado({
   transcripcion,
   resultado,
   tipoPitch,
-  muletillasPatterns = PATRONES_MULETILLAS,
+  muletillasPatterns,
   habilitarTavily = true,
   vozSesion = "random",
   onVozUsada,
   onUltraCompletado,
 }: DashboardResultadoProps) {
+  const { idioma, textos } = useIdioma();
+  const patrones = muletillasPatterns ?? patronesMuletillas(idioma);
   const [sugerencias, setSugerencias] = useState<SugerenciaTavily[]>([]);
   const [analisisUltra, setAnalisisUltra] = useState<ResultadoAnalisis | null>(null);
   const [analizandoUltra, setAnalizandoUltra] = useState(false);
@@ -87,8 +101,8 @@ export function DashboardResultado({
   );
 
   const transcripcionResaltada = useMemo(
-    () => resaltarMuletillas(transcripcion, muletillasPatterns),
-    [transcripcion, muletillasPatterns]
+    () => resaltarMuletillas(transcripcion, patrones),
+    [transcripcion, patrones]
   );
 
   const totalMuletillas = useMemo(
@@ -112,9 +126,10 @@ export function DashboardResultado({
 
     fetch("/api/enriquecer", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: cabecerasJson(idioma),
       body: JSON.stringify({
         tema: tipoPitch,
+        idioma,
         puntosSinCumplir: puntosSinCumplir.map((p) => ({
           punto: p.punto,
           comentario: p.comentario,
@@ -156,10 +171,11 @@ export function DashboardResultado({
       const duracionMaxima = (resultado.tiempo_maximo_segundos / 60) as DuracionMaxima;
       const respuesta = await fetch("/api/analizar-pitch", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: cabecerasJson(idioma),
         body: JSON.stringify({
           transcripcion,
           tipoPitch,
+          idioma,
           duracionMaxima,
           tiempoRealSegundos: resultado.tiempo_real_segundos,
           nivel: "ultra",
@@ -169,23 +185,25 @@ export function DashboardResultado({
       const cuerpo = (await respuesta.json()) as ResultadoAnalisis | { error: string };
       if (controlador.signal.aborted) return;
       if (!respuesta.ok || "error" in cuerpo) {
-        throw new Error("error" in cuerpo ? cuerpo.error : "Error al reanalizar el pitch.");
+        throw new Error("error" in cuerpo ? cuerpo.error : textos.dashboard.errorReanalisis);
       }
       setAnalisisUltra(cuerpo);
       onUltraCompletado?.();
     } catch (error) {
       if (controlador.signal.aborted) return;
       setErrorUltra(
-        error instanceof Error ? error.message : "Error inesperado al reanalizar el pitch.",
+        error instanceof Error ? error.message : textos.dashboard.errorReanalisisInesperado,
       );
     } finally {
       if (!controlador.signal.aborted) setAnalizandoUltra(false);
     }
   }, [
+    idioma,
     onUltraCompletado,
     resultado.tiempo_maximo_segundos,
     resultado.tiempo_real_segundos,
     tipoPitch,
+    textos,
     transcripcion,
   ]);
 
@@ -225,24 +243,31 @@ export function DashboardResultado({
           />
         </div>
         <p>
-          {resultado.tiempo_real_segundos}s de {resultado.tiempo_maximo_segundos}s
-          usados
+          {textos.dashboard.tiempoUsado(
+            resultado.tiempo_real_segundos,
+            resultado.tiempo_maximo_segundos,
+          )}
         </p>
       </section>
 
       <section className="pc-rubrica">
-        <h3>Rúbrica</h3>
+        <h3>{textos.dashboard.rubrica}</h3>
         <ul>
           {resultado.rubrica.map((item) => (
-            <ItemRubrica key={item.punto} item={item} />
+            <ItemRubrica
+              key={item.punto}
+              item={item}
+              idioma={idioma}
+              tipoPitch={tipoPitch}
+            />
           ))}
         </ul>
       </section>
 
       <section className="pc-muletillas">
-        <h3>Muletillas ({totalMuletillas})</h3>
+        <h3>{textos.dashboard.muletillas(totalMuletillas)}</h3>
         {muletillasOrdenadas.length === 0 ? (
-          <p>Ninguna detectada — buen control.</p>
+          <p>{textos.dashboard.sinMuletillas}</p>
         ) : (
           <ul>
             {muletillasOrdenadas.map(([palabra, count]) => (
@@ -260,7 +285,7 @@ export function DashboardResultado({
       </section>
 
       <section className="pc-transcripcion">
-        <h3>Transcripción</h3>
+        <h3>{textos.dashboard.transcripcion}</h3>
         <p
           // `resaltarMuletillas` escapa HTML de la transcripción (viene de STT,
           // no es confiable) antes de insertar los <mark>; el único markup de
@@ -271,10 +296,10 @@ export function DashboardResultado({
 
       {habilitarTavily && puntosSinCumplir.length > 0 && (
         <section className="pc-tavily">
-          <h3>Datos que podrían reforzar tu pitch</h3>
-          {cargandoTavily && <p>Buscando…</p>}
+          <h3>{textos.dashboard.datosSugeridos}</h3>
+          {cargandoTavily && <p>{textos.dashboard.buscando}</p>}
           {!cargandoTavily && sugerencias.length === 0 && (
-            <p>Sin sugerencias por ahora.</p>
+            <p>{textos.dashboard.sinSugerencias}</p>
           )}
           <ul>
             {sugerencias.map((s) => (
@@ -282,7 +307,7 @@ export function DashboardResultado({
                 <p className="pc-tavily-punto">{s.punto}</p>
                 <p className="pc-tavily-resumen">{s.resumen}</p>
                 <a href={s.url} target="_blank" rel="noreferrer">
-                  Fuente
+                  {textos.dashboard.fuente}
                 </a>
               </li>
             ))}
@@ -297,7 +322,7 @@ export function DashboardResultado({
           disabled={analizandoUltra}
           className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-60"
         >
-          {analizandoUltra ? "Reanalizando con Nemotron Ultra…" : "Análisis Ultra"}
+          {analizandoUltra ? textos.dashboard.reanalizando : textos.dashboard.analisisUltra}
         </button>
         {errorUltra && (
           <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -307,7 +332,7 @@ export function DashboardResultado({
         {analisisUltra !== null && (
           <div className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
             <h3 className="text-base font-semibold text-zinc-900">
-              Análisis Ultra — razonamiento extendido con Nemotron Ultra
+              {textos.dashboard.tituloUltra}
             </h3>
             <header className="pc-dashboard-header">
               <div
@@ -330,7 +355,7 @@ export function DashboardResultado({
             {analisisUltra.traza && analisisUltra.traza.length > 0 && (
               <section className="space-y-2">
                 <h3 className="text-sm font-semibold text-zinc-800">
-                  Traza del razonamiento
+                  {textos.dashboard.traza}
                 </h3>
                 <ol className="list-decimal space-y-1.5 pl-5 text-sm text-zinc-700">
                   {analisisUltra.traza.map((paso, indice) => (
@@ -340,10 +365,15 @@ export function DashboardResultado({
               </section>
             )}
             <section className="pc-rubrica">
-              <h3>Rúbrica (Ultra)</h3>
+              <h3>{textos.dashboard.rubricaUltra}</h3>
               <ul>
                 {analisisUltra.rubrica.map((item) => (
-                  <ItemRubrica key={item.punto} item={item} />
+                  <ItemRubrica
+              key={item.punto}
+              item={item}
+              idioma={idioma}
+              tipoPitch={tipoPitch}
+            />
                 ))}
               </ul>
             </section>

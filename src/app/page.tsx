@@ -3,17 +3,20 @@
 import { useCallback, useState } from "react";
 import SelectorTipoPitch from "@/components/SelectorTipoPitch";
 import SelectorDuracion from "@/components/SelectorDuracion";
+import SelectorIdioma from "@/components/SelectorIdioma";
 import GrabadorVoz from "@/components/GrabadorVoz";
 import { DashboardResultado } from "@/components/DashboardResultado";
 import { PanelProgreso } from "@/components/PanelProgreso";
 import { SparringCoach } from "@/components/SparringCoach";
+import { useIdioma } from "@/components/ProveedorIdioma";
+import { cabecerasJson } from "@/lib/idiomas";
 import {
   actualizarSesion,
   agregarSesion,
   construirSesionGuardada,
-  nombresNoCumplidosPrevios,
+  puntosNoCumplidosPrevios,
 } from "@/lib/historial-sesiones";
-import { PATRONES_MULETILLAS } from "@/lib/muletillas";
+import { patronesMuletillas } from "@/lib/muletillas";
 import type {
   TipoPitch,
   DuracionMaxima,
@@ -22,14 +25,8 @@ import type {
   SparringCompletado,
 } from "@/types/pitch";
 
-const LABEL_TIPO_PITCH: Record<TipoPitch, string> = {
-  capital: "Capital",
-  educacion: "Educación",
-  innovacion: "Innovación",
-  tecnologia: "Tecnología",
-};
-
 export default function Home() {
+  const { idioma, textos } = useIdioma();
   const [tipoPitch, setTipoPitch] = useState<TipoPitch>("capital");
   const [duracionMaxima, setDuracionMaxima] = useState<DuracionMaxima>(3);
   const [transcripcion, setTranscripcion] = useState<string | null>(null);
@@ -52,14 +49,15 @@ export default function Home() {
       setErrorAnalisis(null);
       setVozSesion("random");
       setAnalizando(true);
-      const puntosPrevios = nombresNoCumplidosPrevios(tipoPitch);
+      const puntosPrevios = puntosNoCumplidosPrevios(tipoPitch, idioma);
       try {
         const respuesta = await fetch("/api/analizar-pitch", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: cabecerasJson(idioma),
           body: JSON.stringify({
             transcripcion: texto,
             tipoPitch,
+            idioma,
             duracionMaxima,
             tiempoRealSegundos: tiempoReal,
             ...(puntosPrevios.length > 0 ? { puntosNoCumplidosPrevios: puntosPrevios } : {}),
@@ -67,13 +65,14 @@ export default function Home() {
         });
         const cuerpo = (await respuesta.json()) as ResultadoAnalisis | { error: string };
         if (!respuesta.ok || "error" in cuerpo) {
-          throw new Error("error" in cuerpo ? cuerpo.error : "Error al analizar el pitch.");
+          throw new Error("error" in cuerpo ? cuerpo.error : textos.inicio.errorAnalisis);
         }
         setAnalisis(cuerpo);
         const fecha = new Date().toISOString();
         const sesion = construirSesionGuardada({
           fecha,
           tipoPitch,
+          idioma,
           duracionMaxima,
           resultado: cuerpo,
         });
@@ -83,13 +82,13 @@ export default function Home() {
         }
       } catch (error) {
         setErrorAnalisis(
-          error instanceof Error ? error.message : "Error inesperado al analizar el pitch.",
+          error instanceof Error ? error.message : textos.inicio.errorAnalisisInesperado,
         );
       } finally {
         setAnalizando(false);
       }
     },
-    [tipoPitch, duracionMaxima],
+    [tipoPitch, duracionMaxima, idioma, textos],
   );
 
   const marcarUltraUsado = useCallback(() => {
@@ -118,28 +117,31 @@ export default function Home() {
           Pitch Coach
         </h1>
         <p className="mx-auto mt-2 max-w-md text-zinc-600">
-          Elige el tipo de pitch y la duración máxima antes de practicar.
+          {textos.inicio.subtitulo}
         </p>
-        <button
-          type="button"
-          onClick={() => setMostrarProgreso((visible) => !visible)}
-          className="mt-3 text-sm font-medium text-zinc-700 underline"
-        >
-          {mostrarProgreso ? "Ocultar progreso" : "Tu progreso"}
-        </button>
+        <div className="mt-3 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => setMostrarProgreso((visible) => !visible)}
+            className="text-sm font-medium text-zinc-700 underline"
+          >
+            {mostrarProgreso ? textos.inicio.ocultarProgreso : textos.inicio.verProgreso}
+          </button>
+          <SelectorIdioma />
+        </div>
       </header>
 
       {mostrarProgreso && <PanelProgreso />}
 
       <section className="w-full space-y-8">
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-zinc-800">Tipo de pitch</h2>
+          <h2 className="text-lg font-semibold text-zinc-800">{textos.inicio.tipoPitch}</h2>
           <SelectorTipoPitch value={tipoPitch} onChange={setTipoPitch} />
         </div>
 
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-zinc-800">
-            Duración máxima
+            {textos.inicio.duracionMaxima}
           </h2>
           <SelectorDuracion value={duracionMaxima} onChange={setDuracionMaxima} />
         </div>
@@ -147,13 +149,10 @@ export default function Home() {
 
       {/* Resumen de la configuración activa antes de grabar. */}
       <p className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-zinc-700">
-        Pitch de{" "}
-        <span className="font-semibold text-zinc-900">
-          {LABEL_TIPO_PITCH[tipoPitch]}
-        </span>{" "}
-        —{" "}
-        <span className="font-semibold text-zinc-900">{duracionMaxima}</span>{" "}
-        {duracionMaxima === 1 ? "minuto" : "minutos"}
+        {textos.inicio.resumenPitch(
+          textos.comun.tipoPitch[tipoPitch],
+          textos.comun.minutos(duracionMaxima),
+        )}
       </p>
 
       {/* Grabador: siempre visible porque tipo y duración ya tienen valor por
@@ -165,7 +164,7 @@ export default function Home() {
 
       {analizando && (
         <p className="text-zinc-600" role="status">
-          Analizando tu pitch…
+          {textos.inicio.analizando}
         </p>
       )}
       {errorAnalisis && (
@@ -179,7 +178,7 @@ export default function Home() {
           transcripcion={transcripcion}
           resultado={analisis}
           tipoPitch={tipoPitch}
-          muletillasPatterns={PATRONES_MULETILLAS}
+          muletillasPatterns={patronesMuletillas(idioma)}
           vozSesion={vozSesion}
           onVozUsada={setVozSesion}
           onUltraCompletado={marcarUltraUsado}

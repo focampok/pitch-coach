@@ -1,10 +1,14 @@
 # Pitch Coach — Status del proyecto
 
-> **2026-09-27.** Qué está implementado, mapeado a `docs/alcance.md`.
+> **2026-09-28.** Qué está implementado, mapeado a `docs/alcance.md`.
 > El loop (voz → análisis → dashboard + veredicto a pedido) está cerrado.
 > El STT es universal (MediaRecorder + Scribe). Resolver hallazgos, Análisis
 > Ultra y el panel "Tu progreso" están implementados; la verificación del
 > micrófono en cada navegador queda para el mantenedor.
+> El **modo bilingüe (es / en)** está completo: interfaz, rúbricas, prompts,
+> contrato de API, voz (TTS y hint de Scribe) y muletillas (§15 del alcance).
+> El motor de reacciones del avatar (estremecido / sorprendido / mirandoReloj)
+> sigue **apagado** a propósito hasta el rediseño de UX con STT en vivo.
 
 ## Resumen rápido
 
@@ -12,8 +16,8 @@
 - ✅ Avatar (§5.1): escucha durante la grabación y asiente al terminar.
 - ✅ Deploy: `Dockerfile` + `railway.toml`.
 - ✅ Análisis con dos proveedores: **Nebius** (por defecto) y **Gemini**
-  (contingencia manual). Rúbricas, prompt en español, tiempo como contexto,
-  JSON estructurado, fallbacks y reintentos.
+  (contingencia manual). Rúbricas, prompt parametrizado por idioma, tiempo como
+  contexto, JSON estructurado, fallbacks y reintentos.
 - ✅ Dashboard: score, rúbrica, muletillas, transcripción resaltada, tiempo.
 - ✅ TTS: ElevenLabs vía `/api/tts`, fallback a SpeechSynthesis.
   **Sin autoplay** — el usuario pulsa "Escuchar veredicto".
@@ -38,7 +42,16 @@
   de este navegador (sin cuenta y sin servidor). El panel "Tu progreso"
   las lista. No se guardan transcripción, comentarios, traza, preguntas,
   respuestas ni audio.
-- 🟡 La transcripción no es en vivo (grabar → detener → transcribir). El selector de idioma y Scribe Realtime quedan para después.
+- ✅ **Modo bilingüe (es / en)**: selector en la home, diccionarios tipados,
+  rúbricas con ids estables, mensajes de error de la API en el idioma pedido,
+  prompts que instruyen la salida en ese idioma, par de voces TTS por idioma,
+  hint de Scribe y muletillas en inglés. El idioma se recuerda en este
+  navegador y, si no hay ninguno guardado, sale del navegador.
+- 🟡 La transcripción no es en vivo (grabar → detener → transcribir). Scribe
+  Realtime queda para el rediseño de UX; no hay fecha de calendario.
+- 🟡 El motor de reacciones (estremecido / sorprendido / mirandoReloj) está
+  apagado. Solo se muestran las tres frases de `asintiendo`, en el idioma de
+  la sesión, al terminar la transcripción.
 
 ## Leyenda
 
@@ -53,10 +66,10 @@
 | ✅ | Selector de tipo (§9) | `SelectorTipoPitch.tsx` | capital, educación, innovación, tecnología |
 | ✅ | Selector de duración (§9) | `SelectorDuracion.tsx` | 1 a 7 minutos |
 | ✅ | Grabación con corte (§9) | `GrabadorVoz.tsx` | MediaRecorder; auto-stop; texto de respaldo si no hay micrófono |
-| ✅ | Transcripción (§9) | `GrabadorVoz.tsx` + `/api/transcribir` | ElevenLabs Scribe (`scribe_v2`); hint `es`; sin palabra por palabra en vivo |
-| ✅ | Muletillas (§8) | `src/lib/muletillas.ts` | 21 patrones; `PATRONES_MULETILLAS` es la fuente de verdad |
+| ✅ | Transcripción (§9) | `GrabadorVoz.tsx` + `/api/transcribir` | ElevenLabs Scribe (`scribe_v2`); hint `language_code` = idioma de la sesión (`es` o `en`); sin palabra por palabra en vivo |
+| ✅ | Muletillas (§8) | `src/lib/muletillas.ts` | español: 21 patrones (`PATRONES_MULETILLAS`). inglés: `patronesMuletillas("en")`. `like` / `so` / `right` no se marcan por la palabra suelta |
 | ✅ | UI | `src/app/page.tsx` | selectores + grabador + `DashboardResultado` |
-| ✅ | Avatar (§5.1) | `CoachAvatar.tsx` + `reacciones.ts` + `types/coach.ts` | escucha + asiente; reacciones a texto intermedio reservadas a STT en vivo |
+| 🟡 | Avatar (§5.1) | `CoachAvatar.tsx` + `reacciones.ts` + `types/coach.ts` | escucha durante la grabación y asiente al terminar, con las 3 frases de `MENSAJES_ASINTIENDO` en el idioma de la sesión. El motor (estremecido / sorprendido / mirandoReloj) está apagado: no tiene llamador. Reactivación prevista: rediseño de UX con Scribe Realtime, sin fecha de calendario |
 | ✅ | Sesión anónima | `src/app/page.tsx` | sin login. El historial vive en `localStorage` de este navegador, no en el servidor |
 | ✅ | Deploy | `Dockerfile` + `railway.toml` | standalone; healthcheck `/` |
 | ✅ | Rúbricas (§6) | `src/lib/rubricas.ts` | 4 tipos × 5 puntos |
@@ -70,12 +83,18 @@
 | ✅ | API `analizar-pitch` | `src/app/api/analizar-pitch/route.ts` | acepta `nivel` opcional (`estandar` \| `ultra` \| `rapido`); 400 / 413 / 429 / 502 (errores genéricos al cliente); Ultra comparte el mismo rate limit |
 | ✅ | Dashboard | `DashboardResultado.tsx` + `dashboard-resultado.css` | incluye Tavily y botón **Análisis Ultra** |
 | ✅ | Resolver hallazgos (§9) | `SparringCoach.tsx` + `/api/sparring/pregunta` + `/api/sparring/evaluar` | copy visible "Resolver hallazgos"; APIs internas siguen en `/api/sparring/*`; hasta 3 puntos no cumplidos; nivel `rapido`; escuchar a pedido; mismo grabador + texto de respaldo |
-| ✅ | API `transcribir` | `elevenlabs.ts` + `/api/transcribir` | Scribe batch; audio en memoria; 400 / 413 / 429 / 502 genérico; timeout 60 s |
-| ✅ | TTS (§13) | `ReproductorVeredicto.tsx` + `elevenlabs.ts` + `/api/tts` | timeout 6 s; 413/429; `autoPlay={false}` |
+| ✅ | API `transcribir` | `elevenlabs.ts` + `/api/transcribir` | Scribe batch; `language_code` del idioma de la sesión; `ELEVENLABS_SCRIBE_MODEL` solo elige el modelo; audio en memoria; 400 / 413 / 429 / 502 genérico; timeout 60 s |
+| ✅ | TTS (§13) | `ReproductorVeredicto.tsx` + `elevenlabs.ts` + `/api/tts` | par de Voice IDs según idioma (sin sufijo en es, `_EN_` en en); el género de sesión no cambia. Veredicto y Resolver hallazgos comparten `/api/tts`. timeout 6 s; 413/429; `autoPlay={false}` |
 | ✅ | Tavily (§12) | `tavily.ts` + `/api/enriquecer` | best-effort; timeout 8 s |
 | ✅ | Límites | `src/lib/limites.ts` + `src/lib/rate-limit.ts` | transcripción máx. 8000; audio máx. 20 MB; respuesta sparring máx. 2000; rate limit por IP en memoria (por instancia) |
 | ✅ | Historial local | `src/lib/historial-sesiones.ts` + `src/types/historial.ts` | clave `pitch-coach:historial-sesiones`; últimas 20; FIFO. Campos: fecha, tipo, duración, score, claridad (reconstruida del score), rúbrica `{punto, cumplido}`, conteo de muletillas, `ultraUsado`, y —si se completó— hallazgos `{preguntasHechas, puntosReforzados, puntos: [{punto, cumplido}]}`. Ultra no guarda score ni rúbrica propios |
 | ✅ | Panel "Tu progreso" | `PanelProgreso.tsx` | enlace en la página principal; lista reciente primero (fecha, tipo, score, cobertura `n/5`, Ultra, hallazgos); "Borrar historial" con `confirm()` |
+| ✅ | Modo bilingüe (§15) | `src/lib/idiomas.ts`, `src/lib/diccionario-es.ts`, `src/lib/diccionario-en.ts`, `src/lib/diccionarios.ts`, `ProveedorIdioma.tsx`, `SelectorIdioma.tsx` | registro de idiomas + diccionarios tipados + contexto de React. `en` está tipado contra la forma de `es`; un test compara las dos formas clave por clave. Idioma inicial: `localStorage` → `navigator.language` (`es*` → es) → es |
+| ✅ | `<html lang>` sin parpadeo | `layout.tsx` + `src/lib/idiomas.ts` | script en el `<head>` fija el atributo antes del primer paint; el proveedor arranca con el mismo idioma por defecto que el servidor (sin warning de hidratación) y lo corrige en un layout effect. La home sigue estática |
+| ✅ | Ids estables de rúbrica | `src/lib/rubricas.ts` | 4 tipos × 5 puntos, cada uno con `id` estable + nombre y "qué buscar" por idioma. El id es lo único que viaja por la API y lo que se persiste; el modelo nunca lo ve. Verificados por un test que fija la lista |
+| ✅ | Historial con ids e idioma | `src/lib/historial-sesiones.ts` + `src/types/historial.ts` | cada sesión guarda los **ids** de sus puntos y el `idioma`. Las entradas viejas (nombre en español, sin idioma) se normalizan sin romper: nombre → id, idioma → `es`. La continuidad solo usa sesiones del mismo tipo **y** idioma |
+| ✅ | Mensajes de error por idioma | `src/lib/idioma-ruta.ts` + `src/lib/rate-limit.ts` + `src/lib/diccionarios.ts` | todas las rutas aceptan `idioma` (`'es' \| 'en'`; ausente → `'es'`; otro → 400) y responden 400/413/429/502 en ese idioma. El 429 usa la cabecera `X-Idioma` porque el rate limit corre antes de leer el cuerpo |
+| ✅ | Prompts por idioma | `src/lib/prompts.ts`, `src/lib/prompts-sparring.ts`, `src/lib/validar-analisis.ts`, `src/lib/validar-sparring.ts` | un constructor por idioma (análisis estándar, Ultra con traza y sparring) y descripciones del esquema también por idioma: son instrucciones, es donde se le dice al modelo en qué idioma escribir. Delimitadores, esquema restringido y score siguen igual |
 
 ### Muletillas (21 patrones)
 
@@ -87,14 +106,36 @@
 - **Umbral ≥3 (2):** **"pues"** y **"bueno"** (no se reportan ni se resaltan
   con menos de 3 apariciones).
 - El patrón de "eeee / ehh" sigue; depende de que Scribe transcriba el relleno.
+  Lo mismo pasa con "um" / "uh" en inglés.
+
+### Muletillas en inglés
+
+`patronesMuletillas("en")`. Claras: "um", "uh", "you know", "I mean",
+"actually", "basically", "kind of" / "sort of". "you know" puede coincidir con
+una pregunta real ("do you know"); se acepta, igual que "este" en español.
+
+"like", "so" y "right" **no** se marcan por la palabra suelta:
+
+- **like**: inicio de cláusula o entre comas ("Like,", ", like,"), repetido
+  ("like like"), o seguido de um/uh. "I like the product" no entra.
+- **so**: inicio de cláusula salvo "so that/much/many/far/on", entre comas, o
+  repetido. "and so on" y "so big" no entran.
+- **right**: solo "right?" o ", right," / ", right.". "right now" y "the right
+  market" no entran.
+- **well**: inicio de cláusula o tras coma. "as well" y "well-known" no entran.
+
+El resaltado marca la palabra, no la coma que la precede.
 
 ## 2. Abierto para la comunidad
 
 | Ítem | Notas |
 |---|---|
 | Historial entre dispositivos o cuentas | El progreso queda en el `localStorage` de este navegador. No hay cuentas ni sincronización. |
-| Rúbricas custom / más idiomas | Hoy solo español y 4 rúbricas fijas. El selector de idioma de Scribe queda para después. |
-| STT en vivo (Scribe Realtime) | Esta fase transcribe el clip completo al detener. |
+| Rúbricas custom | Hoy son 4 rúbricas fijas, en español e inglés. Editarlas o crear propias sigue abierto. |
+| Motor de reacciones del avatar | Apagado. `crearMotorReacciones` no tiene llamador. La reactivación es el rediseño de UX con STT en vivo (Scribe Realtime); no hay fecha de calendario. Hoy solo viven las 3 frases de asintiendo. |
+| Idiomas nuevos | Agregar uno debería ser agregar datos en el registro, un diccionario, un par de Voice IDs y patrones de muletillas; hoy solo hay es y en. |
+| STT en vivo (Scribe Realtime) | Esta fase transcribe el clip completo al detener. Es también la condición para reactivar el motor de reacciones. |
+| Consulta de Tavily por idioma | `/api/enriquecer` acepta `idioma` y no lo usa. Localizar la consulta sigue abierto. |
 
 ## 3. Variables de entorno
 
@@ -113,12 +154,26 @@ En `.env.local` y en el host de deploy:
   `MODEL_RETRY_MAX_DELAY_MS`. Los nombres `GEMINI_MODEL`,
   `GEMINI_FALLBACK_MODELS` y `GEMINI_RETRY_*` siguen funcionando como alias,
   pero **solo aplican cuando el proveedor activo es Gemini**.
-- `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID_MALE`, `ELEVENLABS_VOICE_ID_FEMALE` — TTS y STT (Scribe); sin Voice IDs, SpeechSynthesis. Sin API key, el STT falla y hay texto de respaldo.
-- `ELEVENLABS_SCRIBE_MODEL` — modelo batch de Scribe (default `scribe_v2`)
+- `ELEVENLABS_API_KEY` — TTS y STT (Scribe). Sin API key, el STT falla y hay texto de respaldo; el veredicto cae a SpeechSynthesis.
+- `ELEVENLABS_VOICE_ID_MALE`, `ELEVENLABS_VOICE_ID_FEMALE` — par de voces en español.
+- `ELEVENLABS_VOICE_ID_EN_MALE`, `ELEVENLABS_VOICE_ID_EN_FEMALE` — par de voces en inglés. Sin ellas, el TTS en inglés falla y el cliente cae a SpeechSynthesis. El género de la sesión no cambia de par.
+- `ELEVENLABS_SCRIBE_MODEL` — modelo batch de Scribe (default `scribe_v2`). No elige idioma: el hint es `language_code` (`es` o `en`), y si se omitiera Scribe autodetectaría.
 - `TAVILY_API_KEY` — sugerencias; sin ella, esa sección no aparece
 
 Prueba de humo manual contra Nebius real (fuera de vitest, la ejecuta el
-mantenedor con su clave): `scripts/smoke-nebius.mjs`.
+mantenedor con su clave): `scripts/smoke-nebius.mjs`. Corre el mismo pitch en
+tres niveles de calidad (fuerte / medio / débil) y comprueba que el evaluador los
+ordene; con `--lang en` eso mismo sobre transcripciones en inglés, para ver si
+distingue calidad igual que en español. Consume cuota (una petición por fixture).
+
+```
+node scripts/smoke-nebius.mjs --lang en
+node scripts/smoke-nebius.mjs --lang en --ultra
+node scripts/smoke-nebius.mjs --lang en --fixture debil
+```
+
+**No ejecutada todavía**: la Parte A no toca al proveedor, así que la corrida real
+en inglés queda para el mantenedor.
 
 ## 4. Notas técnicas
 

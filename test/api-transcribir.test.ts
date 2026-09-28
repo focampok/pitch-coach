@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/transcribir/route";
-import { MAX_AUDIO_BYTES, MENSAJE_AUDIO_GRANDE } from "@/lib/limites";
+import { MAX_AUDIO_BYTES } from "@/lib/limites";
+import { diccionario } from "@/lib/diccionarios";
 import { MAX_SOLICITUDES, reiniciar } from "@/lib/rate-limit";
 
 const captureException = vi.fn();
@@ -50,10 +51,11 @@ function archivoAudio(contenido: string = "clip", tipo = "audio/webm"): File {
 function peticion(
   audio: File | null,
   ip = "1.1.1.1",
-  extras?: { contentLength?: string },
+  extras?: { contentLength?: string; idioma?: string },
 ): Request {
   const form = new FormData();
   if (audio) form.append("audio", audio);
+  if (extras?.idioma) form.append("idioma", extras.idioma);
   const headers = new Headers({ "x-forwarded-for": ip });
   if (extras?.contentLength) headers.set("content-length", extras.contentLength);
   return new Request("http://localhost/api/transcribir", {
@@ -105,6 +107,31 @@ describe("POST /api/transcribir", () => {
     await POST(peticion(archivoAudio()));
     const body = fetchMock.mock.calls[0][1].body as FormData;
     expect(body.get("model_id")).toBe("scribe_v2_custom");
+    expect(body.get("language_code")).toBe("es");
+  });
+
+  it("sin idioma manda language_code es", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ text: "ok" }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await POST(peticion(archivoAudio()));
+    const body = fetchMock.mock.calls[0][1].body as FormData;
+    expect(body.get("language_code")).toBe("es");
+    expect(body.get("model_id")).toBe("scribe_v2");
+  });
+
+  it("con idioma en manda language_code en", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ text: "the pitch" }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST(peticion(archivoAudio(), "1.1.1.9", { idioma: "en" }));
+    expect(res.status).toBe(200);
+    const body = fetchMock.mock.calls[0][1].body as FormData;
+    expect(body.get("language_code")).toBe("en");
   });
 
   it("al fallar el proveedor responde 502 genérico y no filtra el audio", async () => {
@@ -148,7 +175,7 @@ describe("POST /api/transcribir", () => {
     const cuerpo = (await res.json()) as { error?: string };
 
     expect(res.status).toBe(413);
-    expect(cuerpo.error).toBe(MENSAJE_AUDIO_GRANDE);
+    expect(cuerpo.error).toBe(diccionario("es").api.audioGrande);
   });
 
   it("rechaza un audio que supera el tope (tamaño del Blob)", async () => {
@@ -159,7 +186,7 @@ describe("POST /api/transcribir", () => {
     const cuerpo = (await res.json()) as { error?: string };
 
     expect(res.status).toBe(413);
-    expect(cuerpo.error).toBe(MENSAJE_AUDIO_GRANDE);
+    expect(cuerpo.error).toBe(diccionario("es").api.audioGrande);
   });
 
   it("rechaza un MIME que Scribe no acepta", async () => {

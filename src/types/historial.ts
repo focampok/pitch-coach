@@ -1,3 +1,4 @@
+import type { Idioma } from "./idioma";
 import type { ConteoMuletillas, DuracionMaxima, TipoPitch } from "./pitch";
 
 // Forma de una sesión persistida en el navegador.
@@ -14,7 +15,13 @@ import type { ConteoMuletillas, DuracionMaxima, TipoPitch } from "./pitch";
 // Ultra no guarda score ni rúbrica propios: `ultraUsado` solo registra que
 // se corrió. El resultado de Ultra sigue en memoria de la pestaña.
 
-/** Punto de rúbrica persistido: nombre y si se cumplió. Sin comentario. */
+/**
+ * Punto de rúbrica persistido: id y si se cumplió. Sin comentario.
+ *
+ * Se guarda el ID, nunca el nombre traducido: así cambiar de idioma (o traducir
+ * un punto) no invalida las sesiones ya guardadas. En una entrada vieja que no
+ * se pudo mapear a ningún id queda el nombre original en español, tal cual.
+ */
 export interface PuntoHistorial {
   punto: string;
   cumplido: boolean;
@@ -38,6 +45,12 @@ export interface SesionGuardada {
   /** Marca de tiempo ISO. Identifica esta sesión para actualizaciones. */
   fecha: string;
   tipoPitch: TipoPitch;
+  /**
+   * Idioma en el que se hizo la práctica. La continuidad solo mira sesiones
+   * del mismo tipo Y del mismo idioma: los puntos no cubiertos de una práctica
+   * en inglés no se le recuerdan a alguien que ahora practica en español.
+   */
+  idioma: Idioma;
   /** Preset de 1 a 7 minutos. */
   duracionMaxima: DuracionMaxima;
   score: number;

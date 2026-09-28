@@ -7,7 +7,10 @@ import type {
   TipoPitch,
   TurnoSparring,
 } from "@/types/pitch";
+import { cabecerasJson } from "@/lib/idiomas";
+import { etiquetaPunto } from "@/lib/rubricas";
 import GrabadorVoz from "./GrabadorVoz";
+import { useIdioma } from "./ProveedorIdioma";
 import { ReproductorVeredicto } from "./ReproductorVeredicto";
 
 const MAX_PREGUNTAS_SPARRING = 3;
@@ -30,6 +33,7 @@ export function SparringCoach({
   onVozUsada,
   onCompletado,
 }: SparringCoachProps) {
+  const { idioma, textos } = useIdioma();
   const pendientes = useMemo(
     () => rubrica.filter((item) => !item.cumplido).slice(0, MAX_PREGUNTAS_SPARRING),
     [rubrica],
@@ -55,21 +59,21 @@ export function SparringCoach({
       try {
         const respuesta = await fetch("/api/sparring/pregunta", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tipoPitch, punto: punto.punto }),
+          headers: cabecerasJson(idioma),
+          body: JSON.stringify({ tipoPitch, idioma, punto: punto.punto }),
         });
         const cuerpo = (await respuesta.json()) as { pregunta?: string; error?: string };
         if (!respuesta.ok || !cuerpo.pregunta) {
-          throw new Error(cuerpo.error ?? "No se pudo generar la pregunta.");
+          throw new Error(cuerpo.error ?? textos.sparring.errorGenerarPregunta);
         }
         setPregunta(cuerpo.pregunta);
         setFase("pregunta");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error al generar la pregunta.");
+        setError(err instanceof Error ? err.message : textos.sparring.errorGenerarPreguntaInesperado);
         setFase("oferta");
       }
     },
-    [pendientes, tipoPitch],
+    [idioma, pendientes, textos, tipoPitch],
   );
 
   const evaluar = useCallback(
@@ -78,7 +82,7 @@ export function SparringCoach({
       if (!punto || !pregunta) return;
       const texto = respuestaUsuario.trim();
       if (texto === "") {
-        setError("La respuesta está vacía. Intenta de nuevo.");
+        setError(textos.sparring.errorRespuestaVacia);
         return;
       }
       setFase("evaluando");
@@ -86,9 +90,10 @@ export function SparringCoach({
       try {
         const respuesta = await fetch("/api/sparring/evaluar", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: cabecerasJson(idioma),
           body: JSON.stringify({
             tipoPitch,
+            idioma,
             punto: punto.punto,
             pregunta,
             respuesta: texto,
@@ -100,7 +105,7 @@ export function SparringCoach({
           error?: string;
         };
         if (!respuesta.ok || typeof cuerpo.cumplido !== "boolean") {
-          throw new Error(cuerpo.error ?? "No se pudo evaluar la respuesta.");
+          throw new Error(cuerpo.error ?? textos.sparring.errorEvaluarRespuesta);
         }
         const turno: TurnoSparring = {
           punto: punto.punto,
@@ -113,11 +118,11 @@ export function SparringCoach({
         setFeedback({ cumplido: cuerpo.cumplido, comentario: turno.comentario });
         setFase("feedback");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error al evaluar la respuesta.");
+        setError(err instanceof Error ? err.message : textos.sparring.errorEvaluarRespuestaInesperado);
         setFase("pregunta");
       }
     },
-    [indice, pendientes, pregunta, tipoPitch],
+    [idioma, indice, pendientes, pregunta, textos, tipoPitch],
   );
 
   const irAlSiguiente = useCallback(() => {
@@ -144,36 +149,35 @@ export function SparringCoach({
 
   return (
     <section className="w-full space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-zinc-800">Resolver hallazgos</h2>
+      <h2 className="text-lg font-semibold text-zinc-800">{textos.sparring.titulo}</h2>
 
       {fase === "oferta" && (
         <div className="space-y-3">
-          <p className="text-zinc-700">
-            Quedaron {pendientes.length}{" "}
-            {pendientes.length === 1 ? "hallazgo" : "hallazgos"} (puntos de la
-            rúbrica sin cubrir). Puedes resolverlos con preguntas de
-            seguimiento (máximo 3, en el orden de la rúbrica).
-          </p>
+          <p className="text-zinc-700">{textos.sparring.oferta(pendientes.length)}</p>
           <button
             type="button"
             onClick={() => void cargarPregunta(0)}
             className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
           >
-            Resolver hallazgos
+            {textos.sparring.resolver}
           </button>
         </div>
       )}
 
       {fase === "cargando" && (
         <p className="text-zinc-600" role="status">
-          Preparando la pregunta {indice + 1} de {pendientes.length}…
+          {textos.sparring.preparando(indice + 1, pendientes.length)}
         </p>
       )}
 
       {(fase === "pregunta" || fase === "evaluando") && pregunta && puntoActual && (
         <div className="space-y-4">
           <p className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
-            Punto: {puntoActual.punto} ({indice + 1}/{pendientes.length})
+            {textos.sparring.punto(
+              etiquetaPunto(puntoActual.punto, idioma, tipoPitch),
+              indice + 1,
+              pendientes.length,
+            )}
           </p>
           <p className="text-zinc-800">{pregunta}</p>
           <ReproductorVeredicto
@@ -181,12 +185,12 @@ export function SparringCoach({
             autoPlay={false}
             voz={vozSesion}
             onVozUsada={onVozUsada}
-            etiquetaInactivo="Escuchar pregunta"
+            etiquetaInactivo={textos.sparring.escucharPregunta}
           />
 
           {fase === "evaluando" && (
             <p className="text-zinc-600" role="status">
-              Evaluando tu respuesta…
+              {textos.sparring.evaluando}
             </p>
           )}
 
@@ -205,7 +209,7 @@ export function SparringCoach({
       {fase === "feedback" && feedback && (
         <div className="space-y-3">
           <p className="font-semibold text-zinc-900">
-            {feedback.cumplido ? "Cubierto" : "Aún pendiente"}
+            {feedback.cumplido ? textos.sparring.cubierto : textos.sparring.pendiente}
           </p>
           {feedback.comentario && <p className="text-zinc-700">{feedback.comentario}</p>}
           <button
@@ -213,14 +217,14 @@ export function SparringCoach({
             onClick={irAlSiguiente}
             className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
           >
-            {indice + 1 >= pendientes.length ? "Ver resumen" : "Siguiente pregunta"}
+            {indice + 1 >= pendientes.length ? textos.sparring.verResumen : textos.sparring.siguiente}
           </button>
         </div>
       )}
 
       {fase === "resumen" && (
         <p className="text-zinc-800">
-          Resolviste {puntosReforzados} de {pendientes.length} hallazgos.
+          {textos.sparring.resumen(puntosReforzados, pendientes.length)}
         </p>
       )}
 

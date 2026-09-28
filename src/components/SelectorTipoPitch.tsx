@@ -1,35 +1,16 @@
 "use client";
 
 import type { TipoPitch } from "@/types/pitch";
+import { useTextos } from "./ProveedorIdioma";
 
-type OpcionTipoPitch = {
-  value: TipoPitch;
-  label: string;
-  description: string;
-};
-
-// Opciones fijas de tipo de pitch (docs/alcance.md, sección 6).
-const OPCIONES: readonly OpcionTipoPitch[] = [
-  {
-    value: "capital",
-    label: "Capital",
-    description: "Problema, mercado, tracción y ask",
-  },
-  {
-    value: "educacion",
-    label: "Educación",
-    description: "Objetivo de aprendizaje y estructura pedagógica",
-  },
-  {
-    value: "innovacion",
-    label: "Innovación",
-    description: "Propuesta diferenciada, validación e impacto",
-  },
-  {
-    value: "tecnologia",
-    label: "Tecnología",
-    description: "Problema técnico, stack y diferenciador",
-  },
+// Opciones fijas de tipo de pitch (docs/alcance.md, sección 6). Acá solo vive
+// el orden y la lista de valores; las etiquetas y descripciones salen del
+// diccionario del idioma activo.
+const OPCIONES: readonly TipoPitch[] = [
+  "capital",
+  "educacion",
+  "innovacion",
+  "tecnologia",
 ];
 
 interface SelectorTipoPitchProps {
@@ -41,16 +22,18 @@ export default function SelectorTipoPitch({
   value,
   onChange,
 }: SelectorTipoPitchProps) {
+  const textos = useTextos();
+
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {OPCIONES.map((opcion) => {
-        const isSelected = opcion.value === value;
+        const isSelected = opcion === value;
 
         return (
           <button
-            key={opcion.value}
+            key={opcion}
             type="button"
-            onClick={() => onChange(opcion.value)}
+            onClick={() => onChange(opcion)}
             aria-pressed={isSelected}
             className={`rounded-xl border-2 p-4 text-left transition-all ${
               isSelected
@@ -59,10 +42,10 @@ export default function SelectorTipoPitch({
             }`}
           >
             <span className="block font-semibold text-zinc-900">
-              {opcion.label}
+              {textos.comun.tipoPitch[opcion]}
             </span>
             <span className="mt-1 block text-sm text-zinc-500">
-              {opcion.description}
+              {textos.selectorTipoPitch[opcion]}
             </span>
           </button>
         );

@@ -30,8 +30,10 @@
 - Variables esperadas (ir actualizando esta lista conforme se agreguen):
  - `GEMINI_API_KEY` — clave de la API de Gemini, usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y STT Scribe), usada únicamente en API routes (server-side), nunca expuesta al cliente.
- - `ELEVENLABS_VOICE_ID_MALE` — Voice ID de la voz de hombre (VoiceLab). Solo server-side.
- - `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID de la voz de mujer (VoiceLab). Solo server-side.
+ - `ELEVENLABS_VOICE_ID_MALE` — Voice ID de la voz de hombre en español (VoiceLab). Solo server-side.
+ - `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID de la voz de mujer en español (VoiceLab). Solo server-side.
+ - `ELEVENLABS_VOICE_ID_EN_MALE` — Voice ID de la voz de hombre en inglés. Solo server-side.
+ - `ELEVENLABS_VOICE_ID_EN_FEMALE` — Voice ID de la voz de mujer en inglés. Solo server-side.
  - `ELEVENLABS_SCRIBE_MODEL` — modelo batch de Scribe (default `scribe_v2`). Solo server-side.
  - `TAVILY_API_KEY` — clave de Tavily (búsqueda de estadísticas para sugerencias), usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - En Railway, las variables de entorno se configuran directamente en el panel del proyecto (Settings → Variables), replicando las mismas keys que en `.env.local`.
@@ -70,7 +72,6 @@ pitch-coach/
 │   │   ├── SelectorDuracion.tsx
 │   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe (STT) + coach visual
 │   │   ├── CoachAvatar.tsx
-│   │   ├── ResumenMuletillas.tsx
 │   │   ├── ReproductorVeredicto.tsx  # stub: ElevenLabs TTS + fallback SpeechSynthesis
 │   │   └── DashboardResultado.tsx    # stub: rúbrica + score
 │   ├── lib/
@@ -139,10 +140,11 @@ Notas sobre la estructura:
 
 ## Convención de idioma
 
-- **Mercado objetivo: LATAM.** Todo lo que el usuario final ve debe estar en **español**:
-  - Textos de UI (botones, labels, mensajes de error visibles, veredictos hablados y escritos).
-  - Contenido de las rúbricas y el feedback generado por el LLM.
-  - Prompts enviados a Gemini deben pedir explícitamente respuesta en español.
+- **El producto es bilingüe (es / en).** El mercado sigue siendo LATAM. Lo que el usuario final ve está en el idioma de la sesión: textos de UI, mensajes de error, rúbricas, veredictos hablados y escritos, y el feedback del modelo.
+- **El idioma de la sesión es el parámetro `idioma` (`'es' | 'en'`).** Viaja en la API (cuerpo de la petición; cabecera `X-Idioma` cuando el cuerpo todavía no se puede leer). En el cliente se resuelve en `src/lib/idiomas.ts`: primero el valor guardado en `localStorage` (clave `pitch-coach:idioma`) y, si no hay, `navigator.language` / `navigator.languages`. Si no hay ninguna señal, el fallback es `'es'`.
+- **Textos de interfaz.** `src/lib/diccionarios.ts` expone la interfaz `Diccionario` y el selector `diccionario(idioma)`. El contenido está en `src/lib/diccionario-es.ts` y `src/lib/diccionario-en.ts`. La forma se deriva del español (`export type Diccionario = typeof es` en `diccionario-es.ts`); el inglés se tipa contra esa forma, así que una clave que falta o sobra no compila.
+- **Prompts.** El prompt a cada proveedor debe pedir la respuesta en el idioma de la sesión, no siempre en español. En `src/lib/prompts.ts` el esquema es por idioma: un constructor de `system` y otro de `user` por cada idioma (`CONSTRUCTORES_SYSTEM`, `CONSTRUCTORES_USER`). El mismo criterio aplica a `src/lib/prompts-sparring.ts`.
+- **No "corregir" el inglés.** Un agente futuro NO debe reescribir a español una salida, un texto de UI, un veredicto o un prompt en inglés asumiendo que el proyecto es solo en español. Si `idioma` es `en`, esa salida en inglés es la correcta.
 - **El código se escribe en inglés**, siguiendo convención estándar de la industria:
   - Nombres de variables, funciones, tipos, y archivos técnicos genéricos (ej. `route.ts`, `page.tsx`) en inglés.
   - Comentarios en el código pueden ir en español si aclaran contexto de negocio específico (ej. explicar una rúbrica), pero la lógica general se comenta en inglés cuando es puramente técnica.

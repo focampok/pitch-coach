@@ -10,10 +10,26 @@ import {
 } from "@/lib/validar-analisis";
 
 const RUBRICA: readonly PuntoRubrica[] = [
-  { punto: "Problema", queBuscar: "describe un problema real" },
-  { punto: "Solución", queBuscar: "explica cómo lo resuelve" },
-  { punto: "Mercado", queBuscar: "menciona el tamaño de mercado" },
-  { punto: "Tracción", queBuscar: "muestra métricas de avance" },
+  {
+    id: "problema",
+    nombre: { es: "Problema", en: "Problem" },
+    queBuscar: { es: "describe un problema real", en: "describes a real problem" },
+  },
+  {
+    id: "solucion",
+    nombre: { es: "Solución", en: "Solution" },
+    queBuscar: { es: "explica cómo lo resuelve", en: "explains how it solves it" },
+  },
+  {
+    id: "mercado",
+    nombre: { es: "Mercado", en: "Market" },
+    queBuscar: { es: "menciona el tamaño de mercado", en: "mentions the market size" },
+  },
+  {
+    id: "traccion",
+    nombre: { es: "Tracción", en: "Traction" },
+    queBuscar: { es: "muestra métricas de avance", en: "shows progress metrics" },
+  },
 ];
 
 describe("calcularScore", () => {
@@ -57,13 +73,13 @@ describe("validarAnalisis", () => {
     ],
   };
 
-  it("asigna los nombres de punto desde la rúbrica por índice (no del modelo)", () => {
+  it("asigna los ids de punto desde la rúbrica por índice (no del modelo)", () => {
     const resultado = validarAnalisis(respuestaValida, RUBRICA);
     expect(resultado.rubrica.map((r) => r.punto)).toEqual([
-      "Problema",
-      "Solución",
-      "Mercado",
-      "Tracción",
+      "problema",
+      "solucion",
+      "mercado",
+      "traccion",
     ]);
   });
 
@@ -115,7 +131,7 @@ describe("validarAnalisis", () => {
 
   it("ignora campos extra del modelo (ej. 'punto') en vez de rechazarlos", () => {
     // El modelo puede alucinar el nombre del punto o agregar claves de más: eso
-    // NO invalida la respuesta. El servidor asigna el nombre por índice.
+    // NO invalida la respuesta. El servidor asigna el id por índice.
     const conExtra = {
       ...respuestaValida,
       rubrica: respuestaValida.rubrica.map((item, i) => ({
@@ -127,10 +143,10 @@ describe("validarAnalisis", () => {
     };
     const resultado = validarAnalisis(conExtra, RUBRICA);
     expect(resultado.rubrica.map((r) => r.punto)).toEqual([
-      "Problema",
-      "Solución",
-      "Mercado",
-      "Tracción",
+      "problema",
+      "solucion",
+      "mercado",
+      "traccion",
     ]);
     expect(resultado.rubrica.every((r) => !("score" in r))).toBe(true);
   });
@@ -169,7 +185,7 @@ describe("construirEsquemaAnalisisRestringido", () => {
   const puntos = ["Problema", "Solución"];
 
   it("en modo base no incluye traza", () => {
-    const esquema = construirEsquemaAnalisisRestringido(puntos) as {
+    const esquema = construirEsquemaAnalisisRestringido(puntos, { idioma: "es" }) as {
       required: string[];
       properties: Record<string, unknown>;
     };
@@ -179,6 +195,7 @@ describe("construirEsquemaAnalisisRestringido", () => {
 
   it("con incluirTraza exige traza de 4 a 8 pasos", () => {
     const esquema = construirEsquemaAnalisisRestringido(puntos, {
+      idioma: "es",
       incluirTraza: true,
     }) as {
       required: string[];

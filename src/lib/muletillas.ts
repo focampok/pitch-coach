@@ -1,3 +1,4 @@
+import type { Idioma } from "@/types/idioma";
 import type { ConteoMuletillas } from "@/types/pitch";
 
 // Detección de muletillas por regex/keyword matching sobre la transcripción
@@ -61,6 +62,57 @@ export const PATRONES_MULETILLAS: readonly PatronMuletilla[] = [
   { etiqueta: "pues", patron: /\bpues\b/gi, umbralMin: 3 },
   { etiqueta: "bueno", patron: /\bbueno\b/gi, umbralMin: 3 },
 ];
+
+/**
+ * Muletillas en inglés.
+ *
+ * "um" / "uh" tienen la misma limitación que "eeee / ehh": solo cuentan si
+ * Scribe las escribe. "you know" puede coincidir con una pregunta real
+ * ("do you know"); se acepta, igual que "este" en español.
+ *
+ * "like", "so" y "right" NO se marcan por la palabra suelta: tienen uso
+ * legítimo ("I like the product", "and so on", "the right market", "right now").
+ * Se marcan solo con un patrón de contexto acotado y cubierto por tests:
+ * - like: inicio de cláusula o entre comas ("Like,", ", like,"), repetido
+ *   ("like like"), o seguido de um/uh.
+ * - so: inicio de cláusula y no "so that/much/many/far/on", entre comas, o
+ *   repetido ("so so"). "and so on" y "so big" no entran.
+ * - right: solo la coletilla "right?" o ", right," / ", right.".
+ * - well: inicio de cláusula o tras coma, así "as well" y "well-known" no entran.
+ */
+const PATRONES_MULETILLAS_EN: readonly PatronMuletilla[] = [
+  { etiqueta: "um", patron: /\bum+\b/gi },
+  { etiqueta: "uh", patron: /\buh+\b/gi },
+  { etiqueta: "you know", patron: /\byou\s+know\b/gi },
+  { etiqueta: "I mean", patron: /\bi\s+mean\b/gi },
+  { etiqueta: "actually", patron: /\bactually\b/gi },
+  { etiqueta: "basically", patron: /\bbasically\b/gi },
+  { etiqueta: "kind of / sort of", patron: /\b(?:kind|sort)\s+of\b/gi },
+  {
+    etiqueta: "well",
+    // El prefijo (inicio o coma) no se consume: el resaltado marca solo "well".
+    patron: /(?<=^|[.!?]\s+|,\s*)\bwell\b(?!-)/gim,
+  },
+  {
+    etiqueta: "like",
+    patron:
+      /(?<=^|[.!?]\s+|,\s*)\blike\b(?=\s*[,.]|\s+(?:um|uh)\b)|\blike\s+like\b/gim,
+  },
+  {
+    etiqueta: "so",
+    patron:
+      /(?<=^|[.!?]\s+)\bso\b(?!\s+(?:that|much|many|far|on)\b)|(?<=,\s*)\bso\b(?=\s*,)|\bso\s+so\b/gim,
+  },
+  {
+    etiqueta: "right?",
+    patron: /\bright\s*\?|(?<=,\s*)\bright\b(?=\s*[,.])/gi,
+  },
+];
+
+/** Patrones del idioma de la sesión. Español es el default histórico. */
+export function patronesMuletillas(idioma: Idioma = "es"): readonly PatronMuletilla[] {
+  return idioma === "en" ? PATRONES_MULETILLAS_EN : PATRONES_MULETILLAS;
+}
 
 /** Clona el regex para no compartir `lastIndex` entre detección y resaltado. */
 function clonarPatron(patron: RegExp): RegExp {
@@ -140,9 +192,12 @@ export function resaltarMuletillas(
 }
 
 /** Cuenta ocurrencias de cada muletilla en la transcripción (solo las presentes). */
-export function detectarMuletillas(transcripcion: string): ConteoMuletillas {
+export function detectarMuletillas(
+  transcripcion: string,
+  idioma: Idioma = "es",
+): ConteoMuletillas {
   const conteos: ConteoMuletillas = {};
-  for (const { etiqueta, patron, umbralMin = 1 } of PATRONES_MULETILLAS) {
+  for (const { etiqueta, patron, umbralMin = 1 } of patronesMuletillas(idioma)) {
     const coincidencias = transcripcion.match(clonarPatron(patron));
     if (coincidencias && coincidencias.length >= umbralMin) {
       conteos[etiqueta] = coincidencias.length;

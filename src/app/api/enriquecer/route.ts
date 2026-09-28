@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { enriquecerConTavily } from "@/lib/tavily";
 import { limitar } from "@/lib/rate-limit";
 import { reportarFallo } from "@/lib/sentry-reporte";
+import { diccionario } from "@/lib/diccionarios";
+import { idiomaDeCabecera } from "@/lib/idiomas";
+import { resolverIdiomaDeRuta } from "@/lib/idioma-ruta";
 
 export const runtime = "nodejs";
 
@@ -9,8 +12,13 @@ export const runtime = "nodejs";
  * POST /api/enriquecer
  * body: {
  *   tema: string,                 // ej. tipo de pitch o un resumen corto del tema
- *   puntosSinCumplir: { punto: string, comentario?: string }[]
+ *   puntosSinCumplir: { punto: string, comentario?: string }[],
+ *   idioma?: "es" | "en"          // ausente → 'es'; otro valor → 400
  * }
+ *
+ * El `idioma` se acepta y se valida (para los mensajes de error), pero NO
+ * cambia la búsqueda: localizar la consulta y los resultados de Tavily es una
+ * fase propia.
  *
  * Enriquecimiento opcional (§12): no es parte del loop crítico.
  * Si TAVILY_API_KEY no está configurada, o Tavily falla, devuelve
@@ -25,13 +33,21 @@ export async function POST(req: NextRequest) {
   let body: {
     tema?: string;
     puntosSinCumplir?: { punto: string; comentario?: string }[];
+    idioma?: unknown;
   };
 
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+    const textos = diccionario(idiomaDeCabecera(req));
+    return NextResponse.json(
+      { error: textos.api.enriquecimientoInvalido },
+      { status: 400 },
+    );
   }
+
+  const idiomaRuta = resolverIdiomaDeRuta(body.idioma, req);
+  if (idiomaRuta.tipo === "invalido") return idiomaRuta.respuesta;
 
   const tema = body.tema?.trim();
   const puntos = body.puntosSinCumplir ?? [];

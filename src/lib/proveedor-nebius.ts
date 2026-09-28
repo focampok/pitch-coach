@@ -104,6 +104,7 @@ async function llamarUnaVez(args: {
   // los puntos de la rúbrica; si no, el esquema neutro tal cual.
   const esquema: EsquemaJson = args.solicitud.puntosRubrica?.length
     ? construirEsquemaAnalisisRestringido(args.solicitud.puntosRubrica, {
+        idioma: args.solicitud.idioma,
         incluirTraza: args.solicitud.incluirTraza === true,
       })
     : args.solicitud.esquema;

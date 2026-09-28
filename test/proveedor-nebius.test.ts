@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SolicitudModelo } from "@/lib/modelo";
 import { llamarModelo, proveedorActivo } from "@/lib/modelo";
-import { ESQUEMA_ANALISIS } from "@/lib/validar-analisis";
+import { esquemaAnalisis } from "@/lib/validar-analisis";
 import { crearProveedorNebius, proveedorNebius } from "@/lib/proveedor-nebius";
 import { proveedorGemini } from "@/lib/proveedor-gemini";
 
@@ -16,7 +16,8 @@ const PUNTOS = ["Problema claro", "El ask"];
 const SOLICITUD: SolicitudModelo = {
   system: "SISTEMA",
   user: "USUARIO",
-  esquema: ESQUEMA_ANALISIS,
+  idioma: "es",
+  esquema: esquemaAnalisis("es"),
   puntosRubrica: PUNTOS,
 };
 
@@ -401,7 +402,7 @@ describe("proveedor Gemini — no se rompió", () => {
     const proveedor = proveedorActivo();
     const texto = await proveedor.enviar({
       modelo: "gemini-3.5-flash",
-      solicitud: { system: "S", user: "U", esquema: ESQUEMA_ANALISIS },
+      solicitud: { system: "S", user: "U", idioma: "es", esquema: esquemaAnalisis("es") },
       signal: AbortSignal.timeout(1000),
     });
 
@@ -435,7 +436,7 @@ describe("proveedor Gemini — no se rompió", () => {
 
       const texto = await proveedor.enviar({
         modelo: "gemini-2.0-flash",
-        solicitud: { system: "S", user: "U", esquema: ESQUEMA_ANALISIS },
+        solicitud: { system: "S", user: "U", idioma: "es", esquema: esquemaAnalisis("es") },
         signal: AbortSignal.timeout(1000),
       });
       expect(texto).toBe('{"ok":true}');

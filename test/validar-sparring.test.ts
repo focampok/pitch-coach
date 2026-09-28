@@ -10,7 +10,7 @@ import {
 
 describe("construirEsquemaSparringRestringido", () => {
   it("exige solo cumplido y comentario, sin propiedades extra", () => {
-    const esquema = construirEsquemaSparringRestringido() as {
+    const esquema = construirEsquemaSparringRestringido("es") as {
       additionalProperties: boolean;
       required: string[];
       properties: Record<string, unknown>;
@@ -26,7 +26,7 @@ describe("construirEsquemaSparringRestringido", () => {
 
 describe("construirEsquemaPreguntaSparringRestringido", () => {
   it("exige solo pregunta, sin propiedades extra", () => {
-    const esquema = construirEsquemaPreguntaSparringRestringido() as {
+    const esquema = construirEsquemaPreguntaSparringRestringido("es") as {
       additionalProperties: boolean;
       required: string[];
       properties: Record<string, unknown>;

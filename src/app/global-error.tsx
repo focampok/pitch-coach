@@ -2,6 +2,8 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+import { useIdiomaAutonomo } from "@/components/ProveedorIdioma";
+import { etiquetaIdioma } from "@/lib/idiomas";
 
 /**
  * Last-resort error boundary for errors thrown in the root layout.
@@ -10,6 +12,11 @@ import { useEffect } from "react";
  * `captureException` below is required — without it these errors never reach
  * Sentry. Must be a client component and must render its own <html>/<body>,
  * since it replaces the root layout when it renders.
+ *
+ * IDIOMA
+ * Al reemplazar el layout raíz queda FUERA de <ProveedorIdioma>, así que el
+ * idioma se resuelve acá mismo (`useIdiomaAutonomo`) y se aplica también al
+ * <html lang> que este componente renderiza.
  */
 export default function GlobalError({
   error,
@@ -18,12 +25,14 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { idioma, textos } = useIdiomaAutonomo();
+
   useEffect(() => {
     Sentry.captureException(error);
   }, [error]);
 
   return (
-    <html lang="es">
+    <html lang={etiquetaIdioma(idioma)}>
       <body
         style={{
           margin: 0,
@@ -38,13 +47,8 @@ export default function GlobalError({
           padding: "2rem",
         }}
       >
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 600 }}>
-          Algo salió mal
-        </h1>
-        <p style={{ maxWidth: "32rem", opacity: 0.7 }}>
-          Ocurrió un error inesperado y no pudimos mostrar esta pantalla. El
-          equipo ya fue notificado.
-        </p>
+        <h1 style={{ fontSize: "1.5rem", fontWeight: 600 }}>{textos.errores.titulo}</h1>
+        <p style={{ maxWidth: "32rem", opacity: 0.7 }}>{textos.errores.mensaje}</p>
         <button
           onClick={() => reset()}
           style={{
@@ -58,7 +62,7 @@ export default function GlobalError({
             fontSize: "0.95rem",
           }}
         >
-          Reintentar
+          {textos.errores.reintentar}
         </button>
       </body>
     </html>

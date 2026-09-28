@@ -4,6 +4,7 @@ import {
   escaparHtml,
   resaltarMuletillas,
   detectarMuletillas,
+  patronesMuletillas,
 } from "@/lib/muletillas";
 
 // El carácter "&" se construye por código para que este archivo no contenga
@@ -81,5 +82,54 @@ describe("detectarMuletillas", () => {
 
   it("incluye las que alcanzan su umbral", () => {
     expect(detectarMuletillas("pues pues pues")).toEqual({ pues: 3 });
+  });
+});
+
+describe("muletillas en inglés", () => {
+  const en = (texto: string) => detectarMuletillas(texto, "en");
+
+  it("cuenta las muletillas claras", () => {
+    expect(en("um, uh, you know, I mean, actually, basically, kind of, sort of")).toEqual({
+      um: 1,
+      uh: 1,
+      "you know": 1,
+      "I mean": 1,
+      actually: 1,
+      basically: 1,
+      "kind of / sort of": 2,
+    });
+  });
+
+  it("marca like, so y right solo con contexto de muletilla", () => {
+    expect(en("Like, we built this.")).toEqual({ like: 1 });
+    expect(en("and, like, the market")).toEqual({ like: 1 });
+    expect(en("like like")).toEqual({ like: 1 });
+    expect(en("So we raised a round.")).toEqual({ so: 1 });
+    expect(en("we waited, so, too long")).toEqual({ so: 1 });
+    expect(en("that works, right?")).toEqual({ "right?": 1 });
+    expect(en(", right, we should ship")).toEqual({ "right?": 1 });
+    expect(en("Well, we started small.")).toEqual({ well: 1 });
+  });
+
+  it("no marca el uso legítimo de like, so, right y well", () => {
+    expect(en("I like the product and it sounds like a fit")).toEqual({});
+    expect(en("and so on, the market is so big")).toEqual({});
+    expect(en("so that we can grow")).toEqual({});
+    expect(en("right now the right market")).toEqual({});
+    expect(en("as well as a well-known team")).toEqual({});
+  });
+
+  it("un pitch en inglés no dispara patrones de español", () => {
+    expect(en("digamos o sea este")).toEqual({});
+  });
+
+  it("resalta like entre comas y deja intacto I like", () => {
+    const texto = "I like the plan, like, a lot";
+    expect(resaltarMuletillas(texto)).not.toContain("<mark");
+
+    const html = resaltarMuletillas(texto, patronesMuletillas("en"));
+    expect(html).toContain('<mark class="pc-muletilla">like</mark>');
+    expect(html).toContain("I like the plan");
+    expect(html.match(/<mark/g)).toHaveLength(1);
   });
 });
