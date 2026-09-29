@@ -8,7 +8,7 @@ El feedback existente es subjetivo, tardío o inexistente. No hay una forma ráp
 
 ## 2. Concepto
 
-**Pitch Coach** es una herramienta de práctica de pitch. El usuario habla en voz alta frente al micrófono, el sistema transcribe, analiza el contenido contra una rúbrica según el tipo elegido, detecta muletillas y muestra un dashboard con el detalle. El usuario puede escuchar un veredicto corto cuando quiera. Un **coach visual (avatar)** escucha en vivo durante la grabación y reacciona a lo que el sistema detecta (ver §5.1).
+**Pitch Coach** es una herramienta de práctica de pitch. El usuario habla en voz alta frente al micrófono, el sistema transcribe, analiza el contenido contra una rúbrica según el tipo elegido, detecta muletillas y muestra un dashboard con el detalle. El usuario puede escuchar un veredicto corto cuando quiera. La interfaz muestra un **indicador de estado del coach** en texto mientras se graba y se transcribe (ver §5.1).
 
 La idea central:
 
@@ -22,7 +22,7 @@ Builders, emprendedores, estudiantes y profesionales que necesitan preparar un p
 
 1. El usuario elige el **tipo de pitch** (capital / educación / innovación / tecnología) y la **duración máxima**, mediante presets de 1 a 7 minutos.
 2. Presiona grabar y **pitchea en voz alta**. La grabación se **corta automáticamente** al alcanzar la duración máxima.
-3. El sistema **graba el audio** (MediaRecorder) y, al detener, **lo transcribe** en el servidor (ElevenLabs Scribe). Mientras graba, el **avatar escucha**; las muletillas se cuentan sobre la transcripción final — ver §5.1.
+3. El sistema **graba el audio** (MediaRecorder) y, al detener, **lo transcribe** en el servidor (ElevenLabs Scribe). Mientras graba, la interfaz muestra el indicador `Escuchando…`; las muletillas se cuentan sobre la transcripción final — ver §5.1.
 4. El sistema analiza la transcripción:
    - Detecta **muletillas** (conteo por palabra/frase).
    - Evalúa el contenido contra la **rúbrica del tipo elegido**.
@@ -36,39 +36,30 @@ Builders, emprendedores, estudiantes y profesionales que necesitan preparar un p
 
 Se **practica en voz** y el resultado se ve y se puede oír:
 
-- **Canal visual:** durante la grabación, avatar + cronómetro. Al terminar, transcripción, dashboard con rúbrica, score y muletillas. Es el canal principal del resultado.
+- **Canal visual:** durante la grabación, indicador de estado + cronómetro. Al terminar, transcripción, dashboard con rúbrica, score y muletillas. Es el canal principal del resultado.
 - **Canal auditivo (a pedido):** el usuario pulsa "Escuchar veredicto". Si ElevenLabs falla, SpeechSynthesis cubre; si ambos fallan, el dashboard sigue ahí.
 
 Nunca se depende de un solo canal.
 
-### 5.1 Coach visual (avatar reactivo)
+### 5.1 Indicador de estado del coach (temporal)
 
-Personaje estilizado (SVG inline) que **escucha durante la grabación** y reacciona con micro-gestos. **Toda reacción se dispara por un dato real y es verificable en pantalla.**
+El **avatar reactivo fue eliminado**. El flujo actual es grabar → transcribir → analizar, así que no hay resultados intermedios sobre los que reaccionar: el avatar solo tenía dos estados reales (`escuchando` y `asintiendo`). En su lugar hay un **indicador de texto simple**, sin animación ni diseño visual nuevo:
 
-En esta fase la transcripción llega **después de detener** (grabar → transcribir → mostrar el texto completo). El avatar permanece en `escuchando` mientras se graba y **asiente al terminar**, con una de tres frases en el idioma de la sesión (`MENSAJES_ASINTIENDO`). El motor que estremecía, se sorprendía o miraba el reloj está **apagado**: no tiene llamador, porque dependía de resultados intermedios que este flujo ya no produce. Su reactivación prevista es el rediseño de UX con STT en vivo (Scribe Realtime). No hay fecha de calendario. Hoy el refuerzo de muletillas está en el dashboard.
+| Estado | Texto | Cuándo |
+|---|---|---|
+| Grabando | `Escuchando…` | mientras se graba el pitch |
+| Transcribiendo | `Transcribiendo…` | mientras el servidor transcribe (Scribe) |
+| Finalizado | una de las **3 frases de `MENSAJES_ASINTIENDO`** | al llegar la transcripción (o el texto de respaldo) |
 
-#### Estados (uno activo a la vez)
+Los textos salen del diccionario de la sesión (`es` / `en`); la frase final se elige al azar entre tres. Aplica igual al flujo principal de pitch y a **"Resolver hallazgos"**, que reusa el mismo grabador.
 
-| Estado | Disparador | Gesto | Refuerzo en dashboard |
-|---|---|---|---|
-| `Escuchando` (idle) | grabando | postura atenta, parpadeo sutil | cronómetro / “Grabando” |
-| `Estremecido` | muletilla en texto (reservado a STT en vivo) | leve retroceso / ceja levantada | la muletilla y su contador se muestran |
-| `Sorprendido` | frase de impacto (reservado a STT en vivo) | expresión de sorpresa | la frase aparece en la transcripción |
-| `Asintiendo` | fin de grabación / texto enviado | pequeño asentimiento | score y resumen |
-| `MirandoReloj` | silencio prolongado (reservado a STT en vivo) | gesto de espera / mira el reloj | barra de tiempo |
+**Es un estado temporal.** El reemplazo visual —una animación tipo esfera, construida desde cero— está planeado para la fase de **UX/UI**. No hay motor de reacciones ni estados reservados: el STT en vivo (Scribe Realtime) sigue fuera de alcance y no tiene fecha de calendario.
 
-#### Reglas de diseño
+#### Reglas
 
-- **Una reacción a la vez**, breve (~1.2s) y con prioridad a la más reciente.
-- **Micro-gestos, no bailes.** El gesto sobrio se lee como "coach", no como "juguete".
-- **Sin flashes** (WCAG) y respetar `prefers-reduced-motion`: si está activo, el avatar queda estático y el feedback pasa por contadores y TTS.
-- **El color nunca es el único canal.**
+- **Sin animación nueva** por ahora: el lenguaje visual del coach lo define la fase de UX/UI.
+- **El resultado sigue siendo el dashboard**, más el canal auditivo a pedido (TTS). El indicador no es un canal de feedback.
 - **El humor va en el copy, no en el dibujo** (ej. "ese 'o sea' sonó fuerte — van 12").
-
-#### Dependencia con el resto del sistema
-
-- Las muletillas son **keyword matching local** (`src/lib/muletillas.ts`) — **sin IA**. El modelo queda reservado al análisis final. Hay una lista por idioma: 21 patrones en español y la lista en inglés de §8.
-- Ese matching corre sobre la **transcripción completa** (dashboard). El motor de reacciones sobre texto intermedio está apagado hasta el rediseño con Scribe Realtime.
 
 ## 6. Rúbricas por tipo de pitch
 
@@ -145,7 +136,7 @@ Ciclo completo:
 - [x] Evaluación contra rúbrica vía el proveedor activo (Nebius por defecto; Gemini de contingencia). JSON estructurado.
 - [x] Veredicto en voz (ElevenLabs, fallback SpeechSynthesis), a pedido.
 - [x] Dashboard: transcripción, muletillas resaltadas, rúbrica, score.
-- [x] Avatar que escucha y asiente al terminar (§5.1). El motor de reacciones en vivo está apagado hasta el rediseño con STT en vivo.
+- [x] Indicador de estado del coach en texto (`Escuchando…` / `Transcribiendo…` / 3 frases al terminar), §5.1. El reemplazo visual (esfera) queda para la fase de UX/UI.
 - [x] Sesión anónima, sin login.
 - [x] Análisis Ultra: reanálisis de la misma transcripción con razonamiento extendido (Nemotron Ultra).
 - [x] Resolver hallazgos: hasta 3 preguntas de seguimiento sobre puntos no cumplidos (orden de rúbrica), texto + escuchar a pedido, respuesta por voz o texto de respaldo.
@@ -158,9 +149,9 @@ Ciclo completo:
 - Comparar dos intentos en la misma sesión.
 - Edición o creación de rúbricas custom.
 - Idiomas nuevos más allá de español e inglés (§15).
-- Motor de reacciones del avatar (estremecido / sorprendido / mirandoReloj), apagado hasta el rediseño de UX con Scribe Realtime. No hay fecha de calendario.
+- Animación del coach más allá del indicador de texto (esfera): la define la fase de UX/UI.
 - Análisis de video, lenguaje corporal o expresión facial.
-- Avatar 3D o "talking head".
+- Animación del coach más elaborada ("talking head", 3D).
 - Backend separado — todo corre en Next.js con API routes.
 
 ## 11. Qué debe ser evidente al usarlo
@@ -170,7 +161,7 @@ Ciclo completo:
 - Las muletillas son específicas, no genéricas.
 - La rúbrica marca puntos concretos cubiertos y faltantes.
 - El dashboard y el veredicto hablado (si se escucha) coinciden.
-- El avatar reacciona a algo real del pitch (ej. se estremece al decir "o sea").
+- El indicador de estado refleja el momento real del flujo (grabando / transcribiendo / listo) y la transcripción aparece al terminar.
 - Si pide Análisis Ultra, ve un segundo resultado etiquetado (con traza de razonamiento), no un reemplazo del primero.
 - Si hay puntos sin cubrir, puede resolver hallazgos (máx. 3) y ve cuántos resolvió.
 - "Tu progreso" lista intentos de este navegador (score y cobertura) sin mostrar la transcripción ni los comentarios.
@@ -243,8 +234,8 @@ razonamiento). El análisis estándar no la pide.
 ### Muletillas
 - Regex / keyword matching. No requiere LLM.
 
-### Avatar
-- SVG inline + CSS transforms. Escucha durante la grabación y asiente al terminar, en el idioma de la sesión. El motor de reacciones sobre texto intermedio está apagado (§5.1). Respeta `prefers-reduced-motion`.
+### Indicador del coach
+- Texto plano en el idioma de la sesión (`Escuchando…` / `Transcribiendo…` / frase de asintiendo). Sin SVG, sin animación. §5.1.
 
 ### Deploy
 - Un solo servicio Next.js (p. ej. Railway). HTTPS hace falta para el micrófono fuera de localhost.
@@ -350,7 +341,6 @@ Scribe (`POST /v1/speech-to-text`) acepta `language_code` opcional (ISO 639-1 o
 
 ### Fuera de esta fase
 
-- Motor de reacciones del avatar (estremecido / sorprendido / mirandoReloj).
-  Apagado. La reactivación prevista es el rediseño de UX con Scribe Realtime;
-  no hay fecha de calendario.
+- Animación del coach (esfera) y STT en vivo (Scribe Realtime). El reemplazo
+  visual llega en la fase de UX/UI.
 - Traducción de la consulta de Tavily.

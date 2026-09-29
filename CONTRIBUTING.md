@@ -51,20 +51,18 @@ dashboard (`resaltarMuletillas`). Cada entrada es un objeto
 - `umbralMin` (opcional) — ocurrencias mínimas para reportar (útil para
   palabras que también son conectores legítimos, como "pues" o "bueno").
 
-### Nuevo estado del avatar
+### Nuevos mensajes o estados del coach
 
-El patrón es **disparador → gesto → refuerzo en dashboard**, descrito en
-[`docs/alcance.md`](docs/alcance.md) §5.1:
+El avatar reactivo y su motor de reacciones se eliminaron ([`docs/alcance.md`](docs/alcance.md)
+§5.1): el flujo grabar → transcribir → analizar no produce resultados
+intermedios sobre los que reaccionar. Hoy el coach es un **indicador de texto**
+temporal en [`src/lib/mensajes-coach.ts`](src/lib/mensajes-coach.ts):
+`MENSAJES_ASINTIENDO` (3 frases por idioma) y `textoIndicadorCoach`.
 
-1. [`src/lib/reacciones.ts`](src/lib/reacciones.ts) — agregar el
-   disparador (regex/keyword local, sin LLM) y su mensaje en
-   `MENSAJES_COACH`.
-2. [`src/types/coach.ts`](src/types/coach.ts) — agregar el estado al union
-   type `EstadoCoach` (y a `ReaccionCoach` si dispara un gesto).
-3. [`src/components/CoachAvatar.tsx`](src/components/CoachAvatar.tsx) —
-   renderizar el gesto.
-4. Refuerzo en dashboard: la reacción debe ser **verificable en pantalla**
-   (contador, punto de rúbrica, barra de tiempo, etc.).
+Para agregar un idioma, va en los diccionarios como cualquier otro texto. Para
+un **estado nuevo** (o el reemplazo visual tipo esfera), la fase de UX/UI define
+el lenguaje visual primero — no agregar gestos sueltos mientras el coach sea
+solo texto.
 
 ## Qué se espera de un PR
 

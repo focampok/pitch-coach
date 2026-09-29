@@ -70,19 +70,17 @@ pitch-coach/
 │   ├── components/
 │   │   ├── SelectorTipoPitch.tsx
 │   │   ├── SelectorDuracion.tsx
-│   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe (STT) + coach visual
-│   │   ├── CoachAvatar.tsx
+│   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe (STT) + indicador de estado
 │   │   ├── ReproductorVeredicto.tsx  # stub: ElevenLabs TTS + fallback SpeechSynthesis
 │   │   └── DashboardResultado.tsx    # stub: rúbrica + score
 │   ├── lib/
 │   │   ├── gemini.ts                 # stub: cliente Gemini
 │   │   ├── rubricas.ts
 │   │   ├── muletillas.ts
-│   │   ├── reacciones.ts             # motor de reacciones del avatar
+│   │   ├── mensajes-coach.ts         # frases del coach + indicador de estado
 │   │   └── prompts.ts
 │   └── types/
-│       ├── pitch.ts
-│       └── coach.ts
+│       └── pitch.ts
 └── public/
 ```
 

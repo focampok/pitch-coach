@@ -58,6 +58,7 @@ export const es = {
   grabador: {
     titulo: "Grabación",
     grabando: "Grabando",
+    escuchando: "Escuchando…",
     transcribiendo: "Transcribiendo…",
     tiempoRestante: "Tiempo restante",
     transcripcionFinal: "Transcripción final",

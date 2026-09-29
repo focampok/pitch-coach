@@ -45,6 +45,7 @@ export const en: Diccionario = {
   grabador: {
     titulo: "Recording",
     grabando: "Recording",
+    escuchando: "Listening…",
     transcribiendo: "Transcribing…",
     tiempoRestante: "Time left",
     transcripcionFinal: "Final transcript",

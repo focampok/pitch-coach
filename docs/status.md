@@ -1,19 +1,22 @@
 # Pitch Coach — Status del proyecto
 
-> **2026-09-28.** Qué está implementado, mapeado a `docs/alcance.md`.
+> **2026-09-29.** Qué está implementado, mapeado a `docs/alcance.md`.
 > El loop (voz → análisis → dashboard + veredicto a pedido) está cerrado.
 > El STT es universal (MediaRecorder + Scribe). Resolver hallazgos, Análisis
 > Ultra y el panel "Tu progreso" están implementados; la verificación del
 > micrófono en cada navegador queda para el mantenedor.
 > El **modo bilingüe (es / en)** está completo: interfaz, rúbricas, prompts,
 > contrato de API, voz (TTS y hint de Scribe) y muletillas (§15 del alcance).
-> El motor de reacciones del avatar (estremecido / sorprendido / mirandoReloj)
-> sigue **apagado** a propósito hasta el rediseño de UX con STT en vivo.
+> El **avatar reactivo y su motor de reacciones fueron eliminados**: el flujo
+> grabar → transcribir → analizar no produce resultados intermedios sobre los
+> que reaccionar. Hoy el coach es un **indicador de texto** temporal; el
+> reemplazo visual (esfera) llega en la fase de UX/UI.
 
 ## Resumen rápido
 
 - ✅ Loop voz → transcripción → muletillas (MediaRecorder + Scribe).
-- ✅ Avatar (§5.1): escucha durante la grabación y asiente al terminar.
+- ✅ Indicador de estado del coach (§5.1): texto (`Escuchando…` /
+  `Transcribiendo…` / 3 frases al terminar) en el idioma de la sesión. Temporal.
 - ✅ Deploy: `Dockerfile` + `railway.toml`.
 - ✅ Análisis con dos proveedores: **Nebius** (por defecto) y **Gemini**
   (contingencia manual). Rúbricas, prompt parametrizado por idioma, tiempo como
@@ -49,9 +52,8 @@
   navegador y, si no hay ninguno guardado, sale del navegador.
 - 🟡 La transcripción no es en vivo (grabar → detener → transcribir). Scribe
   Realtime queda para el rediseño de UX; no hay fecha de calendario.
-- 🟡 El motor de reacciones (estremecido / sorprendido / mirandoReloj) está
-  apagado. Solo se muestran las tres frases de `asintiendo`, en el idioma de
-  la sesión, al terminar la transcripción.
+- 🟡 El coach es **solo texto**. La animación (tipo esfera) que reemplaza al
+  avatar se define en la fase de UX/UI; no hay fecha de calendario.
 
 ## Leyenda
 
@@ -69,7 +71,7 @@
 | ✅ | Transcripción (§9) | `GrabadorVoz.tsx` + `/api/transcribir` | ElevenLabs Scribe (`scribe_v2`); hint `language_code` = idioma de la sesión (`es` o `en`); sin palabra por palabra en vivo |
 | ✅ | Muletillas (§8) | `src/lib/muletillas.ts` | español: 21 patrones (`PATRONES_MULETILLAS`). inglés: `patronesMuletillas("en")`. `like` / `so` / `right` no se marcan por la palabra suelta |
 | ✅ | UI | `src/app/page.tsx` | selectores + grabador + `DashboardResultado` |
-| 🟡 | Avatar (§5.1) | `CoachAvatar.tsx` + `reacciones.ts` + `types/coach.ts` | escucha durante la grabación y asiente al terminar, con las 3 frases de `MENSAJES_ASINTIENDO` en el idioma de la sesión. El motor (estremecido / sorprendido / mirandoReloj) está apagado: no tiene llamador. Reactivación prevista: rediseño de UX con Scribe Realtime, sin fecha de calendario |
+| 🟡 | Indicador de estado del coach (§5.1) | `GrabadorVoz.tsx` + `mensajes-coach.ts` | texto simple: `Escuchando…` al grabar, `Transcribiendo…` mientras responde Scribe y, al terminar, una de las 3 frases de `MENSAJES_ASINTIENDO` (idioma de la sesión). Aplica al pitch y a "Resolver hallazgos". Temporal: el reemplazo visual (esfera) es de la fase de UX/UI, sin fecha |
 | ✅ | Sesión anónima | `src/app/page.tsx` | sin login. El historial vive en `localStorage` de este navegador, no en el servidor |
 | ✅ | Deploy | `Dockerfile` + `railway.toml` | standalone; healthcheck `/` |
 | ✅ | Rúbricas (§6) | `src/lib/rubricas.ts` | 4 tipos × 5 puntos |
@@ -132,9 +134,9 @@ El resaltado marca la palabra, no la coma que la precede.
 |---|---|
 | Historial entre dispositivos o cuentas | El progreso queda en el `localStorage` de este navegador. No hay cuentas ni sincronización. |
 | Rúbricas custom | Hoy son 4 rúbricas fijas, en español e inglés. Editarlas o crear propias sigue abierto. |
-| Motor de reacciones del avatar | Apagado. `crearMotorReacciones` no tiene llamador. La reactivación es el rediseño de UX con STT en vivo (Scribe Realtime); no hay fecha de calendario. Hoy solo viven las 3 frases de asintiendo. |
+| Animación del coach (esfera) | Hoy el coach es solo texto (§5.1). La animación que lo reemplace se define en la fase de UX/UI; no hay fecha de calendario. |
 | Idiomas nuevos | Agregar uno debería ser agregar datos en el registro, un diccionario, un par de Voice IDs y patrones de muletillas; hoy solo hay es y en. |
-| STT en vivo (Scribe Realtime) | Esta fase transcribe el clip completo al detener. Es también la condición para reactivar el motor de reacciones. |
+| STT en vivo (Scribe Realtime) | Esta fase transcribe el clip completo al detener. No tiene fecha de calendario. |
 | Consulta de Tavily por idioma | `/api/enriquecer` acepta `idioma` y no lo usa. Localizar la consulta sigue abierto. |
 
 ## 3. Variables de entorno

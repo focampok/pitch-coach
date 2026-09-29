@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DuracionMaxima } from "@/types/pitch";
-import type { EstadoCoach } from "@/types/coach";
-import { MENSAJES_ASINTIENDO } from "@/lib/reacciones";
-import CoachAvatar from "./CoachAvatar";
+import {
+  elegirMensajeAsintiendo,
+  textoIndicadorCoach,
+  type EstadoGrabador,
+} from "@/lib/mensajes-coach";
 import { cabecerasIdioma } from "@/lib/idiomas";
 import { useIdioma } from "./ProveedorIdioma";
-
-type EstadoGrabador = "inactivo" | "grabando" | "transcribiendo" | "finalizado";
 
 interface GrabadorVozProps {
   /** Duración máxima del pitch en minutos (presets 1–7, docs/alcance.md §7). */
@@ -68,7 +68,6 @@ export default function GrabadorVoz({
   const [tiempoRestante, setTiempoRestante] = useState(0);
   const [duracionTotal, setDuracionTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [estadoCoach, setEstadoCoach] = useState<EstadoCoach>("escuchando");
   const [mensajeCoach, setMensajeCoach] = useState<string | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -96,9 +95,7 @@ export default function GrabadorVoz({
     (texto: string, tiempoRealSegundos: number) => {
       setTranscripcionFinal(texto);
       setEstado("finalizado");
-      setEstadoCoach("asintiendo");
-      const opciones = MENSAJES_ASINTIENDO[idioma];
-      setMensajeCoach(opciones[Math.floor(Math.random() * opciones.length)]);
+      setMensajeCoach(elegirMensajeAsintiendo(idioma));
       onTranscripcionCompleta(texto, tiempoRealSegundos);
     },
     [idioma, onTranscripcionCompleta],
@@ -137,7 +134,6 @@ export default function GrabadorVoz({
         );
         setEstado("inactivo");
         setMostrarRespaldo(true);
-        setEstadoCoach("escuchando");
         setMensajeCoach(null);
       }
     },
@@ -231,7 +227,6 @@ export default function GrabadorVoz({
     setTiempoRestante(duracionMaxima * 60);
     tiempoRestanteRef.current = duracionMaxima * 60;
     setEstado("grabando");
-    setEstadoCoach("escuchando");
     setMensajeCoach(null);
     setMostrarRespaldo(false);
   }, [duracionMaxima, soltarMicrófono, textos, transcribirBlob]);
@@ -259,7 +254,6 @@ export default function GrabadorVoz({
     tiempoRestanteRef.current = 0;
     setError(null);
     setMostrarRespaldo(false);
-    setEstadoCoach("escuchando");
     setMensajeCoach(null);
   }, [soltarMicrófono]);
 
@@ -290,6 +284,7 @@ export default function GrabadorVoz({
     totalSegundos > 0
       ? Math.min(100, ((totalSegundos - tiempoRestante) / totalSegundos) * 100)
       : 0;
+  const indicadorCoach = textoIndicadorCoach(estado, mensajeCoach, textos);
 
   return (
     <section className="w-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -312,9 +307,19 @@ export default function GrabadorVoz({
         )}
       </div>
 
-      <div className="mt-4 flex justify-center">
-        <CoachAvatar estado={estadoCoach} mensaje={mensajeCoach} />
-      </div>
+      {/* Indicador del coach: temporal, solo texto. El reemplazo visual
+          (animación tipo esfera) llega en la fase de UX/UI. */}
+      {indicadorCoach !== null && (
+        <p className="mt-4 text-center text-sm font-medium text-zinc-600">
+          {indicadorCoach}
+        </p>
+      )}
+      {/* El texto visible ya no es región viva; se anuncia solo la frase final. */}
+      {estado === "finalizado" && mensajeCoach !== null && (
+        <p className="sr-only" aria-live="polite">
+          {mensajeCoach}
+        </p>
+      )}
 
       {estado === "grabando" && (
         <div className="mt-4">

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { MENSAJES_ASINTIENDO, MENSAJES_COACH } from "@/lib/reacciones";
+import { MENSAJES_ASINTIENDO } from "@/lib/mensajes-coach";
 
 // Solo las tres frases que GrabadorVoz muestra al terminar la transcripción.
-// El motor (estremecido / sorprendido / mirandoReloj) está apagado y no se prueba.
+// El avatar y su motor de reacciones se eliminaron; ver textos-indicador.test.ts.
 
 describe("frases de asintiendo por idioma", () => {
   it("español conserva las tres frases que ya se mostraban", () => {
@@ -12,7 +12,6 @@ describe("frases de asintiendo por idioma", () => {
       "¡Bien, terminaste!",
       "Ahora te doy mi veredicto.",
     ]);
-    expect(MENSAJES_COACH.asintiendo).toEqual(MENSAJES_ASINTIENDO.es);
   });
 
   it("inglés tiene exactamente tres frases, distintas de las españolas", () => {

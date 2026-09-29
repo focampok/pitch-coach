@@ -19,7 +19,9 @@ transcripción resaltada → puedes escuchar el veredicto (ElevenLabs, o
 SpeechSynthesis si falta la key) → si un punto de rúbrica no se cubrió,
 Tavily puede sugerir un dato real.
 
-Avatar reactivo durante la grabación. Sesión anónima, sin login.
+Indicador de estado durante la grabación, en texto simple y en el idioma de la
+sesión: `Escuchando…` mientras grabas, `Transcribiendo…` mientras el servidor
+transcribe y una frase final al terminar. Sesión anónima, sin login.
 
 Demo en línea:
 [https://pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/).
