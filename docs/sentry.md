@@ -1,12 +1,8 @@
 # Sentry en Pitch Coach — registro de lo realizado
 
-> **2026-09-27.** Documento de decisión: qué se integró, por qué, qué está
-> verificado y qué no, y qué conviene mirar antes de aprobar el merge.
-> Rama: `feature/sentry` (pusheada, sin PR abierto). `main` intacto en `72ab2a5`.
->
-> **Este archivo entra a la rama** (decisión de esta fase). El resumen corto y
-> estable para el mantenedor vive en `docs/status.md` §5; acá está el detalle y
-> el porqué de cada decisión.
+> **2026-09-27** (actualizado con el repo en `main`). Documento de decisión: qué
+> se integró, por qué, qué está verificado y qué no. Resumen operativo en
+> `docs/status.md` §5; aquí está el detalle y el porqué de cada decisión.
 
 ---
 

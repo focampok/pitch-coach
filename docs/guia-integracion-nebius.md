@@ -39,7 +39,7 @@ NEBIUS_API_KEY=
 # https://api.tokenfactory.nebius.com/v1
 NEBIUS_BASE_URL=
 
-# Modelo del modo ultra (capacidad en la librería; aún sin ruta ni botón).
+# Modelo del modo "Análisis Ultra" (botón en el dashboard).
 # Default: nvidia/Nemotron-3-Ultra-550b-a55b
 NEBIUS_MODEL_ULTRA=
 
@@ -118,9 +118,11 @@ Se extrae el texto de `choices[0].message.content`.
 | `estandar` (default) | `MODEL` (o `nvidia/nemotron-3-super-120b-a12b`) | Se envía `{ enable_thinking: false }` | principal + `MODEL_FALLBACK_MODELS` |
 | `ultra` | `NEBIUS_MODEL_ULTRA` | **Se omite** (deja el razonamiento activo) | solo ese modelo, sin fallbacks |
 
-El nivel `ultra` es **capacidad de librería**: en esta fase no hay ruta, botón ni
-llamador que lo use. `proveedorNebius` (el que usa la fábrica) es el de nivel
-`estandar`.
+El nivel `ultra` se invoca desde el dashboard (`POST /api/analizar-pitch` con
+`nivel: "ultra"`): mismo proveedor Nebius, modelo `NEBIUS_MODEL_ULTRA`, sin
+`enable_thinking: false` y con campo `traza` en la respuesta. El análisis
+estándar de la sesión usa `proveedorNebius` (nivel `estandar`). El nivel
+`rapido` (Nano) alimenta sparring, Tavily y validaciones auxiliares.
 
 ---
 

@@ -338,7 +338,8 @@ abordó en esta fase.
 
 Referencias cruzadas:
 
-- Estado actual y alcance implementado: `docs/status.md`.
+- Estado **después** del baseline (alineado con status): `docs/post-nebius.md`.
+- Mapa vivo implementado ↔ código: `docs/status.md`.
 - Alcance funcional del producto: `docs/alcance.md`.
 - Cómo replicar la capa de modelo en otro repo: `docs/guia-integracion-gemini.md`.
 - Historial granular de la fase: rama y tag `hardening/pre-nebius` / tag `pre-nebius`.

@@ -1,6 +1,8 @@
 # Pitch Coach — Status del proyecto
 
-> **2026-09-30.** Qué está implementado, mapeado a `docs/alcance.md`.
+> **2026-10-02.** Qué está implementado, mapeado a `docs/alcance.md`.
+> Índice de documentación: `docs/README.md`. Snapshot **después** vs tag
+> `pre-nebius`: `docs/post-nebius.md` (este archivo es el detalle operativo).
 > El loop (voz → análisis → dashboard + veredicto a pedido) está cerrado.
 > El STT es universal (MediaRecorder + Scribe). Resolver hallazgos, Análisis
 > Ultra y el panel "Tu progreso" están implementados; la verificación del
@@ -197,9 +199,6 @@ node scripts/smoke-nebius.mjs --lang en
 node scripts/smoke-nebius.mjs --lang en --ultra
 node scripts/smoke-nebius.mjs --lang en --fixture debil
 ```
-
-**No ejecutada todavía**: la Parte A no toca al proveedor, así que la corrida real
-en inglés queda para el mantenedor.
 
 ## 4. Notas técnicas
 

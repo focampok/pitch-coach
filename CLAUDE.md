@@ -28,7 +28,11 @@
 - Archivo `.env.local` en la raíz del proyecto para desarrollo local — **nunca se comitea a git**. Debe estar en `.gitignore` desde el primer commit.
 - Archivo `.env.example` sí se comitea, con las mismas keys pero sin valores reales (o con placeholders), para que quede documentado qué variables necesita el proyecto.
 - Variables esperadas (ir actualizando esta lista conforme se agreguen):
- - `GEMINI_API_KEY` — clave de la API de Gemini, usada únicamente en API routes (server-side), nunca expuesta al cliente.
+ - `MODEL_PROVIDER` — `nebius` (por defecto) o `gemini`.
+ - `NEBIUS_API_KEY` — análisis con Nebius Token Factory (requerida con el proveedor por defecto). Solo server-side.
+ - `NEBIUS_BASE_URL`, `NEBIUS_MODEL_ULTRA`, `NEBIUS_MODEL_NANO` — opcionales; ver `.env.example`.
+ - `MODEL`, `MODEL_FALLBACK_MODELS`, `MODEL_MAX_TOKENS`, `MODEL_TEMPERATURE`, `MODEL_RETRY_*` — configuración neutra del modelo (compartida entre proveedores).
+ - `GEMINI_API_KEY` — clave de la API de Gemini, solo si `MODEL_PROVIDER=gemini`. Server-side.
  - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y STT Scribe), usada únicamente en API routes (server-side), nunca expuesta al cliente.
  - `ELEVENLABS_VOICE_ID_MALE` — Voice ID de la voz de hombre en español (VoiceLab). Solo server-side.
  - `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID de la voz de mujer en español (VoiceLab). Solo server-side.
@@ -36,6 +40,7 @@
  - `ELEVENLABS_VOICE_ID_EN_FEMALE` — Voice ID de la voz de mujer en inglés. Solo server-side.
  - `ELEVENLABS_SCRIBE_MODEL` — modelo batch de Scribe (default `scribe_v2`). Solo server-side.
  - `TAVILY_API_KEY` — clave de Tavily (búsqueda de estadísticas para sugerencias), usada únicamente en API routes (server-side), nunca expuesta al cliente.
+ - `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_*` — monitoreo opcional; ver `.env.example` y `docs/sentry.md`. El DSN del cliente es ingesta pública por diseño de Sentry; `SENTRY_AUTH_TOKEN` nunca lleva prefijo `NEXT_PUBLIC_`.
  - En Railway, las variables de entorno se configuran directamente en el panel del proyecto (Settings → Variables), replicando las mismas keys que en `.env.local`.
  - Cualquier variable que empiece con `NEXT_PUBLIC_` queda expuesta al navegador — **nunca usar ese prefijo para API keys o secretos**.
 
@@ -51,7 +56,13 @@ pitch-coach/
 │   └── rules/
 │       └── CLAUDE.md -> symlink a ../../CLAUDE.md
 ├── docs/
-│   └── alcance.md
+│   ├── README.md           # índice de documentación
+│   ├── alcance.md          # producto y reglas de negocio
+│   ├── status.md           # implementación ↔ código
+│   ├── sentry.md           # decisiones de monitoreo y privacidad
+│   ├── pre-nebius.md       # baseline histórico (antes de Nebius)
+│   ├── post-nebius.md      # estado post-migración Nebius
+│   └── guia-integracion-*.md
 ├── .env.local              # no se commitea
 ├── .env.example
 ├── Dockerfile              # solo para build/deploy en Railway, no se usa en local
@@ -65,20 +76,21 @@ pitch-coach/
 │   │   ├── layout.tsx
 │   │   ├── globals.css
 │   │   └── api/
-│   │       └── analizar-pitch/
-│   │           └── route.ts         # análisis Gemini
+│   │       ├── analizar-pitch/       # análisis (Nebius/Gemini)
+│   │       ├── transcribir/          # Scribe STT
+│   │       ├── tts/
+│   │       ├── enriquecer/           # Tavily
+│   │       └── sparring/             # resolver hallazgos
 │   ├── components/
-│   │   ├── SelectorTipoPitch.tsx
-│   │   ├── SelectorDuracion.tsx
-│   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe (STT) + indicador de estado
-│   │   ├── ReproductorVeredicto.tsx  # stub: ElevenLabs TTS + fallback SpeechSynthesis
-│   │   └── DashboardResultado.tsx    # stub: rúbrica + score
+│   │   ├── SelectorTipoPitch.tsx, SelectorDuracion.tsx, SelectorIdioma.tsx
+│   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe + indicador
+│   │   ├── DashboardResultado.tsx, SparringCoach.tsx, PanelProgreso.tsx
+│   │   └── ReproductorVeredicto.tsx  # ElevenLabs TTS + SpeechSynthesis
 │   ├── lib/
-│   │   ├── gemini.ts                 # stub: cliente Gemini
-│   │   ├── rubricas.ts
-│   │   ├── muletillas.ts
-│   │   ├── mensajes-coach.ts         # frases del coach + indicador de estado
-│   │   └── prompts.ts
+│   │   ├── modelo.ts, proveedor-nebius.ts, proveedor-gemini.ts
+│   │   ├── rubricas.ts, muletillas.ts, prompts.ts, prompts-sparring.ts
+│   │   ├── diccionario-es.ts, diccionario-en.ts, idiomas.ts
+│   │   └── mensajes-coach.ts
 │   └── types/
 │       └── pitch.ts
 └── public/
@@ -94,7 +106,7 @@ El proyecto debe tener un `README.md` en la raíz, con al menos:
 - Instrucciones de setup local:
   - Clonar el repo.
   - `npm install`.
-  - Copiar `.env.example` a `.env.local` y completar las keys documentadas ahí (`GEMINI_API_KEY` es la única requerida para el loop crítico; el resto degrada con fallback).
+  - Copiar `.env.example` a `.env.local` y completar las keys documentadas ahí (`NEBIUS_API_KEY` con el proveedor por defecto; el resto degrada con fallback).
   - `npm run dev` para levantar en local (sin Docker, ejecución nativa).
 - Nota explícita de que el `Dockerfile` es solo para el deploy y no se usa en desarrollo local.
 - Se actualiza conforme el proyecto avanza — no es un documento estático.
