@@ -143,7 +143,8 @@ Resumen al **2026-10-02** — mismo contenido que el bloque inicial de
 **Limitaciones conscientes (🟡):**
 
 - Transcripción **no en vivo** (batch Scribe al detener).
-- Coach **solo texto**; animación (p. ej. esfera) en fase UX/UI.
+- Coach **solo texto**; animación en fase UX/UI (indicador en vivo, **no** un
+  orbe/esfera).
 - Rate limit **en memoria** por instancia.
 - Sin E2E automatizado con micrófono.
 

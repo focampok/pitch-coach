@@ -51,8 +51,8 @@ Documentación del producto e implementación: [`docs/README.md`](docs/README.md
 - **STT** — requiere `ELEVENLABS_API_KEY` (Scribe). Sin ella, o sin micrófono,
   hay campo de texto de respaldo.
 - **Transcripción no en vivo** — grabar → detener → transcribir el clip completo.
-- **Coach visual** — indicador de texto temporal; la animación (p. ej. esfera) está
-  planificada para la fase de UX/UI.
+- **Coach visual** — indicador de texto temporal; la animación en vivo (no un
+  orbe/esfera) está planificada para la fase de UX/UI.
 - **Proveedores externos** — Nebius, ElevenLabs y Tavily tienen rate limits y
   dependen de internet; el TTS cae a SpeechSynthesis si falla ElevenLabs.
 

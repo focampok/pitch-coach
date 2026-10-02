@@ -53,7 +53,7 @@ El **avatar reactivo fue eliminado**. El flujo actual es grabar → transcribir 
 
 Los textos salen del diccionario de la sesión (`es` / `en`); la frase final se elige al azar entre tres. Aplica igual al flujo principal de pitch y a **"Resolver hallazgos"**, que reusa el mismo grabador.
 
-**Es un estado temporal.** El reemplazo visual —una animación tipo esfera, construida desde cero— está planeado para la fase de **UX/UI**. No hay motor de reacciones ni estados reservados: el STT en vivo (Scribe Realtime) sigue fuera de alcance y no tiene fecha de calendario.
+**Es un estado temporal.** El reemplazo visual —un indicador en vivo que reacciona al audio— está planificado para la fase de **UX/UI**. La dirección ya registrada en [`docs/referencias-ui/`](referencias-ui/README.md) es explícita: **no** un orbe/esfera brillante, sino un motivo de datos (barras, anillo geométrico o línea de señal) con un solo matiz. No hay motor de reacciones ni estados reservados: el STT en vivo (Scribe Realtime) sigue fuera de alcance y no tiene fecha de calendario.
 
 #### Reglas
 
@@ -136,7 +136,7 @@ Ciclo completo:
 - [x] Evaluación contra rúbrica vía el proveedor activo (Nebius por defecto; Gemini de contingencia). JSON estructurado.
 - [x] Veredicto en voz (ElevenLabs, fallback SpeechSynthesis), a pedido.
 - [x] Dashboard: transcripción, muletillas resaltadas, rúbrica, score.
-- [x] Indicador de estado del coach en texto (`Escuchando…` / `Transcribiendo…` / 3 frases al terminar), §5.1. El reemplazo visual (esfera) queda para la fase de UX/UI.
+- [x] Indicador de estado del coach en texto (`Escuchando…` / `Transcribiendo…` / 3 frases al terminar), §5.1. El reemplazo visual (indicador en vivo, no un orbe) queda para la fase de UX/UI.
 - [x] Sesión anónima, sin login.
 - [x] Análisis Ultra: reanálisis de la misma transcripción con razonamiento extendido (Nemotron Ultra).
 - [x] Resolver hallazgos: hasta 3 preguntas de seguimiento sobre puntos no cumplidos (orden de rúbrica), texto + escuchar a pedido, respuesta por voz o texto de respaldo.
@@ -149,7 +149,7 @@ Ciclo completo:
 - Comparar dos intentos en la misma sesión.
 - Edición o creación de rúbricas custom.
 - Idiomas nuevos más allá de español e inglés (§15).
-- Animación del coach más allá del indicador de texto (esfera): la define la fase de UX/UI.
+- Animación del coach más allá del indicador de texto (el indicador en vivo): la define la fase de UX/UI, con la dirección anti-orbe de `docs/referencias-ui/`.
 - Análisis de video, lenguaje corporal o expresión facial.
 - Animación del coach más elaborada ("talking head", 3D).
 - Backend separado — todo corre en Next.js con API routes.
@@ -342,6 +342,6 @@ Scribe (`POST /v1/speech-to-text`) acepta `language_code` opcional (ISO 639-1 o
 
 ### Fuera de esta fase
 
-- Animación del coach (esfera) y STT en vivo (Scribe Realtime). El reemplazo
-  visual llega en la fase de UX/UI.
+- Animación del coach (el indicador en vivo, no un orbe) y STT en vivo (Scribe
+  Realtime). El reemplazo visual llega en la fase de UX/UI.
 - Traducción de la consulta de Tavily.
