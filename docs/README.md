@@ -4,6 +4,12 @@
 fase de UX/UI, estos documentos son la fuente de verdad del producto y del
 código.
 
+**Fuente de verdad del diseño:** `PRODUCT.md` (capa de producto, sin tokens),
+`DESIGN.md` (único destino formal del sistema visual y sus tokens) y
+[`docs/referencias-ui/`](referencias-ui/README.md) (evidencia y dirección
+**propuesta**, aún no contrato). Ante cualquier discrepancia visual, manda
+`DESIGN.md`.
+
 ## Empezar (tutorial)
 
 1. [README](../README.md) — qué es el proyecto, setup local y deploy.
@@ -26,6 +32,9 @@ código.
 | --- | --- |
 | [alcance.md](alcance.md) | Problema, loop de usuario, rúbricas, bilingüe, servicios, fuera de alcance |
 | [status.md](status.md) | Tabla implementado ↔ archivos, variables de entorno, tests, Sentry (resumen) |
+| [PRODUCT.md](../PRODUCT.md) | Capa de producto: usuarios, propósito, contexto, hackathon, principios (sin tokens) |
+| [DESIGN.md](../DESIGN.md) | Sistema visual y tokens — **fuente de verdad del diseño** (hoy pre-rediseño, anti-referencia) |
+| [referencias-ui/](referencias-ui/README.md) | Evidencia y dirección visual **propuesta** (paleta, animación, referencias) |
 | [`.env.example`](../.env.example) | Lista completa de variables y defaults documentados |
 | [CLAUDE.md](../CLAUDE.md) | Convenciones del repo para humanos y agentes |
 
@@ -59,4 +68,18 @@ cuerpo aún no se leyó. Detalle en [alcance.md §15](alcance.md).
 
 En [alcance.md §5.1](alcance.md) y [status.md](status.md): el coach es un
 indicador de texto temporal; la animación y el lenguaje visual se definirán en
-UX/UI. No hay STT en vivo (Scribe Realtime) en el alcance actual.
+UX/UI. La dirección es **anti-orbe** (sin esfera/orbe brillante): un indicador
+en vivo que reacciona al audio, con un solo matiz. No hay STT en vivo (Scribe
+Realtime) en el alcance actual.
+
+Fuentes de diseño para esa fase, en este orden:
+
+1. [`PRODUCT.md`](../PRODUCT.md) — capa de producto y compromisos de marca.
+2. [`DESIGN.md`](../DESIGN.md) — sistema visual vigente y **destino formal** de
+   los tokens aprobados.
+3. [`referencias-ui/README.md`](referencias-ui/README.md) — dirección y paleta
+   **propuestas**.
+4. [`referencias-ui/RESUMEN-REFS-UI.md`](referencias-ui/RESUMEN-REFS-UI.md) —
+   resumen curado de las referencias.
+5. [`referencias-ui/01-visualizador-audio/FICHAS.md`](referencias-ui/01-visualizador-audio/FICHAS.md)
+   — fichas de capturas del visualizador de audio.

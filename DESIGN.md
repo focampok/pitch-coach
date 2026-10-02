@@ -95,6 +95,28 @@ components:
      nada de lo visual de acá se conserva. Existe como evidencia y
      anti-referencia para deliberar el reemplazo — no como on-brand a seguir. -->
 
+## Fuente de verdad del diseño
+
+Este archivo es la **única fuente de verdad formal del sistema visual** de Pitch
+Coach. Su contenido hoy describe el **mundo anterior al rediseño** y funciona como
+anti-referencia; el bloque YAML de arriba, en particular, **no** es la paleta del
+producto.
+
+Reparto de responsabilidades, para no duplicar ni contradecir:
+
+- **`PRODUCT.md`** — capa de producto: usuarios, propósito, compromisos de marca,
+  accesibilidad. No contiene tokens.
+- **`docs/referencias-ui/`** — **pre-dirección**: capturas, criterios y una paleta
+  **propuesta** para decidir el rediseño. No es contrato visual.
+- **`DESIGN.md`** (este archivo) — **destino formal** de la dirección aprobada y
+  del sistema de tokens. Cuando un valor de `docs/referencias-ui/` se adopte para
+  producción, se consolida acá; ante cualquier discrepancia, **manda `DESIGN.md`**.
+
+Estado: el rediseño **todavía no arrancó**. Hasta que sus tokens se aprueben y se
+escriban en este documento, el diseño visual del producto se rige por las reglas
+de negocio de `alcance.md` (el coach es un indicador de texto, §5.1) y por los
+principios de `PRODUCT.md`.
+
 ## Overview
 
 **Creative North Star: "El Andamiaje Neutro"**

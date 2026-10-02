@@ -1,6 +1,32 @@
 # Referencias de diseño — Pitch Coach
 
-Carpeta de trabajo para la fase de UX/UI, **fuera del repo** para no ensuciar git.
+Carpeta de trabajo para la fase de UX/UI. Vive **dentro del repo**, en
+`docs/referencias-ui/`, versionada en git. (Antes estaba fuera, en
+`~/Proyectos/pitch-coach-refs/`; esa copia quedó obsoleta y se eliminó.)
+
+## Alcance de esta carpeta (y fuente de verdad del diseño)
+
+Un proyecto tiene **una sola** carpeta de referencias de diseño: esta, dentro del
+repo. La copia de fuera quedó obsoleta y se eliminó; no crear una nueva.
+
+Esta carpeta es **pre-dirección**: capturas y notas para **decidir** el mundo
+visual. Los tokens, valores y reglas que hay más abajo (paleta, rampa, animación)
+son una **propuesta derivada de las capturas**, pensada como insumo del rediseño
+— **todavía no son el contrato visual del producto**.
+
+La única fuente de verdad formal del sistema visual vive en [`DESIGN.md`](../../DESIGN.md)
+en la raíz del repo. Hoy ese documento registra el **mundo anterior al rediseño**
+y es **anti-referencia**; cuando arranque el rediseño, `DESIGN.md` es el destino
+de los tokens aprobados y de la dirección visual oficial. Contexto de diseño de
+producto (usuarios, compromisos de marca, accesibilidad): [`PRODUCT.md`](../../PRODUCT.md).
+
+Regla práctica: si un valor aparece acá y más adelante también en `DESIGN.md`,
+**manda `DESIGN.md`**. Acá no se duplican tokens ya adoptados.
+
+Estado de la dirección: **propuesta**. La dirección de color, tipografía y
+jerarquía de este documento **todavía no fue elegida** por el usuario; es
+material para deliberar, no una decisión cerrada.
+
 Acá van las capturas que vayas juntando a mano; las que ya están sembradas vienen
 de inspo/awwwards (MCP, 2026-10-02) y fueron **verificadas visualmente**, no solo
 por metadata.
@@ -28,13 +54,18 @@ Lucid, Railway), **no es el matiz elegido sino la disciplina**:
    pliegue es el fallo más común de páginas generadas por IA.
 
 **Test rápido:** ¿la paleta sobrevive a ser el único color del cuadro?
-
 ## Paleta propuesta — olivo, un solo matiz
+
+> **Propuesta, no contrato.** Lo de abajo es la exploración de color derivada de
+> `color.png`, y sirve para deliberar el rediseño. Todavía **no** es el sistema de
+> tokens del producto: el registro formal vive en [`DESIGN.md`](../../DESIGN.md)
+> y, cuando el rediseño arranque, ahí se consolidan los tokens aprobados.
 
 Diseñada con la **animación como restricción de primera clase**. El indicador en
 vivo necesita un matiz con rango utilizable en los dos modos, y todo lo demás
 tiene que ser incoloro — porque "en vivo" solo se lee como vivo si es lo único
 con color en la pantalla.
+
 
 Base: el olivo `#285828` extraído de `color.png`. Se extendió a una rampa de once
 pasos y se verificó cada uno contra los dos fondos.
@@ -63,7 +94,12 @@ funcione en oscuro se vuelve un rosa empolvado — *otro color*. El olivo aclara
 sigue siendo olivo, solo se vuelve salvia. **Un matiz, identidad estable en los
 dos modos.**
 
-### Tokens
+### Tokens (propuesta de trabajo)
+
+> Los valores de abajo son la **propuesta de trabajo** de la paleta. Todavía **no**
+> viven en el código ni en [`DESIGN.md`](../../DESIGN.md); cuando el rediseño los
+> adopte, se consolidan ahí y este bloque pasa a ser histórico. Hasta entonces, la
+> app usa los tokens actuales (el mundo pre-rediseño documentado en `DESIGN.md`).
 
 **Claro** — fondo `#F9F8F6` · superficie `#F1F0ED` · elevada `#FFFFFF`
 
@@ -110,6 +146,12 @@ Tu `layout.png` ya lo resolvía bien: icono sobre tinte del mismo matiz. Verific
 Es el patrón para la sección abierta de un acordeón de rúbrica.
 
 ## La animación — reglas que la paleta tiene que sostener
+
+> **Propuesta, no contrato.** Igual que la paleta: las reglas de abajo describen
+> cómo debería comportarse la animación del coach. Son objetivo de dirección, no
+> especificación implementada. Lo que hoy existe en la app es el indicador de
+> texto de [`alcance.md` §5.1](../alcance.md); el reemplazo con animación llega en
+> la fase de UX/UI.
 
 ### 1. Un matiz, y el reposo es 600 en ambos modos
 
@@ -228,8 +270,8 @@ No agregar un tercer matiz.
 | `03-tipografia/furoweb-eu.png` | `Instrument Serif` en oscuro, registro cálido. |
 | `03-tipografia/danielsun-space.png` | `LT Superior Serif` en oscuro, registro cálido. |
 | `04-jerarquia-resultado/basement-studio.png` | Oscuro extremo y art-directed; útil como techo de contención, registro demasiado "estudio creativo" para nosotros. |
-| `color.png` **(agregada por el usuario)** | El set principal. Fondo `#f8f8f8` y tarjetas `#f0f0f0` (nota: la tarjeta es *más oscura* que el fondo — superficie hundida, no elevada). Datos en olivo `#285828` + navy `#284078` + lavanda `#a0b0f0`. Contiene los tres motivos de animación: barras-ecualizador, anillo y línea de señal. De acá sale la rampa de la paleta. |
-| `layout.png` **(agregada por el usuario)** | El patrón de fila: icono sobre tinte del mismo matiz + título + badge mono + descripción. Y el estado seleccionado resuelto con tinte + texto del mismo matiz (verificado AA). Es el modelo para las filas de rúbrica y para la sección abierta del acordeón. |
+| `color.png` **(agregada por el usuario)** | Captura del set principal (vive acá, en la carpeta canónica). Fondo `#f8f8f8` y tarjetas `#f0f0f0` (nota: la tarjeta es *más oscura* que el fondo — superficie hundida, no elevada). Datos en olivo `#285828` + navy `#284078` + lavanda `#a0b0f0`. Contiene los tres motivos de animación: barras-ecualizador, anillo y línea de señal. De acá sale la rampa de la paleta **propuesta**. |
+| `layout.png` **(agregada por el usuario)** | Captura del set principal (vive acá, en la carpeta canónica). El patrón de fila: icono sobre tinte del mismo matiz + título + badge mono + descripción. Y el estado seleccionado resuelto con tinte + texto del mismo matiz (verificado AA). Es el modelo para las filas de rúbrica y para la sección abierta del acordeón. |
 
 ## Registro de descartes y correcciones
 

@@ -4,6 +4,14 @@ Documento de referencia visual para la fase de dirección. Sin código.
 Fuentes: [`README.md`](README.md) de esta carpeta + capturas locales (solo lectura) + productos públicos (web, sin Mobbin/Refero).
 Fecha: 2026-10-02.
 
+> **Alcance y fuente de verdad.** Este archivo es un **resumen de pre-dirección**
+> (capturas + refs públicas) para decidir el rediseño; la dirección que propone es
+> una **propuesta**, no una decisión cerrada. La fuente de verdad *de referencias*
+> es esta carpeta; la fuente de verdad *del sistema visual* es
+> [`DESIGN.md`](../../DESIGN.md) en la raíz, y el contexto de producto está en
+> [`PRODUCT.md`](../../PRODUCT.md). Si algo de acá se adopta, se consolida en
+> `DESIGN.md`.
+
 ---
 
 ## 1. Visualizador de audio
@@ -20,7 +28,7 @@ Dirección: indicador de mic **en vivo** que reacciona a audio real. **No orbe b
 | **Anillo angular** | Card "Registrations" — anillo de progreso grueso (no esfera) | Anti-orbe: geométrico; engrosa/segmenta con amplitud |
 | **Línea de señal** | Card "NPS" — línea + área | Continuidad formal con Wealthsimple |
 
-Reglas del README (mantener): un solo matiz; animar **altura/opacidad**, nunca glow; reposo = paso 600 de la rampa; continuidad grabación → score (el mismo elemento se asienta y *es* el veredicto).
+Reglas del README (**propuesta**, a mantener si la dirección se aprueba): un solo matiz; animar **altura/opacidad**, nunca glow; reposo = paso 600 de la rampa; continuidad grabación → score (el mismo elemento se asienta y *es* el veredicto).
 
 ### Enfoques (2–3 variantes por familia)
 
@@ -235,7 +243,7 @@ Dirección: **score + veredicto grandes arriba**; rúbrica / fillers / transcrip
 
 | Ref | Patrón |
 |---|---|
-| **Tana** (`03-tipografia/tana-inc.png`) | Un número/frase monumental; resto subordinado; un solo portador de color |
+| **Tana** (`03-tipografia/tana-inc.png`) | Escala monumental (un número/frase enorme) y un solo portador de color en todo el viewport. En nuestro producto, la frase monumental *es* el **score + veredicto** al pliegue (§3); el resto queda subordinado. |
 | **Lucid** (`04-jerarquia-resultado/lucidmotors-com.png`) | Franja de métricas: versalita chica + valor grande + divisor vertical |
 | **layout.png** (usuario) | Fila de acordeón: icono sobre `signal-tint` + título + badge mono + descripción; estado abierto = mismo matiz AA |
 | **Basement** (`04-…/basement-studio.png`) | Techo de oscuridad art-directed — **no** copiar registro "estudio creativo" |
@@ -270,7 +278,7 @@ Dirección: **score + veredicto grandes arriba**; rúbrica / fillers / transcrip
 - Railway CTA violeta / cualquier indigo-lavender glow  
 - Basement Studio — demasiado "creative agency"
 
-### Decisión corta de dirección
+### Decisión corta de dirección (propuesta)
 
 | Eje | Decisión |
 |---|---|
@@ -300,7 +308,11 @@ docs/referencias-ui/
 Cada imagen vive en **una sola** carpeta; qué aporta cada una está en la tabla del
 `README.md`.
 
-**Copia canónica:** `docs/referencias-ui/`, versionada en git dentro del repo. Es
-la única fuente de verdad. Si existe una copia fuera del repo (p. ej.
-`~/Proyectos/pitch-coach-refs/` o `/workspace/`), está desactualizada y debe
-descartarse.
+**Copia canónica de las capturas:** `docs/referencias-ui/`, versionada en git
+dentro del repo. Es la única fuente de verdad **de referencias**. Si existe una
+copia fuera del repo (p. ej. `~/Proyectos/pitch-coach-refs/` o `/workspace/`),
+está desactualizada y debe descartarse.
+
+**Fuente de verdad del diseño:** el sistema visual formal vive en
+[`DESIGN.md`](../../DESIGN.md). Esta carpeta es insumo de la dirección, no su
+contrato; si un valor se adopta, se consolida en `DESIGN.md`.
