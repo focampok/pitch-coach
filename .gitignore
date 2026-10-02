@@ -28,6 +28,11 @@ yarn-error.log*
 .claude/settings.local.json
 .impeccable/
 
+# grabaciones locales de prueba (ffmpeg / curl a Scribe). Contienen voz;
+# no son assets del producto.
+/clip.*
+/grabacion.*
+
 # Railway (si genera archivos locales de config)
 .railway/
 next-env.d.ts

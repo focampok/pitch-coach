@@ -127,6 +127,33 @@
   color: #e03131;
 }
 
+.pc-transcripcion-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pc-transcripcion-cabecera h3 {
+  margin: 0;
+}
+
+.pc-descargar-guion {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid #d4d4d8;
+  background: #fff;
+  color: #27272a;
+  cursor: pointer;
+}
+
+.pc-descargar-guion:hover {
+  background: #fafafa;
+}
+
 .pc-transcripcion p {
   line-height: 1.6;
   white-space: pre-wrap;

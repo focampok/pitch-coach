@@ -5,6 +5,7 @@ import type { Idioma } from "@/types/idioma";
 import type {
   DuracionMaxima,
   EvaluacionRubrica,
+  PalabraTranscripcion,
   ResultadoAnalisis,
   SolicitudAnalisis,
   TipoPitch,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/muletillas";
 import { cabecerasJson } from "@/lib/idiomas";
 import { etiquetaPunto } from "@/lib/rubricas";
+import { construirGuion } from "@/lib/guion-transcripcion";
 import { useIdioma } from "./ProveedorIdioma";
 import { ReproductorVeredicto } from "./ReproductorVeredicto";
 
@@ -36,6 +38,8 @@ interface SugerenciaTavily {
 
 interface DashboardResultadoProps {
   transcripcion: string;
+  /** Tokens Scribe con tiempo; vacíos si el pitch se escribió a mano. */
+  palabras?: PalabraTranscripcion[];
   resultado: ResultadoAnalisis;
   tipoPitch: TipoPitch;
   /** Voz de ElevenLabs de esta sesión (misma para veredicto y sparring). */
@@ -83,6 +87,7 @@ function ItemRubrica({
 
 export function DashboardResultado({
   transcripcion,
+  palabras = [],
   resultado,
   tipoPitch,
   muletillasPatterns,
@@ -113,6 +118,22 @@ export function DashboardResultado({
     () => resaltarMuletillas(transcripcion, patrones),
     [transcripcion, patrones]
   );
+
+  const guion = useMemo(() => construirGuion(palabras), [palabras]);
+
+  const descargarGuion = useCallback(() => {
+    if (guion === "") return;
+    const blob = new Blob([guion], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = textos.dashboard.archivoGuion;
+    enlace.rel = "noopener";
+    document.body.append(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
+  }, [guion, textos.dashboard.archivoGuion]);
 
   const totalMuletillas = useMemo(
     () => Object.values(resultado.muletillas).reduce((a, b) => a + b, 0),
@@ -297,7 +318,18 @@ export function DashboardResultado({
       </section>
 
       <section className="pc-transcripcion">
-        <h3>{textos.dashboard.transcripcion}</h3>
+        <div className="pc-transcripcion-cabecera">
+          <h3>{textos.dashboard.transcripcion}</h3>
+          {guion !== "" && (
+            <button
+              type="button"
+              onClick={descargarGuion}
+              className="pc-descargar-guion"
+            >
+              {textos.dashboard.descargarGuion}
+            </button>
+          )}
+        </div>
         <p
           // `resaltarMuletillas` escapa HTML de la transcripción (viene de STT,
           // no es confiable) antes de insertar los <mark>; el único markup de

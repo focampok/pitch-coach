@@ -171,7 +171,37 @@ describe("transcribirAudio", () => {
 
     expect(form.get("language_code")).toBe("en");
     expect(form.get("model_id")).toBe("scribe_v2_custom");
+    expect(form.get("timestamps_granularity")).toBe("word");
     expect(form.has("no_verbatim")).toBe(false);
+  });
+
+  it("devuelve texto y palabras sin logprob", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              text: "Uno, dos",
+              words: [
+                {
+                  text: "Uno,",
+                  start: 4.16,
+                  end: 4.42,
+                  type: "word",
+                  logprob: -0.014,
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+
+    await expect(transcribirAudio(new Blob(["audio"]))).resolves.toEqual({
+      texto: "Uno, dos",
+      palabras: [{ text: "Uno,", type: "word", start: 4.16, end: 4.42 }],
+    });
   });
 });
 

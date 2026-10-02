@@ -27,7 +27,7 @@ Builders, emprendedores, estudiantes y profesionales que necesitan preparar un p
    - Detecta **muletillas** (conteo por palabra/frase).
    - Evalúa el contenido contra la **rúbrica del tipo elegido**.
    - Genera un **score** y un **veredicto breve**.
-5. El **dashboard muestra el detalle** en texto: transcripción con muletillas resaltadas, puntos de rúbrica, score y tiempo usado.
+5. El **dashboard muestra el detalle** en texto: transcripción con muletillas resaltadas, puntos de rúbrica, score y tiempo usado. Si el pitch se grabó (no se escribió a mano), se puede **descargar un guion** en texto plano con marcas de tiempo por frase (`[mm:ss.cc]`).
 6. El usuario **puede escuchar al coach**: el `veredicto_corto` se convierte a voz (ElevenLabs, con fallback a SpeechSynthesis). No se reproduce solo al terminar el análisis.
 7. Si quiere más rigor, puede pedir **Análisis Ultra**: se reanaliza la misma transcripción con Nemotron Ultra (razonamiento activo). El resultado se muestra además del estándar, etiquetado, con una **traza** (log de 4–8 pasos: qué buscó, qué halló o faltó).
 8. Si quedó al menos un punto de rúbrica sin cubrir, puede **resolver hallazgos**: hasta 3 preguntas de seguimiento (una por punto no cumplido, en orden de rúbrica). Cada pregunta aparece en texto; el usuario puede escucharla (misma voz de la sesión) si quiere. Tras cada respuesta recibe feedback; al final ve cuántos hallazgos resolvió.
@@ -184,6 +184,7 @@ Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 ### Voz → texto (STT)
 - **MediaRecorder** en el cliente (Chrome, Firefox, Safari, Brave, móvil) y **ElevenLabs Scribe** (`POST /v1/speech-to-text`, `scribe_v2`) en `/api/transcribir`.
 - Flujo de esta fase: grabar → detener → transcribir → mostrar el texto completo. Sin palabra por palabra en vivo.
+- Scribe se pide con `timestamps_granularity=word`. El análisis sigue usando solo el texto plano; las marcas `words[].start/end` (segundos) se conservan en el cliente para el **guion descargable** (una línea por oración o pausa ≥ 0.6 s). El texto de respaldo no tiene marcas: el botón no aparece.
 - Scribe acepta `audio/webm` (Chrome/Firefox) y `audio/mp4` (Safari) sin transcodificar.
 - Si `getUserMedia` no existe o el permiso se niega, hay un **campo de texto de respaldo** (pitch principal y Resolver hallazgos).
 - El audio se procesa **en memoria** y se descarta al obtener el texto: no se escribe a disco ni se adjunta a logs, breadcrumbs o Sentry.

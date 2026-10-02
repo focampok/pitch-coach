@@ -93,6 +93,8 @@ export const en: Diccionario = {
     muletillas: (total: number) => `Filler words (${total})`,
     sinMuletillas: "None detected — good control.",
     transcripcion: "Transcript",
+    descargarGuion: "Download script",
+    archivoGuion: "pitch-script.txt",
     datosSugeridos: "Data that could back up your pitch",
     buscando: "Searching…",
     sinSugerencias: "No verified suggestions for now.",

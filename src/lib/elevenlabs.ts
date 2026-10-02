@@ -1,5 +1,7 @@
 import type { Idioma } from "@/types/idioma";
+import type { ResultadoTranscripcion } from "@/types/pitch";
 import { registroIdioma } from "@/lib/idiomas";
+import { extraerPalabrasScribe } from "@/lib/guion-transcripcion";
 
 /**
  * Cliente server-side para ElevenLabs (TTS del veredicto y STT).
@@ -152,12 +154,15 @@ function nombreArchivoAudio(mime: string): string {
  * `model_id` (default `scribe_v2`): no elige idioma.
  * `no_verbatim` se deja apagado: ese flag borra muletillas, y este producto
  * las cuenta.
+ * `timestamps_granularity=word`: Scribe incluye `words[].start/end` en
+ * segundos. El texto plano sigue yendo al análisis; las marcas alimentan
+ * el guion descargable. `none` devolvería `words` sin tiempo.
  */
 export async function transcribirAudio(
   audio: Blob,
   signal?: AbortSignal,
   idioma: Idioma = "es",
-): Promise<string> {
+): Promise<ResultadoTranscripcion> {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     throw new Error("ELEVENLABS_API_KEY no configurada");
@@ -168,7 +173,7 @@ export async function transcribirAudio(
   form.append("model_id", modelId);
   form.append("language_code", registroIdioma(idioma).codigoStt);
   form.append("tag_audio_events", "false");
-  form.append("timestamps_granularity", "none");
+  form.append("timestamps_granularity", "word");
   form.append("file", audio, nombreArchivoAudio(audio.type));
 
   const response = await fetch(ELEVENLABS_STT_URL, {
@@ -188,9 +193,15 @@ export async function transcribirAudio(
     );
   }
 
-  const cuerpo = (await response.json()) as { text?: unknown };
-  if (typeof cuerpo.text !== "string") {
+  const cuerpo: unknown = await response.json();
+  const texto =
+    cuerpo !== null &&
+    typeof cuerpo === "object" &&
+    typeof (cuerpo as { text?: unknown }).text === "string"
+      ? (cuerpo as { text: string }).text
+      : null;
+  if (texto === null) {
     throw new Error("ElevenLabs STT respondió sin texto");
   }
-  return cuerpo.text;
+  return { texto, palabras: extraerPalabrasScribe(cuerpo) };
 }

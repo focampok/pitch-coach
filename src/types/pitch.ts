@@ -19,6 +19,26 @@ export const DURACIONES_MAXIMAS: readonly DuracionMaxima[] = [1, 2, 3, 4, 5, 6, 
 // matching. Coincide con el campo `muletillas` del JSON de análisis (§13).
 export type ConteoMuletillas = Record<string, number>;
 
+/**
+ * Token de Scribe (`words[]`) con tiempo en segundos. `start`/`end` son null
+ * si el proveedor no mandó marcas (p. ej. `timestamps_granularity=none`).
+ * `logprob` y `characters` no se conservan: el producto solo usa el texto y
+ * la línea de tiempo para el guion descargable.
+ */
+export type TipoPalabraTranscripcion = "word" | "spacing" | "audio_event";
+
+export interface PalabraTranscripcion {
+  text: string;
+  type: TipoPalabraTranscripcion;
+  start: number | null;
+  end: number | null;
+}
+
+export interface ResultadoTranscripcion {
+  texto: string;
+  palabras: PalabraTranscripcion[];
+}
+
 /** Evaluación de un punto de la rúbrica, devuelta por Gemini (docs/alcance.md §13). */
 export interface EvaluacionRubrica {
   /** Nombre del punto de la rúbrica (mismo texto que §6). */

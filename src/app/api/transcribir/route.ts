@@ -21,13 +21,13 @@ function mensajeLogSinAudio(err: unknown): string {
  * multipart: campo `audio` (File/Blob) y campo `idioma` ('es' | 'en'; ausente →
  * 'es', otro valor → 400). El audio se procesa en memoria y se descarta al
  * obtener el texto. Nunca se escribe a disco ni se adjunta a logs o a Sentry
- * (la clave `audio` ya está en SENSITIVE_KEYS).
+ * (las claves `audio` y `palabras` ya están en SENSITIVE_KEYS).
  *
  * El idioma va como campo del FormData porque el cuerpo de esta ruta no es
  * JSON. Gobierna los mensajes de error y el hint `language_code` de Scribe
  * (`es` o `en`). El modelo (`ELEVENLABS_SCRIBE_MODEL`) es independiente.
  *
- * → 200 { texto }
+ * → 200 { texto, palabras }  palabras: tokens Scribe con start/end en segundos
  * → 400 { error }  idioma inválido, falta audio o MIME no permitido
  * → 413 { error }  supera MAX_AUDIO_BYTES
  * → 429 { error }  rate limit
@@ -72,8 +72,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_STT_MS);
 
   try {
-    const texto = await transcribirAudio(entrada, controller.signal, idioma);
-    return NextResponse.json({ texto });
+    const { texto, palabras } = await transcribirAudio(
+      entrada,
+      controller.signal,
+      idioma,
+    );
+    return NextResponse.json({ texto, palabras });
   } catch (err) {
     // Solo el mensaje de Error (status + recorte del JSON del proveedor).
     // Nunca el Blob, el FormData ni un ArrayBuffer.

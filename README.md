@@ -15,9 +15,10 @@ Licencia: [MIT](LICENSE).
 corte automático) → se transcribe en el servidor (ElevenLabs Scribe) → se
 cuentan muletillas → el modelo (Nebius por defecto) evalúa contra la
 rúbrica → el dashboard muestra score, puntos cumplidos/faltantes y
-transcripción resaltada → puedes escuchar el veredicto (ElevenLabs, o
-SpeechSynthesis si falta la key) → si un punto de rúbrica no se cubrió,
-Tavily puede sugerir un dato real.
+transcripción resaltada → puedes **descargar un guion** con marcas de tiempo
+(si grabaste, no si escribiste el texto) → puedes escuchar el veredicto
+(ElevenLabs, o SpeechSynthesis si falta la key) → si un punto de rúbrica
+no se cubrió, Tavily puede sugerir un dato real.
 
 Indicador de estado durante la grabación, en texto simple y en el idioma de la
 sesión: `Escuchando…` mientras grabas, `Transcribiendo…` mientras el servidor

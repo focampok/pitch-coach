@@ -107,6 +107,8 @@ export const es = {
     muletillas: (total: number) => `Muletillas (${total})`,
     sinMuletillas: "Ninguna detectada — buen control.",
     transcripcion: "Transcripción",
+    descargarGuion: "Descargar guion",
+    archivoGuion: "pitch-guion.txt",
     datosSugeridos: "Datos que podrían reforzar tu pitch",
     buscando: "Buscando…",
     sinSugerencias: "Sin sugerencias verificadas por ahora.",

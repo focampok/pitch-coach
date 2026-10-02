@@ -60,6 +60,7 @@ import { IP_HEADER_NAMES } from "./sentry-options";
  *   veredicto      → texto del veredicto
  *   veredicto_corto→ ResultadoAnalisis.veredicto_corto
  *   audio          → buffer de /api/tts y campo multipart de /api/transcribir
+ *   palabras       → tokens Scribe con tiempo (mismo contenido que la transcripción)
  */
 export const SENSITIVE_KEYS: readonly string[] = [
   "transcripcion",
@@ -70,6 +71,7 @@ export const SENSITIVE_KEYS: readonly string[] = [
   "veredicto",
   "veredicto_corto",
   "audio",
+  "palabras",
 ];
 
 /** Marcador que reemplaza al valor filtrado. */

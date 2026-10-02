@@ -76,18 +76,38 @@ function todoLoEnviadoASentry(): string {
 describe("POST /api/transcribir", () => {
   it("devuelve el texto cuando Scribe responde bien", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ text: "Hola, este es el pitch." }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({
+          text: "Hola, este es el pitch.",
+          words: [
+            {
+              text: "Hola,",
+              start: 0.2,
+              end: 0.5,
+              type: "word",
+              logprob: -0.1,
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
     vi.stubGlobal("fetch", fetchMock);
 
     const res = await POST(peticion(archivoAudio()));
-    const cuerpo = (await res.json()) as { texto?: string };
+    const cuerpo = (await res.json()) as {
+      texto?: string;
+      palabras?: unknown;
+    };
 
     expect(res.status).toBe(200);
     expect(cuerpo.texto).toBe("Hola, este es el pitch.");
+    expect(cuerpo.palabras).toEqual([
+      { text: "Hola,", type: "word", start: 0.2, end: 0.5 },
+    ]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://api.elevenlabs.io/v1/speech-to-text");
@@ -95,6 +115,7 @@ describe("POST /api/transcribir", () => {
       "test-eleven-key",
     );
     expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("timestamps_granularity")).toBe("word");
   });
 
   it("usa ELEVENLABS_SCRIBE_MODEL cuando está definido", async () => {

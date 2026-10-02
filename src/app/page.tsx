@@ -23,6 +23,7 @@ import type {
   SolicitudAnalisis,
   ResultadoAnalisis,
   SparringCompletado,
+  PalabraTranscripcion,
 } from "@/types/pitch";
 
 export default function Home() {
@@ -30,6 +31,7 @@ export default function Home() {
   const [tipoPitch, setTipoPitch] = useState<TipoPitch>("capital");
   const [duracionMaxima, setDuracionMaxima] = useState<DuracionMaxima>(3);
   const [transcripcion, setTranscripcion] = useState<string | null>(null);
+  const [palabras, setPalabras] = useState<PalabraTranscripcion[]>([]);
   // Estado del análisis: null = no iniciado; analizando = petición en curso;
   // resultado = DashboardResultado; error = fallo de /api/analizar-pitch.
   const [analisis, setAnalisis] = useState<ResultadoAnalisis | null>(null);
@@ -42,8 +44,9 @@ export default function Home() {
   const [mostrarProgreso, setMostrarProgreso] = useState(false);
 
   const handleTranscripcionCompleta = useCallback(
-    async (texto: string, tiempoReal: number) => {
+    async (texto: string, tiempoReal: number, tokens: PalabraTranscripcion[] = []) => {
       setTranscripcion(texto);
+      setPalabras(tokens);
       setAnalisis(null);
       setFechaSesion(null);
       setErrorAnalisis(null);
@@ -176,6 +179,7 @@ export default function Home() {
         <DashboardResultado
           key={transcripcion}
           transcripcion={transcripcion}
+          palabras={palabras}
           resultado={analisis}
           tipoPitch={tipoPitch}
           muletillasPatterns={patronesMuletillas(idioma)}

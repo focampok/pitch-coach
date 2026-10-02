@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { DuracionMaxima } from "@/types/pitch";
+import type { DuracionMaxima, PalabraTranscripcion } from "@/types/pitch";
 import {
   elegirMensajeAsintiendo,
   textoIndicadorCoach,
   type EstadoGrabador,
 } from "@/lib/mensajes-coach";
 import { cabecerasIdioma } from "@/lib/idiomas";
+import { extraerPalabrasScribe } from "@/lib/guion-transcripcion";
 import { useIdioma } from "./ProveedorIdioma";
 
 interface GrabadorVozProps {
@@ -17,8 +18,14 @@ interface GrabadorVozProps {
    * Se dispara al terminar (grabación + transcripción, o envío de texto de
    * respaldo) con el texto completo y el tiempo real en segundos
    * (docs/alcance.md §7: el tiempo usado entra como contexto de la evaluación).
+   * `palabras` trae marcas de Scribe cuando el audio se transcribió; vacío si
+   * el usuario escribió el texto de respaldo.
    */
-  onTranscripcionCompleta: (transcripcion: string, tiempoRealSegundos: number) => void;
+  onTranscripcionCompleta: (
+    transcripcion: string,
+    tiempoRealSegundos: number,
+    palabras?: PalabraTranscripcion[],
+  ) => void;
 }
 
 const MIME_CANDIDATOS = [
@@ -92,11 +99,15 @@ export default function GrabadorVoz({
   }, []);
 
   const finalizarConTexto = useCallback(
-    (texto: string, tiempoRealSegundos: number) => {
+    (
+      texto: string,
+      tiempoRealSegundos: number,
+      palabras: PalabraTranscripcion[] = [],
+    ) => {
       setTranscripcionFinal(texto);
       setEstado("finalizado");
       setMensajeCoach(elegirMensajeAsintiendo(idioma));
-      onTranscripcionCompleta(texto, tiempoRealSegundos);
+      onTranscripcionCompleta(texto, tiempoRealSegundos, palabras);
     },
     [idioma, onTranscripcionCompleta],
   );
@@ -119,12 +130,16 @@ export default function GrabadorVoz({
           body: form,
           signal: controller.signal,
         });
-        const cuerpo = (await respuesta.json()) as { texto?: string; error?: string };
+        const cuerpo = (await respuesta.json()) as {
+          texto?: string;
+          palabras?: unknown;
+          error?: string;
+        };
         if (!respuesta.ok || typeof cuerpo.texto !== "string") {
           throw new Error(cuerpo.error ?? textos.grabador.errorTranscripcion);
         }
         const texto = cuerpo.texto.trim();
-        finalizarConTexto(texto, tiempoRealSegundos);
+        finalizarConTexto(texto, tiempoRealSegundos, extraerPalabrasScribe(cuerpo));
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         setError(

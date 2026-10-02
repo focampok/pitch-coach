@@ -10,3 +10,5 @@ docs
 terminals
 .railway
 tsconfig.tsbuildinfo
+clip.*
+grabacion.*
