@@ -160,8 +160,42 @@ mark.pc-muletilla {
   font-size: 0.85rem;
 }
 
-.pc-tavily-resumen {
+.pc-tavily-cifra {
+  margin: 0.2rem 0 0.1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.pc-tavily-fecha {
+  margin: 0 0 0.3rem;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.pc-tavily-cita {
   margin: 0.2rem 0 0.3rem;
   font-size: 0.85rem;
   opacity: 0.8;
+  font-style: italic;
+  border-left: 3px solid #d0d0d0;
+  padding-left: 0.6rem;
+}
+
+.pc-tavily-fuente {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 0.8rem;
+}
+
+.pc-tavily-escuchar {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #d0d0d0;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+.pc-tavily-escuchar:disabled {
+  opacity: 0.6;
+  cursor: default;
 }

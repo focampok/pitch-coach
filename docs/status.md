@@ -1,6 +1,6 @@
 # Pitch Coach — Status del proyecto
 
-> **2026-09-29.** Qué está implementado, mapeado a `docs/alcance.md`.
+> **2026-09-30.** Qué está implementado, mapeado a `docs/alcance.md`.
 > El loop (voz → análisis → dashboard + veredicto a pedido) está cerrado.
 > El STT es universal (MediaRecorder + Scribe). Resolver hallazgos, Análisis
 > Ultra y el panel "Tu progreso" están implementados; la verificación del
@@ -11,6 +11,15 @@
 > grabar → transcribir → analizar no produce resultados intermedios sobre los
 > que reaccionar. Hoy el coach es un **indicador de texto** temporal; el
 > reemplazo visual (esfera) llega en la fase de UX/UI.
+> **Tavily (fases A y B) completo**: auth por header `Bearer`, extracción de
+> entidades cortas (nivel `rapido`), query orientada a cifra (sin el comentario
+> negativo de la Fase A) y `exclude_domains` para los dominios metodológicos
+> conocidos, más `language` / `filter_by_language` / `topic` / `time_range` en
+> la búsqueda. Una sugerencia **solo se muestra si pasa un paso de validación
+> obligatorio** (Tavily Extract + nivel `rapido`) que exige una cifra concreta
+> citada con su fuente, y se entrega con una **frase hablada** lista para decir
+> en voz alta (misma voz TTS de la sesión). Ver la evidencia real en
+> `docs/guia-integracion-tavily.md` (§2).
 
 ## Resumen rápido
 
@@ -24,8 +33,22 @@
 - ✅ Dashboard: score, rúbrica, muletillas, transcripción resaltada, tiempo.
 - ✅ TTS: ElevenLabs vía `/api/tts`, fallback a SpeechSynthesis.
   **Sin autoplay** — el usuario pulsa "Escuchar veredicto".
-- ✅ Tavily (§12): `/api/enriquecer` si hay puntos sin cumplir. Sin key,
-  el dashboard no se rompe.
+- ✅ Tavily (§12): `/api/enriquecer` si hay puntos sin cumplir. Auth por
+  `Authorization: Bearer` (la key no va en el body). La query se arma con
+  entidades cortas del pitch + el nombre visible del punto (nivel `rapido`),
+  **sin repetir el comentario negativo** que produjo resultados inútiles en las
+  pruebas manuales; los dominios metodológicos conocidos —y los proxies de
+  traducción automática (`translate.goog` y similares)— se excluyen con
+  `exclude_domains`. La búsqueda viaja con `language` + `filter_by_language`,
+  `topic` (`finance` para capital) y `time_range=year`. Sobre la mejor fuente
+  se corre **Tavily Extract** y un **paso de validación obligatorio**: sin una
+  cifra concreta citada con su fuente **y relevante al tema/sector del pitch**
+  (el validador recibe las entidades como contexto de comparación), la
+  sugerencia se descarta. Cuando pasa,
+  se agrega una **frase hablada** (8–12 s) en el idioma de la sesión, lista para
+  decir. El pipeline completo solo corre para los **2 primeros puntos de la
+  rúbrica** del tipo de pitch, en su orden; los puntos fallidos que quedan fuera
+  no generan ninguna llamada externa. Sin key, el dashboard no se rompe.
 - ✅ Sentry: errores de servidor y de cliente, con filtro de privacidad (§5).
   **Session Replay deshabilitado a propósito**; **la IP del cliente no se
   reporta** y **los breadcrumbs de consola no salen** (fuga real, cerrada).
@@ -34,7 +57,8 @@
   (incluido el historial local) y las rutas de análisis/sparring/transcribir
   (fetch mockeado; sin llamadas reales a proveedores).
 - ✅ Límites: transcripción máx. 8000 caracteres; audio máx. 20 MB; respuesta
-  de sparring máx. 2000; rate limit por IP en memoria.
+  de sparring máx. 2000; rate limit por IP en memoria, **con techo por ruta**
+  (10 / 10 min; `/api/enriquecer`, 5 / 10 min, por su costo por invocación).
 - ✅ Análisis Ultra: botón en el dashboard que reanaliza la misma transcripción
   con nivel `ultra` (Nemotron Ultra, razonamiento activo). Se muestra además
   del análisis estándar, con una traza de razonamiento (4–8 pasos).
@@ -87,8 +111,8 @@
 | ✅ | Resolver hallazgos (§9) | `SparringCoach.tsx` + `/api/sparring/pregunta` + `/api/sparring/evaluar` | copy visible "Resolver hallazgos"; APIs internas siguen en `/api/sparring/*`; hasta 3 puntos no cumplidos; nivel `rapido`; escuchar a pedido; mismo grabador + texto de respaldo |
 | ✅ | API `transcribir` | `elevenlabs.ts` + `/api/transcribir` | Scribe batch; `language_code` del idioma de la sesión; `ELEVENLABS_SCRIBE_MODEL` solo elige el modelo; audio en memoria; 400 / 413 / 429 / 502 genérico; timeout 60 s |
 | ✅ | TTS (§13) | `ReproductorVeredicto.tsx` + `elevenlabs.ts` + `/api/tts` | par de Voice IDs según idioma (sin sufijo en es, `_EN_` en en); el género de sesión no cambia. Veredicto y Resolver hallazgos comparten `/api/tts`. timeout 6 s; 413/429; `autoPlay={false}` |
-| ✅ | Tavily (§12) | `tavily.ts` + `/api/enriquecer` | best-effort; timeout 8 s |
-| ✅ | Límites | `src/lib/limites.ts` + `src/lib/rate-limit.ts` | transcripción máx. 8000; audio máx. 20 MB; respuesta sparring máx. 2000; rate limit por IP en memoria (por instancia) |
+| ✅ | Tavily (§12) | `tavily.ts` + `query-tavily.ts` + `tavily-extract.ts` + `validar-sugerencia.ts` + `entidades-tavily.ts` + `/api/enriquecer` | best-effort; timeouts propios (búsqueda 8 s, Extract 12 s). Auth `Authorization: Bearer` (la key no viaja en el body). Extrae hasta 3 entidades cortas (máx. 40 caracteres, nivel `rapido`) y arma la query con ellas + el nombre visible del punto **sin el comentario negativo**; una entidad ambigua (sigla/marca de una palabra) nunca viaja sola. Una llamada al modelo (`rapido`) puede reescribir la query orientándola a cifra; si falla, cae a la query determinista. La transcripción **nunca** se envía a Tavily. Búsqueda localizada: `language` + `filter_by_language`, `exclude_domains` (dominios metodológicos conocidos **y proxies de traducción automática como `translate.goog`**), `topic` (`finance` si es `capital`, `general` en el resto) y `time_range=year`. Criterio de selección documentado (`SCORE_MINIMO`, tope de candidatos) en vez de `results[0]` ciego; sobre el elegido se corre **Tavily Extract** y una **validación obligatoria** (nivel `rapido`, esquema restringido con `additionalProperties: false`) que exige cifra citada **y confirma su relevancia al tema** (campo `relevante`: compara la cifra contra las entidades del pitch, así una cifra real de otro sector se descarta); solo entonces se genera la **frase hablada** (nivel `rapido`). Los fallos de la validación se registran en un **log de diagnóstico sin PII** (query final + si aprobó), nunca la transcripción ni el contenido extraído |
+| ✅ | Límites | `src/lib/limites.ts` + `src/lib/rate-limit.ts` | transcripción máx. 8000; audio máx. 20 MB; respuesta sparring máx. 2000; rate limit por IP en memoria (por instancia) con techo por ámbito: 10 / 10 min por defecto y **5 / 10 min en `/api/enriquecer`** (`LIMITES_POR_AMBITO`). El techo más bajo sigue al costo: cada invocación dispara 1 llamada a Nano (entidades) y, por cada punto fallido, hasta 1 query al modelo + 1 búsqueda de Tavily + hasta 2 Extract + 1 validación + 1 frase. El pipeline completo solo corre para los `MAX_PUNTOS_ENRIQUECIDOS` (2) primeros puntos de la rúbrica del tipo, en su orden: el resto no genera llamadas externas. Techo real por invocación: 1 + 2 × 6 = **~13 llamadas externas** contra 1 del resto de las rutas. Verificado por test (incluido el techo de puntos): el de `enriquecer` no afecta al de las demás rutas |
 | ✅ | Historial local | `src/lib/historial-sesiones.ts` + `src/types/historial.ts` | clave `pitch-coach:historial-sesiones`; últimas 20; FIFO. Campos: fecha, tipo, duración, score, claridad (reconstruida del score), rúbrica `{punto, cumplido}`, conteo de muletillas, `ultraUsado`, y —si se completó— hallazgos `{preguntasHechas, puntosReforzados, puntos: [{punto, cumplido}]}`. Ultra no guarda score ni rúbrica propios |
 | ✅ | Panel "Tu progreso" | `PanelProgreso.tsx` | enlace en la página principal; lista reciente primero (fecha, tipo, score, cobertura `n/5`, Ultra, hallazgos); "Borrar historial" con `confirm()` |
 | ✅ | Modo bilingüe (§15) | `src/lib/idiomas.ts`, `src/lib/diccionario-es.ts`, `src/lib/diccionario-en.ts`, `src/lib/diccionarios.ts`, `ProveedorIdioma.tsx`, `SelectorIdioma.tsx` | registro de idiomas + diccionarios tipados + contexto de React. `en` está tipado contra la forma de `es`; un test compara las dos formas clave por clave. Idioma inicial: `localStorage` → `navigator.language` (`es*` → es) → es |
@@ -137,7 +161,6 @@ El resaltado marca la palabra, no la coma que la precede.
 | Animación del coach (esfera) | Hoy el coach es solo texto (§5.1). La animación que lo reemplace se define en la fase de UX/UI; no hay fecha de calendario. |
 | Idiomas nuevos | Agregar uno debería ser agregar datos en el registro, un diccionario, un par de Voice IDs y patrones de muletillas; hoy solo hay es y en. |
 | STT en vivo (Scribe Realtime) | Esta fase transcribe el clip completo al detener. No tiene fecha de calendario. |
-| Consulta de Tavily por idioma | `/api/enriquecer` acepta `idioma` y no lo usa. Localizar la consulta sigue abierto. |
 
 ## 3. Variables de entorno
 
@@ -186,6 +209,22 @@ en inglés queda para el mantenedor.
 - Tests: `npm test` (vitest; `src/lib/` y rutas de análisis/sparring/transcribir
   con fetch mockeado). El loop con micrófono se verifica a mano.
 - Timeout del modelo: 20 s en `estandar`/`rapido`, 90 s en `ultra` (razonamiento).
+- **Decisión de rate limit (Fase B)**: `/api/enriquecer` sigue en **5 / 10 min
+  por IP** (el global se queda en 10). Razón explícita (y el motivo de que **no**
+  se baje más): cada invocación ya no cuesta una o dos llamadas, cuesta **una
+  cadena completa por punto fallido** —1 query al modelo (`rapido`), 1 búsqueda
+  de Tavily a 1 crédito con `search_depth: "basic"`, hasta 2 `extract`, 1
+  llamada de validación (`rapido`) y 1 de frase (`rapido`)— más 1 extracción
+  de entidades. Ese techo no se multiplica por todos los puntos: el pipeline
+  completo solo corre para los `MAX_PUNTOS_ENRIQUECIDOS` (2) primeros puntos de
+  la rúbrica del tipo, en su orden, y el resto no genera ninguna llamada
+  externa. El techo real por invocación es 1 + 2 × 6 = **~13 llamadas externas**,
+  contra 1 del resto de las rutas. Con el techo global de 10, el peor caso por IP y ventana
+  se multiplica por ~5 y el free tier de Tavily (~1000 créditos/mes) se agota en
+  horas de abuso; con 5 el costo por ventana queda comparable al del resto. Se
+  centraliza en `LIMITES_POR_AMBITO` (`src/lib/rate-limit.ts`) y hay test de que
+  el techo de `enriquecer` no afecta al de las otras rutas. Si en el futuro se
+  agrega otra ruta de costo múltiple, el override va ahí, no en la ruta.
 - `.env.local` no se commitea. `.env.example` sí, sin valores.
 
 ## 5. Sentry (monitoreo de errores)
@@ -247,6 +286,18 @@ agrega un `extra` nuevo en alguna ruta, revisar antes esta sección.
 - **`httpBodies` no filtra el cuerpo** de la petición: se mandó un POST real con
   la transcripción y el cuerpo no llega a Sentry por ninguna vía —ni
   `request.data`, ni atributos de span, ni breadcrumbs `http`—. Ver `§3.6.1`.
+- **El camino de error de `/api/enriquecer` está cerrado, probado en este flujo y
+  no supuesto** (`test/enriquecer-privacidad.test.ts`). Se provoca el doble
+  fallo —extracción (Nano) y Tavily— con errores que arrastran la transcripción,
+  y se verifica en el flujo real de la ruta: la respuesta al cliente no lleva la
+  transcripción; el payload que va a `captureException` (mensaje, stack, extra,
+  tags) tampoco; y el error crudo que la ruta sí escribe en consola —el vector de
+  breadcrumb de consola, el mismo que se cerró para ElevenLabs— se pasa por el
+  `beforeSend` REAL del proyecto y el breadcrumb se descarta. Nota de cobertura:
+  el reporte a Sentry de esta ruta solo se alcanza por el catch externo (los
+  fallos del proveedor se tragan adentro por diseño best-effort), así que el test
+  fuerza ese catch con un `ErrorModelo` con el cuerpo del proveedor en el
+  `message`, que es la forma real de `src/lib/proveedor-nebius.ts`.
 - **`genAI` es inerte por construcción** (verificado, no supuesto): instrumenta
   solo SDKs de IA reconocidos, por **paquete + versión + archivo exactos**
   (`openai`, `@google/genai`, `langchain`…), **nunca por URL ni por host**. Este

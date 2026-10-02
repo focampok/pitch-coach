@@ -15,8 +15,37 @@ import { idiomaDeCabecera } from "./idiomas";
 /** Ventana de conteo. */
 export const VENTANA_MS = 10 * 60 * 1000; // 10 minutos
 
-/** Solicitudes permitidas por IP dentro de la ventana. */
+/** Solicitudes permitidas por IP dentro de la ventana (límite por defecto). */
 export const MAX_SOLICITUDES = 10;
+
+/**
+ * Límite propio por ámbito, cuando el costo por invocación no es el estándar.
+ *
+ * POR QUÉ EXISTE: `/api/enriquecer` no cuesta una llamada externa como el resto.
+ * Con la Fase B (verificación obligatoria) cada invocación dispara, por
+ * invocación:
+ *   - 1 extracción de entidades al modelo (Nano, `rapido`);
+ *   - por cada uno de los `MAX_PUNTOS_ENRIQUECIDOS` (2) primeros puntos de la
+ *     rúbrica: 1 query al modelo (`rapido`) + 1 búsqueda en Tavily (1 crédito
+ *     con `search_depth: "basic"`) + hasta 2 Extract (máximo `MAX_CANDIDATOS`)
+ *     + 1 validación (`rapido`) + 1 frase (`rapido`). El resto de puntos no
+ *     genera ninguna llamada externa.
+ * Es decir, hasta 1 + 2 × 6 = ~13 llamadas externas por invocación. Con el techo
+ * global de 10/10 min esto vaciaría el free tier de Tavily en horas de abuso;
+ * el techo de 5 mantiene el costo por ventana acotado. No se baja más porque el
+ * flujo verificado ya intenta varios caminos antes de descartar un punto: un
+ * techo menor dejaría la feature inutilizable en el uso normal.
+ *
+ * Si el costo por punto crece otra vez, este número (y su test) deben revisarse.
+ */
+export const LIMITES_POR_AMBITO: Record<string, number> = {
+  enriquecer: 5,
+};
+
+/** Solicitudes permitidas por IP en la ventana para un ámbito dado. */
+export function maximoDe(ambito: string): number {
+  return LIMITES_POR_AMBITO[ambito] ?? MAX_SOLICITUDES;
+}
 
 interface ResultadoRateLimit {
   /** Si la solicitud puede continuar. */
@@ -39,14 +68,16 @@ function vigentes(marcas: number[] | undefined, ahora: number): number[] {
 /**
  * Registra un intento para `clave` y decide si se permite.
  * `ahora` es inyectable para poder testear la ventana sin esperar.
+ * `maximo` permite un techo distinto del global (ver LIMITES_POR_AMBITO).
  */
 export function consumir(
   clave: string,
   ahora: number = Date.now(),
+  maximo: number = MAX_SOLICITUDES,
 ): ResultadoRateLimit {
   const previas = vigentes(registro.get(clave), ahora);
 
-  if (previas.length >= MAX_SOLICITUDES) {
+  if (previas.length >= maximo) {
     // La ventana se libera cuando la solicitud más antigua caduca.
     const masAntigua = previas[0];
     const retryAfterSegundos = Math.max(
@@ -61,7 +92,7 @@ export function consumir(
   registro.set(clave, previas);
   return {
     permitido: true,
-    restantes: MAX_SOLICITUDES - previas.length,
+    restantes: maximo - previas.length,
     retryAfterSegundos: 0,
   };
 }
@@ -98,7 +129,11 @@ export function limitar(
   ambito: string,
   ahora: number = Date.now(),
 ): Response | null {
-  const resultado = consumir(`${ambito}:${obtenerIp(request)}`, ahora);
+  const resultado = consumir(
+    `${ambito}:${obtenerIp(request)}`,
+    ahora,
+    maximoDe(ambito),
+  );
   if (resultado.permitido) return null;
 
   const textos = diccionario(idiomaDeCabecera(request));

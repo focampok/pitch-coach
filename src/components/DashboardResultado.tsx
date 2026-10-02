@@ -21,8 +21,17 @@ import { ReproductorVeredicto } from "./ReproductorVeredicto";
 
 interface SugerenciaTavily {
   punto: string;
-  resumen: string;
+  /** Cifra concreta validada. */
+  cifra: string;
+  /** Cita textual que la respalda. */
+  cita: string;
+  /** Fecha del dato (ej. "2024"). Puede ser "". */
+  fecha: string;
+  /** Título del resultado, para nombrar la fuente. */
+  titulo: string;
   url: string;
+  /** Frase de 8–12 s lista para decir en voz alta. */
+  frase: string;
 }
 
 interface DashboardResultadoProps {
@@ -130,6 +139,9 @@ export function DashboardResultado({
       body: JSON.stringify({
         tema: tipoPitch,
         idioma,
+        // La transcripción viaja al servidor (nunca sale hacia Tavily) para que
+        // el enriquecimiento extraiga entidades cortas del pitch.
+        transcripcion,
         puntosSinCumplir: puntosSinCumplir.map((p) => ({
           punto: p.punto,
           comentario: p.comentario,
@@ -304,11 +316,24 @@ export function DashboardResultado({
           <ul>
             {sugerencias.map((s) => (
               <li key={s.punto}>
-                <p className="pc-tavily-punto">{s.punto}</p>
-                <p className="pc-tavily-resumen">{s.resumen}</p>
-                <a href={s.url} target="_blank" rel="noreferrer">
-                  {textos.dashboard.fuente}
-                </a>
+                <p className="pc-tavily-punto">
+                  {etiquetaPunto(s.punto, idioma, tipoPitch)}
+                </p>
+                <p className="pc-tavily-cifra">{s.cifra}</p>
+                {s.fecha && <p className="pc-tavily-fecha">{s.fecha}</p>}
+                <p className="pc-tavily-cita">{`“${s.cita}”`}</p>
+                <p className="pc-tavily-fuente">
+                  <a href={s.url} target="_blank" rel="noreferrer">
+                    {s.titulo || textos.dashboard.fuente}
+                  </a>
+                </p>
+                <ReproductorVeredicto
+                  veredicto={s.frase}
+                  voz={vozSesion}
+                  onVozUsada={onVozUsada}
+                  etiquetaInactivo={textos.dashboard.escucharDato}
+                  className="pc-tavily-escuchar"
+                />
               </li>
             ))}
           </ul>
