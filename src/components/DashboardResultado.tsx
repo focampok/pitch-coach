@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Idioma } from "@/types/idioma";
 import type {
   DuracionMaxima,
@@ -19,6 +19,7 @@ import { cabecerasJson } from "@/lib/idiomas";
 import { etiquetaPunto } from "@/lib/rubricas";
 import { construirGuion } from "@/lib/guion-transcripcion";
 import { useIdioma } from "./ProveedorIdioma";
+import { AnilloSenal } from "./AnilloSenal";
 import { ReproductorVeredicto } from "./ReproductorVeredicto";
 
 interface SugerenciaTavily {
@@ -42,6 +43,7 @@ interface DashboardResultadoProps {
   palabras?: PalabraTranscripcion[];
   resultado: ResultadoAnalisis;
   tipoPitch: TipoPitch;
+  duracionMaxima?: DuracionMaxima;
   /** Voz de ElevenLabs de esta sesión (misma para veredicto y sparring). */
   vozSesion?: "male" | "female" | "random";
   /** Se llama cuando ElevenLabs resuelve la voz de la sesión. */
@@ -57,10 +59,35 @@ interface DashboardResultadoProps {
   onUltraCompletado?: () => void;
 }
 
-function colorScore(score: number): string {
-  if (score >= 75) return "#2f9e44"; // verde
-  if (score >= 50) return "#f08c00"; // ámbar
-  return "#e03131"; // rojo
+function IconoAccion({ children }: { children: ReactNode }) {
+  return (
+    <svg className="pc-btn-icono" viewBox="0 0 16 16" aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+
+/**
+ * Marca del punto de rúbrica. Cumplido = marca rellena con check (olivo);
+ * pendiente = punto sobre hundido. El estado se lee por forma, no sólo color.
+ */
+function MarcaRubrica({ cumplido }: { cumplido: boolean }) {
+  return (
+    <svg className="pc-rubrica-marca" viewBox="0 0 28 28" aria-hidden="true">
+      {cumplido ? (
+        <path
+          d="M8.4 14.6l3.7 3.7 7.5-8.2"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <circle cx="14" cy="14" r="4" fill="currentColor" />
+      )}
+    </svg>
+  );
 }
 
 function ItemRubrica({
@@ -72,11 +99,19 @@ function ItemRubrica({
   idioma: Idioma;
   tipoPitch: TipoPitch;
 }) {
+  const { textos } = useIdioma();
   return (
-    <li className={`pc-rubrica-item ${item.cumplido ? "cumplido" : "faltante"}`}>
-      <span aria-hidden="true">{item.cumplido ? "✅" : "⬜"}</span>
+    <li className={`pc-rubrica-item ${item.cumplido ? "cumplido" : ""}`}>
+      <MarcaRubrica cumplido={item.cumplido} />
       <div>
-        <p className="pc-rubrica-punto">{etiquetaPunto(item.punto, idioma, tipoPitch)}</p>
+        <p className="pc-rubrica-punto">
+          {etiquetaPunto(item.punto, idioma, tipoPitch)}
+          <span className="sr-only">
+            {` — ${
+              item.cumplido ? textos.dashboard.puntoCumplido : textos.dashboard.puntoPendiente
+            }`}
+          </span>
+        </p>
         {item.comentario && (
           <p className="pc-rubrica-comentario">{item.comentario}</p>
         )}
@@ -85,11 +120,74 @@ function ItemRubrica({
   );
 }
 
+/**
+ * Título de rúbrica con el contador de puntos cumplidos ("3 de 5"): de un
+ * vistazo se ve cuántos van marcados sin contar las filas una por una.
+ */
+function TituloRubrica({
+  titulo,
+  rubrica,
+}: {
+  titulo: string;
+  rubrica: readonly EvaluacionRubrica[];
+}) {
+  const { textos } = useIdioma();
+  const cumplidos = rubrica.filter((punto) => punto.cumplido).length;
+  const total = rubrica.length;
+  return (
+    <h3>
+      {titulo}
+      <span className="pc-rubrica-contador" data-completa={cumplidos === total}>
+        {textos.dashboard.rubricaCumplidos(cumplidos, total)}
+      </span>
+    </h3>
+  );
+}
+
+function CabeceraScore({
+  score,
+  veredicto,
+  sesion,
+  vozSesion,
+  onVozUsada,
+  etiquetaScore,
+}: {
+  score: number;
+  veredicto: string;
+  sesion?: string;
+  vozSesion: "male" | "female" | "random";
+  onVozUsada?: (voz: "male" | "female") => void;
+  etiquetaScore: string;
+}) {
+  return (
+    <header className="pc-dashboard-header">
+      <div className="pc-score">
+        <AnilloSenal modo="asentado" score={score} etiqueta={etiquetaScore} />
+        <span className="pc-score-leyenda">
+          <span className="pc-score-num">{score}</span>
+          <span className="pc-score-max">/100</span>
+        </span>
+      </div>
+      <div className="pc-veredicto">
+        <p>{veredicto}</p>
+        {sesion && <p className="pc-sesion">{sesion}</p>}
+        <ReproductorVeredicto
+          veredicto={veredicto}
+          autoPlay={false}
+          voz={vozSesion}
+          onVozUsada={onVozUsada}
+        />
+      </div>
+    </header>
+  );
+}
+
 export function DashboardResultado({
   transcripcion,
   palabras = [],
   resultado,
   tipoPitch,
+  duracionMaxima,
   muletillasPatterns,
   habilitarTavily = true,
   vozSesion = "random",
@@ -97,6 +195,7 @@ export function DashboardResultado({
   onUltraCompletado,
 }: DashboardResultadoProps) {
   const { idioma, textos } = useIdioma();
+  const transcripcionTituloId = useId();
   const patrones = muletillasPatterns ?? patronesMuletillas(idioma);
   const [sugerencias, setSugerencias] = useState<SugerenciaTavily[]>([]);
   const [analisisUltra, setAnalisisUltra] = useState<ResultadoAnalisis | null>(null);
@@ -240,6 +339,21 @@ export function DashboardResultado({
     transcripcion,
   ]);
 
+  const ultraRef = useRef<HTMLElement | null>(null);
+
+  // Al terminar el Análisis Ultra llevamos al usuario a la sección recién
+  // generada: no debería tener que buscarla desplazándose a mano. Con
+  // movimiento reducido saltamos sin animación; en éxito o error, siempre.
+  useEffect(() => {
+    if (analizandoUltra) return;
+    if (analisisUltra === null && errorUltra === null) return;
+    const nodo = ultraRef.current;
+    if (nodo === null) return;
+    const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    nodo.focus({ preventScroll: true });
+    nodo.scrollIntoView({ behavior: reducido ? "auto" : "smooth", block: "start" });
+  }, [analisisUltra, analizandoUltra, errorUltra]);
+
   const porcentajeTiempo = Math.min(
     100,
     Math.round(
@@ -247,26 +361,21 @@ export function DashboardResultado({
     )
   );
 
+  const sesion =
+    duracionMaxima !== undefined
+      ? `${textos.comun.tipoPitch[tipoPitch]} · ${textos.comun.minutos(duracionMaxima)}`
+      : undefined;
+
   return (
     <div className="pc-dashboard">
-      <header className="pc-dashboard-header">
-        <div
-          className="pc-score"
-          style={{ borderColor: colorScore(resultado.score) }}
-        >
-          <span className="pc-score-num">{resultado.score}</span>
-          <span className="pc-score-max">/100</span>
-        </div>
-        <div className="pc-veredicto">
-          <p>{resultado.veredicto_corto}</p>
-          <ReproductorVeredicto
-            veredicto={resultado.veredicto_corto}
-            autoPlay={false}
-            voz={vozSesion}
-            onVozUsada={onVozUsada}
-          />
-        </div>
-      </header>
+      <CabeceraScore
+        score={resultado.score}
+        veredicto={resultado.veredicto_corto}
+        sesion={sesion}
+        vozSesion={vozSesion}
+        onVozUsada={onVozUsada}
+        etiquetaScore={textos.dashboard.score(resultado.score)}
+      />
 
       <section className="pc-tiempo">
         <div className="pc-tiempo-barra">
@@ -283,8 +392,9 @@ export function DashboardResultado({
         </p>
       </section>
 
+      <div className="pc-resultado-cuerpo">
       <section className="pc-rubrica">
-        <h3>{textos.dashboard.rubrica}</h3>
+        <TituloRubrica titulo={textos.dashboard.rubrica} rubrica={resultado.rubrica} />
         <ul>
           {resultado.rubrica.map((item) => (
             <ItemRubrica
@@ -297,51 +407,57 @@ export function DashboardResultado({
         </ul>
       </section>
 
-      <section className="pc-muletillas">
-        <h3>{textos.dashboard.muletillas(totalMuletillas)}</h3>
-        {muletillasOrdenadas.length === 0 ? (
-          <p>{textos.dashboard.sinMuletillas}</p>
-        ) : (
-          <ul>
-            {muletillasOrdenadas.map(([palabra, count]) => (
-              <li key={palabra}>
-                <span className="pc-muletilla-palabra">
-                  {'"'}
-                  {palabra}
-                  {'"'}
-                </span>
-                <span className="pc-muletilla-count">{count}</span>
-              </li>
-            ))}
-          </ul>
+      <div className="pc-columna-evidencia">
+      <div className="pc-acciones">
+        {guion !== "" && (
+          <button type="button" onClick={descargarGuion} className="pc-btn pc-btn-quiet pc-btn-accion">
+            <IconoAccion>
+              <path d="M8 2v7M5 6.5 8 9.5 11 6.5M3 13h10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            </IconoAccion>
+            {textos.dashboard.descargarGuion}
+          </button>
         )}
-      </section>
-
-      <section className="pc-transcripcion">
-        <div className="pc-transcripcion-cabecera">
-          <h3>{textos.dashboard.transcripcion}</h3>
-          {guion !== "" && (
-            <button
-              type="button"
-              onClick={descargarGuion}
-              className="pc-descargar-guion"
-            >
-              {textos.dashboard.descargarGuion}
-            </button>
-          )}
-        </div>
-        <p
-          // `resaltarMuletillas` escapa HTML de la transcripción (viene de STT,
-          // no es confiable) antes de insertar los <mark>; el único markup de
-          // este string es el que genera el propio resaltado.
-          dangerouslySetInnerHTML={{ __html: transcripcionResaltada }}
-        />
-      </section>
+        <button
+          type="button"
+          onClick={pedirAnalisisUltra}
+          disabled={analizandoUltra}
+          className="pc-btn pc-btn-accion"
+        >
+          <IconoAccion>
+            <circle
+              cx="8"
+              cy="8"
+              r="5.25"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeDasharray="18 15"
+              transform="rotate(-90 8 8)"
+            />
+          </IconoAccion>
+          {analizandoUltra ? textos.dashboard.reanalizando : textos.dashboard.analisisUltra}
+        </button>
+      </div>
 
       {habilitarTavily && puntosSinCumplir.length > 0 && (
         <section className="pc-tavily">
           <h3>{textos.dashboard.datosSugeridos}</h3>
-          {cargandoTavily && <p>{textos.dashboard.buscando}</p>}
+          {cargandoTavily && (
+            <p className="pc-tavily-busqueda" role="status">
+              <svg className="pc-tavily-arco" viewBox="0 0 16 16" aria-hidden="true">
+                <circle
+                  cx="8"
+                  cy="8"
+                  r="5.25"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeDasharray="12 21"
+                />
+              </svg>
+              {textos.dashboard.buscando}
+            </p>
+          )}
           {!cargandoTavily && sugerencias.length === 0 && (
             <p>{textos.dashboard.sinSugerencias}</p>
           )}
@@ -372,49 +488,66 @@ export function DashboardResultado({
         </section>
       )}
 
-      <section className="space-y-3">
-        <button
-          type="button"
-          onClick={pedirAnalisisUltra}
-          disabled={analizandoUltra}
-          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-60"
-        >
-          {analizandoUltra ? textos.dashboard.reanalizando : textos.dashboard.analisisUltra}
-        </button>
+      <section className="pc-muletillas">
+        <h3>{textos.dashboard.muletillas(totalMuletillas)}</h3>
+        {muletillasOrdenadas.length === 0 ? (
+          <p>{textos.dashboard.sinMuletillas}</p>
+        ) : (
+          <ul>
+            {muletillasOrdenadas.map(([palabra, count]) => (
+              <li key={palabra}>
+                <span className="pc-muletilla-palabra">
+                  {'"'}
+                  {palabra}
+                  {'"'}
+                </span>
+                <span className="pc-muletilla-count">{count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="pc-transcripcion" aria-labelledby={transcripcionTituloId}>
+        <h3 id={transcripcionTituloId}>{textos.dashboard.transcripcion}</h3>
+        <div
+          className="pc-transcripcion-cuerpo"
+          tabIndex={0}
+          aria-labelledby={transcripcionTituloId}
+          // `resaltarMuletillas` escapa HTML de la transcripción (viene de STT,
+          // no es confiable) antes de insertar los <mark>; el único markup de
+          // este string es el que genera el propio resaltado.
+          dangerouslySetInnerHTML={{ __html: transcripcionResaltada }}
+        />
+      </section>
+      </div>
+      </div>
+
+      {(errorUltra || analisisUltra !== null) && (
+      <section className="pc-ultra-bloque" ref={ultraRef} tabIndex={-1}>
         {errorUltra && (
-          <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <p role="alert" className="pc-alerta">
             {errorUltra}
           </p>
         )}
         {analisisUltra !== null && (
-          <div className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-            <h3 className="text-base font-semibold text-zinc-900">
+          <div className="pc-ultra">
+            <h3 className="pc-display text-xl">
               {textos.dashboard.tituloUltra}
             </h3>
-            <header className="pc-dashboard-header">
-              <div
-                className="pc-score"
-                style={{ borderColor: colorScore(analisisUltra.score) }}
-              >
-                <span className="pc-score-num">{analisisUltra.score}</span>
-                <span className="pc-score-max">/100</span>
-              </div>
-              <div className="pc-veredicto">
-                <p>{analisisUltra.veredicto_corto}</p>
-                <ReproductorVeredicto
-                  veredicto={analisisUltra.veredicto_corto}
-                  autoPlay={false}
-                  voz={vozSesion}
-                  onVozUsada={onVozUsada}
-                />
-              </div>
-            </header>
+            <CabeceraScore
+              score={analisisUltra.score}
+              veredicto={analisisUltra.veredicto_corto}
+              vozSesion={vozSesion}
+              onVozUsada={onVozUsada}
+              etiquetaScore={textos.dashboard.score(analisisUltra.score)}
+            />
             {analisisUltra.traza && analisisUltra.traza.length > 0 && (
               <section className="space-y-2">
-                <h3 className="text-sm font-semibold text-zinc-800">
+                <h3 className="pc-display text-xl">
                   {textos.dashboard.traza}
                 </h3>
-                <ol className="list-decimal space-y-1.5 pl-5 text-sm text-zinc-700">
+                <ol className="list-decimal space-y-1.5 pl-5 text-sm">
                   {analisisUltra.traza.map((paso, indice) => (
                     <li key={`${indice}-${paso.slice(0, 24)}`}>{paso}</li>
                   ))}
@@ -422,21 +555,22 @@ export function DashboardResultado({
               </section>
             )}
             <section className="pc-rubrica">
-              <h3>{textos.dashboard.rubricaUltra}</h3>
+              <TituloRubrica titulo={textos.dashboard.rubricaUltra} rubrica={analisisUltra.rubrica} />
               <ul>
                 {analisisUltra.rubrica.map((item) => (
                   <ItemRubrica
-              key={item.punto}
-              item={item}
-              idioma={idioma}
-              tipoPitch={tipoPitch}
-            />
+                    key={item.punto}
+                    item={item}
+                    idioma={idioma}
+                    tipoPitch={tipoPitch}
+                  />
                 ))}
               </ul>
             </section>
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }
