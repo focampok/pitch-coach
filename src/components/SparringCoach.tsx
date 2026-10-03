@@ -148,16 +148,16 @@ export function SparringCoach({
   const puntosReforzados = turnos.filter((t) => t.cumplido).length;
 
   return (
-    <section className="w-full space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-zinc-800">{textos.sparring.titulo}</h2>
+    <section className="pc-panel w-full space-y-4 p-6">
+      <h2 className="pc-display text-2xl">{textos.sparring.titulo}</h2>
 
       {fase === "oferta" && (
         <div className="space-y-3">
-          <p className="text-zinc-700">{textos.sparring.oferta(pendientes.length)}</p>
+          <p>{textos.sparring.oferta(pendientes.length)}</p>
           <button
             type="button"
             onClick={() => void cargarPregunta(0)}
-            className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            className="pc-btn"
           >
             {textos.sparring.resolver}
           </button>
@@ -165,21 +165,21 @@ export function SparringCoach({
       )}
 
       {fase === "cargando" && (
-        <p className="text-zinc-600" role="status">
+        <p role="status" style={{ color: "var(--text-muted)" }}>
           {textos.sparring.preparando(indice + 1, pendientes.length)}
         </p>
       )}
 
       {(fase === "pregunta" || fase === "evaluando") && pregunta && puntoActual && (
         <div className="space-y-4">
-          <p className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
+          <p className="text-sm font-semibold" style={{ color: "var(--signal)" }}>
             {textos.sparring.punto(
               etiquetaPunto(puntoActual.punto, idioma, tipoPitch),
               indice + 1,
               pendientes.length,
             )}
           </p>
-          <p className="text-zinc-800">{pregunta}</p>
+          <p>{pregunta}</p>
           <ReproductorVeredicto
             veredicto={pregunta}
             autoPlay={false}
@@ -189,7 +189,7 @@ export function SparringCoach({
           />
 
           {fase === "evaluando" && (
-            <p className="text-zinc-600" role="status">
+            <p role="status" style={{ color: "var(--text-muted)" }}>
               {textos.sparring.evaluando}
             </p>
           )}
@@ -208,14 +208,14 @@ export function SparringCoach({
 
       {fase === "feedback" && feedback && (
         <div className="space-y-3">
-          <p className="font-semibold text-zinc-900">
+          <p className="font-semibold">
             {feedback.cumplido ? textos.sparring.cubierto : textos.sparring.pendiente}
           </p>
-          {feedback.comentario && <p className="text-zinc-700">{feedback.comentario}</p>}
+          {feedback.comentario && <p>{feedback.comentario}</p>}
           <button
             type="button"
             onClick={irAlSiguiente}
-            className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="pc-btn"
           >
             {indice + 1 >= pendientes.length ? textos.sparring.verResumen : textos.sparring.siguiente}
           </button>
@@ -223,13 +223,13 @@ export function SparringCoach({
       )}
 
       {fase === "resumen" && (
-        <p className="text-zinc-800">
+        <p>
           {textos.sparring.resumen(puntosReforzados, pendientes.length)}
         </p>
       )}
 
       {error && (
-        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="pc-alerta text-sm">
           {error}
         </p>
       )}
