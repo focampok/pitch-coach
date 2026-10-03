@@ -44,17 +44,17 @@ export function PanelProgreso() {
   };
 
   return (
-    <section className="w-full space-y-3 rounded-lg border border-zinc-200 bg-white px-4 py-4 text-left">
+    <section className="pc-panel w-full space-y-3 px-4 py-4 text-left">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-zinc-800">{textos.progreso.titulo}</h2>
+        <h2 className="pc-display text-2xl">{textos.progreso.titulo}</h2>
         {sesiones.length > 0 && (
-          <button type="button" onClick={borrar} className="text-sm text-zinc-600 underline">
+          <button type="button" onClick={borrar} className="text-sm underline" style={{ color: "var(--text-muted)" }}>
             {textos.progreso.borrar}
           </button>
         )}
       </div>
       {sesiones.length === 0 ? (
-        <p className="text-sm text-zinc-600">{textos.progreso.vacio}</p>
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>{textos.progreso.vacio}</p>
       ) : (
         <ul className="space-y-2">
           {sesiones.map((sesion, indice) => {
@@ -63,7 +63,8 @@ export function PanelProgreso() {
             return (
               <li
                 key={`${sesion.fecha}-${indice}`}
-                className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800"
+                className="rounded-lg px-3 py-2 text-sm"
+                style={{ background: "var(--ground)" }}
               >
                 <p>
                   {formatearFecha(sesion.fecha, etiquetaIdioma(idioma))} ·{" "}

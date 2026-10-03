@@ -35,16 +35,17 @@ export default function SelectorTipoPitch({
             type="button"
             onClick={() => onChange(opcion)}
             aria-pressed={isSelected}
-            className={`rounded-xl border-2 p-4 text-left transition-all ${
-              isSelected
-                ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500"
-                : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"
-            }`}
+            className="rounded-xl border p-4 text-left"
+            style={{
+              borderColor: isSelected ? "var(--signal)" : "var(--border)",
+              background: isSelected ? "var(--signal-tint)" : "var(--sunken)",
+              color: isSelected ? "var(--signal)" : "var(--text)",
+            }}
           >
-            <span className="block font-semibold text-zinc-900">
+            <span className="block font-semibold">
               {textos.comun.tipoPitch[opcion]}
             </span>
-            <span className="mt-1 block text-sm text-zinc-500">
+            <span className="mt-1 block text-sm" style={{ color: isSelected ? "var(--signal)" : "var(--text-muted)" }}>
               {textos.selectorTipoPitch[opcion]}
             </span>
           </button>

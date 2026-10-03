@@ -12,7 +12,9 @@
 > El **avatar reactivo y su motor de reacciones fueron eliminados**: el flujo
 > grabar → transcribir → analizar no produce resultados intermedios sobre los
 > que reaccionar. Hoy el coach es un **indicador de texto** temporal; el
-> reemplazo visual (esfera) llega en la fase de UX/UI.
+> reemplazo visual —un indicador en vivo que reacciona al audio, **no** un
+> orbe/esfera— llega en la fase de UX/UI (dirección registrada en
+> `docs/referencias-ui/`).
 > **Tavily (fases A y B) completo**: auth por header `Bearer`, extracción de
 > entidades cortas (nivel `rapido`), query orientada a cifra (sin el comentario
 > negativo de la Fase A) y `exclude_domains` para los dominios metodológicos
@@ -78,8 +80,9 @@
   navegador y, si no hay ninguno guardado, sale del navegador.
 - 🟡 La transcripción no es en vivo (grabar → detener → transcribir). Scribe
   Realtime queda para el rediseño de UX; no hay fecha de calendario.
-- 🟡 El coach es **solo texto**. La animación (tipo esfera) que reemplaza al
-  avatar se define en la fase de UX/UI; no hay fecha de calendario.
+- 🟡 El coach es **solo texto**. La animación que reemplaza al avatar (un
+  indicador en vivo, **no** un orbe/esfera) se define en la fase de UX/UI; no
+  hay fecha de calendario.
 
 ## Leyenda
 
@@ -98,7 +101,7 @@
 | ✅ | Guion descargable | `guion-transcripcion.ts` + `DashboardResultado.tsx` | `.txt` con `[mm:ss.cc]` por frase; solo si Scribe mandó `start`; no se persiste en el historial |
 | ✅ | Muletillas (§8) | `src/lib/muletillas.ts` | español: 21 patrones (`PATRONES_MULETILLAS`). inglés: `patronesMuletillas("en")`. `like` / `so` / `right` no se marcan por la palabra suelta |
 | ✅ | UI | `src/app/page.tsx` | selectores + grabador + `DashboardResultado` |
-| 🟡 | Indicador de estado del coach (§5.1) | `GrabadorVoz.tsx` + `mensajes-coach.ts` | texto simple: `Escuchando…` al grabar, `Transcribiendo…` mientras responde Scribe y, al terminar, una de las 3 frases de `MENSAJES_ASINTIENDO` (idioma de la sesión). Aplica al pitch y a "Resolver hallazgos". Temporal: el reemplazo visual (esfera) es de la fase de UX/UI, sin fecha |
+| 🟡 | Indicador de estado del coach (§5.1) | `GrabadorVoz.tsx` + `mensajes-coach.ts` | texto simple: `Escuchando…` al grabar, `Transcribiendo…` mientras responde Scribe y, al terminar, una de las 3 frases de `MENSAJES_ASINTIENDO` (idioma de la sesión). Aplica al pitch y a "Resolver hallazgos". Temporal: el reemplazo visual (indicador en vivo, no un orbe) es de la fase de UX/UI, sin fecha |
 | ✅ | Sesión anónima | `src/app/page.tsx` | sin login. El historial vive en `localStorage` de este navegador, no en el servidor |
 | ✅ | Deploy | `Dockerfile` + `railway.toml` | standalone; healthcheck `/` |
 | ✅ | Rúbricas (§6) | `src/lib/rubricas.ts` | 4 tipos × 5 puntos |
@@ -161,7 +164,7 @@ El resaltado marca la palabra, no la coma que la precede.
 |---|---|
 | Historial entre dispositivos o cuentas | El progreso queda en el `localStorage` de este navegador. No hay cuentas ni sincronización. |
 | Rúbricas custom | Hoy son 4 rúbricas fijas, en español e inglés. Editarlas o crear propias sigue abierto. |
-| Animación del coach (esfera) | Hoy el coach es solo texto (§5.1). La animación que lo reemplace se define en la fase de UX/UI; no hay fecha de calendario. |
+| Animación del coach (indicador en vivo, no orbe) | Hoy el coach es solo texto (§5.1). La animación que lo reemplace se define en la fase de UX/UI, con la dirección anti-orbe de `docs/referencias-ui/`; no hay fecha de calendario. |
 | Idiomas nuevos | Agregar uno debería ser agregar datos en el registro, un diccionario, un par de Voice IDs y patrones de muletillas; hoy solo hay es y en. |
 | STT en vivo (Scribe Realtime) | Esta fase transcribe el clip completo al detener. No tiene fecha de calendario. |
 

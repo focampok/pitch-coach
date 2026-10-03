@@ -114,19 +114,19 @@ export default function Home() {
   );
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-center gap-10 p-8">
-      <header className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
-          Pitch Coach
-        </h1>
-        <p className="mx-auto mt-2 max-w-md text-zinc-600">
-          {textos.inicio.subtitulo}
-        </p>
-        <div className="mt-3 flex items-center justify-center gap-4">
+    <main className="mx-auto flex min-h-screen w-full max-w-[1120px] flex-col items-stretch gap-8 px-6 py-10">
+      <header className="pc-masthead">
+        <div>
+          <h1 className="pc-display text-4xl">
+            Pitch Coach
+          </h1>
+          <p>{textos.inicio.subtitulo}</p>
+        </div>
+        <div className="pc-masthead-tools">
           <button
             type="button"
             onClick={() => setMostrarProgreso((visible) => !visible)}
-            className="text-sm font-medium text-zinc-700 underline"
+            className="text-sm font-medium underline"
           >
             {mostrarProgreso ? textos.inicio.ocultarProgreso : textos.inicio.verProgreso}
           </button>
@@ -136,42 +136,43 @@ export default function Home() {
 
       {mostrarProgreso && <PanelProgreso />}
 
-      <section className="w-full space-y-8">
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-zinc-800">{textos.inicio.tipoPitch}</h2>
-          <SelectorTipoPitch value={tipoPitch} onChange={setTipoPitch} />
+      <div className="pc-practica">
+        <section className="space-y-8">
+          <div className="space-y-3">
+            <h2 className="pc-display text-2xl">{textos.inicio.tipoPitch}</h2>
+            <SelectorTipoPitch value={tipoPitch} onChange={setTipoPitch} />
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="pc-display text-2xl">
+              {textos.inicio.duracionMaxima}
+            </h2>
+            <SelectorDuracion value={duracionMaxima} onChange={setDuracionMaxima} />
+          </div>
+
+          <p className="pc-panel px-4 py-3" style={{ color: "var(--signal)" }}>
+            {textos.inicio.resumenPitch(
+              textos.comun.tipoPitch[tipoPitch],
+              textos.comun.minutos(duracionMaxima),
+            )}
+          </p>
+        </section>
+
+        <div className="pc-practica-grabar">
+          <GrabadorVoz
+            duracionMaxima={duracionMaxima}
+            onTranscripcionCompleta={handleTranscripcionCompleta}
+          />
         </div>
-
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-zinc-800">
-            {textos.inicio.duracionMaxima}
-          </h2>
-          <SelectorDuracion value={duracionMaxima} onChange={setDuracionMaxima} />
-        </div>
-      </section>
-
-      {/* Resumen de la configuración activa antes de grabar. */}
-      <p className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-zinc-700">
-        {textos.inicio.resumenPitch(
-          textos.comun.tipoPitch[tipoPitch],
-          textos.comun.minutos(duracionMaxima),
-        )}
-      </p>
-
-      {/* Grabador: siempre visible porque tipo y duración ya tienen valor por
-          defecto. Maneja sus propios estados (inactivo / grabando / finalizado). */}
-      <GrabadorVoz
-        duracionMaxima={duracionMaxima}
-        onTranscripcionCompleta={handleTranscripcionCompleta}
-      />
+      </div>
 
       {analizando && (
-        <p className="text-zinc-600" role="status">
+        <p role="status" style={{ color: "var(--text-muted)" }}>
           {textos.inicio.analizando}
         </p>
       )}
       {errorAnalisis && (
-        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+        <p role="alert" className="pc-alerta w-full">
           {errorAnalisis}
         </p>
       )}
@@ -182,6 +183,7 @@ export default function Home() {
           palabras={palabras}
           resultado={analisis}
           tipoPitch={tipoPitch}
+          duracionMaxima={duracionMaxima}
           muletillasPatterns={patronesMuletillas(idioma)}
           vozSesion={vozSesion}
           onVozUsada={setVozSesion}

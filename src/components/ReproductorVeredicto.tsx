@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cabecerasJson, etiquetaIdioma } from "@/lib/idiomas";
 import { useIdioma } from "./ProveedorIdioma";
+import { IconoDetener, IconoPausa, IconoPlay } from "./ui/IconosTransporte";
 
-type Estado = "inactivo" | "cargando" | "hablando" | "error";
+type Estado = "inactivo" | "cargando" | "hablando" | "pausado" | "error";
 type Fuente = "elevenlabs" | "speechSynthesis" | null;
 
 interface ReproductorVeredictoProps {
@@ -27,12 +28,16 @@ interface ReproductorVeredictoProps {
 }
 
 /**
- * Reproduce el veredicto por voz.
+ * Reproduce el veredicto por voz, con controles de play / pausa / detener.
  *
  * Orden de intento (§13/§14 del alcance):
  * 1. ElevenLabs vía /api/tts (voz de hombre o mujer, elegida al azar).
  * 2. Si falla, tarda, o el navegador no puede reproducir el audio:
  *    SpeechSynthesis nativa — fallback obligatorio, nunca se quita.
+ *
+ * Mientras habla se muestran dos controles: un toggle pausa/reanudar y un
+ * detener. Detener NO dispara `onFinish` (el usuario interrumpió, no terminó):
+ * solo se llama cuando la reproducción llega a su fin por sí sola.
  *
  * El usuario nunca debe notar una interrupción del loop: si ElevenLabs
  * falla, el veredicto igual se escucha, solo que con voz nativa.
@@ -44,15 +49,39 @@ export function ReproductorVeredicto({
   voz = "random",
   onVozUsada,
   etiquetaInactivo,
-  className,
+  className = "pc-btn pc-btn-quiet",
 }: ReproductorVeredictoProps) {
   const { idioma, textos } = useIdioma();
   const etiquetaReposo = etiquetaInactivo ?? textos.reproductor.escucharVeredicto;
   const [estado, setEstado] = useState<Estado>("inactivo");
   const [fuente, setFuente] = useState<Fuente>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+  const fuenteRef = useRef<Fuente>(null);
+  const detenidoRef = useRef(false);
   const yaIntentadoRef = useRef(false);
   const veredictoAnteriorRef = useRef(veredicto);
+
+  const fijarFuente = useCallback((valor: Fuente) => {
+    fuenteRef.current = valor;
+    setFuente(valor);
+  }, []);
+
+  /** Suelta el audio de ElevenLabs y revoca su blob URL. Idempotente. */
+  const limpiarAudio = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.onplay = null;
+      audio.onended = null;
+      audio.onerror = null;
+      audio.pause();
+      audioRef.current = null;
+    }
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+  }, []);
 
   const hablarConSpeechSynthesis = useCallback(
     (texto: string) => {
@@ -65,26 +94,38 @@ export function ReproductorVeredicto({
       utterance.lang = etiquetaIdioma(idioma);
       utterance.rate = 1;
       utterance.onstart = () => {
-        setFuente("speechSynthesis");
+        fijarFuente("speechSynthesis");
         setEstado("hablando");
       };
       utterance.onend = () => {
+        // `cancel()` dispara `onend` en algunos navegadores: si el usuario
+        // detuvo, no lo tratamos como final natural.
+        if (detenidoRef.current) {
+          detenidoRef.current = false;
+          return;
+        }
         setEstado("inactivo");
         onFinish?.();
       };
       utterance.onerror = () => {
+        if (detenidoRef.current) {
+          detenidoRef.current = false;
+          return;
+        }
         setEstado("error");
         onFinish?.();
       };
       window.speechSynthesis.speak(utterance);
     },
-    [idioma, onFinish]
+    [fijarFuente, idioma, onFinish]
   );
 
   const reproducir = useCallback(
     async (texto: string) => {
+      detenidoRef.current = false;
+      limpiarAudio();
       setEstado("cargando");
-      setFuente(null);
+      fijarFuente(null);
 
       try {
         const controller = new AbortController();
@@ -107,21 +148,23 @@ export function ReproductorVeredicto({
 
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
+        objectUrlRef.current = url;
         const audio = new Audio(url);
         audioRef.current = audio;
 
         audio.onplay = () => {
-          setFuente("elevenlabs");
+          fijarFuente("elevenlabs");
           setEstado("hablando");
         };
         audio.onended = () => {
+          limpiarAudio();
           setEstado("inactivo");
-          URL.revokeObjectURL(url);
           onFinish?.();
         };
         audio.onerror = () => {
-          URL.revokeObjectURL(url);
-          throw new Error("El navegador no pudo reproducir el audio");
+          // Falla al decodificar/reproducir: nunca dejamos al usuario sin voz.
+          limpiarAudio();
+          hablarConSpeechSynthesis(texto);
         };
 
         await audio.play();
@@ -129,26 +172,63 @@ export function ReproductorVeredicto({
         // Cualquier falla en ElevenLabs (red, rate limit, timeout,
         // reproducción) cae aquí — nunca se deja al usuario sin veredicto.
         console.warn("[ReproductorVeredicto] ElevenLabs falló, usando fallback:", err);
+        limpiarAudio();
         hablarConSpeechSynthesis(texto);
       }
     },
-    [hablarConSpeechSynthesis, idioma, onFinish, onVozUsada, voz]
+    [fijarFuente, hablarConSpeechSynthesis, idioma, limpiarAudio, onFinish, onVozUsada, voz]
   );
+
+  const pausar = useCallback(() => {
+    if (fuenteRef.current === "elevenlabs") {
+      audioRef.current?.pause();
+      setEstado("pausado");
+    } else if (fuenteRef.current === "speechSynthesis") {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.pause();
+      }
+      setEstado("pausado");
+    }
+  }, []);
+
+  const reanudar = useCallback(() => {
+    detenidoRef.current = false;
+    if (fuenteRef.current === "elevenlabs") {
+      void audioRef.current?.play();
+      setEstado("hablando");
+    } else if (fuenteRef.current === "speechSynthesis") {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.resume();
+      }
+      setEstado("hablando");
+    }
+  }, []);
+
+  const detener = useCallback(() => {
+    detenidoRef.current = true;
+    limpiarAudio();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    fijarFuente(null);
+    setEstado("inactivo");
+  }, [fijarFuente, limpiarAudio]);
 
   useEffect(() => {
     if (!veredicto || !autoPlay) return;
     // Evita doble disparo en StrictMode / re-renders con el mismo texto.
     if (yaIntentadoRef.current) return;
     yaIntentadoRef.current = true;
-    reproducir(veredicto);
+    void reproducir(veredicto);
 
     return () => {
-      audioRef.current?.pause();
+      detenidoRef.current = true;
+      limpiarAudio();
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
     };
-  }, [veredicto, autoPlay, reproducir]);
+  }, [veredicto, autoPlay, reproducir, limpiarAudio]);
 
   // Si cambia el veredicto (nuevo intento), permite un autoplay nuevo.
   // No resetear en el mismo montaje: eso reabría el guard y disparaba un eco.
@@ -165,18 +245,55 @@ export function ReproductorVeredicto({
       fuente === "elevenlabs"
         ? textos.reproductor.hablandoElevenlabs
         : textos.reproductor.hablando,
+    pausado: textos.reproductor.pausado,
     error: textos.reproductor.error,
   };
 
+  const activo = estado === "hablando" || estado === "pausado";
+
+  if (!activo) {
+    return (
+      <button
+        type="button"
+        className={className}
+        disabled={estado === "cargando"}
+        aria-busy={estado === "cargando"}
+        onClick={() => void reproducir(veredicto)}
+      >
+        {etiquetaEstado[estado]}
+      </button>
+    );
+  }
+
+  const pausado = estado === "pausado";
+
   return (
-    <button
-      type="button"
-      className={className}
-      disabled={estado === "cargando" || estado === "hablando"}
-      onClick={() => reproducir(veredicto)}
-      aria-live="polite"
+    <div
+      className="pc-transporte"
+      role="group"
+      aria-label={textos.reproductor.controles}
     >
-      {etiquetaEstado[estado]}
-    </button>
+      <button
+        type="button"
+        className="pc-btn pc-btn-quiet pc-transporte-btn"
+        onClick={pausado ? reanudar : pausar}
+        aria-label={pausado ? textos.reproductor.reanudar : textos.reproductor.pausar}
+        title={pausado ? textos.reproductor.reanudar : textos.reproductor.pausar}
+      >
+        {pausado ? <IconoPlay /> : <IconoPausa />}
+      </button>
+      <button
+        type="button"
+        className="pc-btn pc-btn-quiet pc-transporte-btn"
+        onClick={detener}
+        aria-label={textos.reproductor.detener}
+        title={textos.reproductor.detener}
+      >
+        <IconoDetener />
+      </button>
+      <span className="sr-only" role="status" aria-live="polite">
+        {etiquetaEstado[estado]}
+      </span>
+    </div>
   );
 }

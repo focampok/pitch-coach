@@ -52,6 +52,8 @@ Proyecto Next.js (App Router) con todo en un solo repositorio, sin backend separ
 pitch-coach/
 ├── CLAUDE.md
 ├── README.md
+├── PRODUCT.md              # capa de producto (sin tokens) — fuente de verdad del producto
+├── DESIGN.md               # sistema visual y tokens — fuente de verdad del diseño
 ├── .roo/
 │   └── rules/
 │       └── CLAUDE.md -> symlink a ../../CLAUDE.md
@@ -62,7 +64,8 @@ pitch-coach/
 │   ├── sentry.md           # decisiones de monitoreo y privacidad
 │   ├── pre-nebius.md       # baseline histórico (antes de Nebius)
 │   ├── post-nebius.md      # estado post-migración Nebius
-│   └── guia-integracion-*.md
+│   ├── guia-integracion-*.md
+│   └── referencias-ui/     # evidencia y dirección visual propuesta (no contrato)
 ├── .env.local              # no se commitea
 ├── .env.example
 ├── Dockerfile              # solo para build/deploy en Railway, no se usa en local

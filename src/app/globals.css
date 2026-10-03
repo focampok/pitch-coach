@@ -1,26 +1,213 @@
 @import "tailwindcss";
 
+/* Acta. Un matiz (olivo). Los tokens de esta hoja son los de DESIGN.md.
+   En oscuro el hover del botón primario no usa --signal-peak: ese paso
+   se aclara y el texto hueso dejaría de leerse. */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --ground: #f9f8f6;
+  --sunken: #f1f0ed;
+  --elevated: #ffffff;
+  --text: #1a1917;
+  --text-muted: #6b6862;
+  --signal: #285828;
+  --signal-peak: #16301a;
+  --signal-rest: #457f42;
+  --signal-tint: #dfebd6;
+  --field: #1e4022;
+  --bone: #f4f3f0;
+  --attention: #9e4a38;
+  --border: #d6d2c9;
+  --background: var(--ground);
+  --foreground: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --ground: #0f0f0e;
+    --sunken: #1a1a18;
+    --elevated: #242422;
+    --text: #f4f3f0;
+    --text-muted: #a3a099;
+    --signal: #a3c48f;
+    --signal-peak: #dfebd6;
+    --signal-rest: #457f42;
+    --signal-tint: #1e4022;
+    --field: #1e4022;
+    --bone: #f4f3f0;
+    --attention: #c97c68;
+    --border: #35352f;
+    --background: var(--ground);
+    --foreground: var(--text);
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-source);
+  --font-display: var(--font-alike);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-source), "Source Sans 3", sans-serif;
+}
+
+::selection {
+  background: var(--signal-tint);
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+}
+
+.pc-display {
+  font-family: var(--font-alike), Alike, serif;
+  font-weight: 400;
+}
+
+.pc-btn {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--field);
+  color: var(--bone);
+  padding: 0.75rem 1rem;
+  /* Objetivo táctil mínimo (WCAG 2.2 AA / Apple HIG): 44px de alto. */
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.pc-btn:hover {
+  background: var(--signal-peak);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pc-btn:hover {
+    background: var(--field);
+    border-color: var(--signal);
+  }
+}
+
+.pc-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.pc-btn-quiet {
+  background: var(--sunken);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.pc-btn-quiet:hover {
+  background: var(--signal-tint);
+  color: var(--text);
+}
+
+/* Transporte de audio (play / pausa / detener).
+   El grupo ordena los controles; cada botón conserva el estilo del contexto
+   (pill del veredicto, quiet del grabador) pero nunca baja del objetivo táctil
+   de 44×44px, incluso cuando sólo lleva un icono. */
+.pc-transporte {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pc-transporte-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.pc-transporte-icono {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-btn {
+    transition: none;
+  }
+}
+
+.pc-error {
+  color: var(--attention);
+}
+
+.pc-panel {
+  background: var(--sunken);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.pc-alerta {
+  border-radius: 12px;
+  border: 1px solid var(--attention);
+  background: var(--sunken);
+  color: var(--attention);
+  padding: 0.75rem 1rem;
+}
+
+.pc-masthead {
+  display: flex;
+  width: 100%;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pc-masthead p {
+  margin: 0.35rem 0 0;
+  max-width: 36rem;
+  color: var(--text-muted);
+}
+
+.pc-masthead-tools {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pc-practica {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  width: 100%;
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  .pc-practica {
+    grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  }
+
+  .pc-practica-grabar {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .pc-masthead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

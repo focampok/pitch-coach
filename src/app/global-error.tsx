@@ -42,7 +42,9 @@ export default function GlobalError({
           alignItems: "center",
           justifyContent: "center",
           gap: "1rem",
-          fontFamily: "Arial, Helvetica, sans-serif",
+          fontFamily: '"Source Sans 3", sans-serif',
+          background: "#F9F8F6",
+          color: "#1A1917",
           textAlign: "center",
           padding: "2rem",
         }}

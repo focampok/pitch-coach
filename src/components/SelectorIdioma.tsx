@@ -21,7 +21,8 @@ export default function SelectorIdioma() {
     <div
       role="group"
       aria-label={textos.selectorIdioma.etiqueta}
-      className="inline-flex overflow-hidden rounded-lg border border-zinc-200 bg-white"
+      className="inline-flex overflow-hidden rounded-lg border"
+      style={{ borderColor: "var(--border)", background: "var(--sunken)" }}
     >
       {IDIOMAS.map((codigo) => {
         const activo = codigo === idioma;
@@ -35,11 +36,11 @@ export default function SelectorIdioma() {
             aria-label={nombre}
             lang={codigo}
             onClick={() => setIdioma(codigo)}
-            className={`px-3 py-1.5 text-sm font-semibold transition-colors ${
-              activo
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-600 hover:bg-zinc-50"
-            }`}
+            className="px-3 py-1.5 text-sm font-semibold"
+            style={{
+              background: activo ? "var(--field)" : "transparent",
+              color: activo ? "var(--bone)" : "var(--text-muted)",
+            }}
           >
             {codigo.toUpperCase()}
           </button>

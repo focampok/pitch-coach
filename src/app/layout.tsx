@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Alike, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import "../styles/dashboard-resultado.css";
 import { ProveedorIdioma } from "@/components/ProveedorIdioma";
@@ -9,14 +9,15 @@ import {
   scriptIdiomaInicial,
 } from "@/lib/idiomas";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const alike = Alike({
+  weight: "400",
   subsets: ["latin"],
+  variable: "--font-alike",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const sourceSans = Source_Sans_3({
   subsets: ["latin"],
+  variable: "--font-source",
 });
 
 export const metadata: Metadata = {
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // con el mismo idioma por defecto que el servidor (ver ProveedorIdioma).
       lang={etiquetaIdioma(IDIOMA_POR_DEFECTO)}
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${alike.variable} ${sourceSans.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: scriptIdiomaInicial() }} />

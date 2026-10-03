@@ -26,11 +26,12 @@ export default function SelectorDuracion({
             type="button"
             onClick={() => onChange(duracion)}
             aria-pressed={isSelected}
-            className={`rounded-lg border px-4 py-3 text-sm font-semibold transition-colors ${
-              isSelected
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
-            }`}
+            className="rounded-lg border px-4 py-3 text-sm font-semibold"
+            style={{
+              borderColor: isSelected ? "transparent" : "var(--border)",
+              background: isSelected ? "var(--field)" : "var(--sunken)",
+              color: isSelected ? "var(--bone)" : "var(--text)",
+            }}
           >
             {textos.comun.minutos(duracion)}
           </button>
