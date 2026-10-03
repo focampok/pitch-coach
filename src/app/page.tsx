@@ -8,6 +8,7 @@ import GrabadorVoz from "@/components/GrabadorVoz";
 import { DashboardResultado } from "@/components/DashboardResultado";
 import { PanelProgreso } from "@/components/PanelProgreso";
 import { SparringCoach } from "@/components/SparringCoach";
+import { PiePagina } from "@/components/PiePagina";
 import { useIdioma } from "@/components/ProveedorIdioma";
 import { cabecerasJson } from "@/lib/idiomas";
 import {
@@ -114,13 +115,14 @@ export default function Home() {
   );
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[1120px] flex-col items-stretch gap-8 px-6 py-10">
+    <main className="mx-auto flex min-h-full w-full max-w-[1120px] flex-1 flex-col items-stretch gap-8 px-6 py-10">
       <header className="pc-masthead">
-        <div>
+        <div className="pc-masthead-copy">
           <h1 className="pc-display text-4xl">
             Pitch Coach
           </h1>
-          <p>{textos.inicio.subtitulo}</p>
+          <p className="pc-masthead-lede">{textos.inicio.propuestaValor}</p>
+          <p className="pc-masthead-hint">{textos.inicio.subtitulo}</p>
         </div>
         <div className="pc-masthead-tools">
           <button
@@ -201,6 +203,7 @@ export default function Home() {
           onCompletado={guardarHallazgos}
         />
       )}
+      <PiePagina />
     </main>
   );
 }

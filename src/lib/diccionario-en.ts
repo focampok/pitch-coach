@@ -22,6 +22,8 @@ export const en: Diccionario = {
 
   // --- Pantalla principal (src/app/page.tsx) -------------------------------
   inicio: {
+    propuestaValor:
+      "Practice out loud and get feedback against your pitch type’s rubric — in about a minute, no account.",
     subtitulo: "Pick the pitch type and the maximum length before you practice.",
     tipoPitch: "Pitch type",
     duracionMaxima: "Maximum length",
@@ -199,6 +201,15 @@ export const en: Diccionario = {
     audioGrande: "The audio goes over the maximum allowed size. Shorten the recording.",
     // Rate limit
     demasiadasSolicitudes: "Too many requests. Wait a moment and try again.",
+  },
+
+  // --- Pie de página (src/components/PiePagina.tsx) ------------------------
+  pie: {
+    confianza:
+      "No account or credit card. We don’t store your pitch on our server; history stays in this browser only.",
+    desarrolladoPor: "Built by Francisco Ocampo",
+    licencia: "Open source (MIT)",
+    codigoFuente: "Source code",
   },
 
   // --- Error boundaries (src/app/error.tsx, src/app/global-error.tsx) ------

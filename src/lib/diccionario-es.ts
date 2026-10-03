@@ -35,6 +35,8 @@ export const es = {
 
   // --- Pantalla principal (src/app/page.tsx) -------------------------------
   inicio: {
+    propuestaValor:
+      "Practica en voz alta y recibe feedback contra la rúbrica de tu tipo de pitch — en un minuto, sin cuenta.",
     subtitulo: "Elige el tipo de pitch y la duración máxima antes de practicar.",
     tipoPitch: "Tipo de pitch",
     duracionMaxima: "Duración máxima",
@@ -213,6 +215,15 @@ export const es = {
     audioGrande: "El audio supera el tamaño máximo permitido. Acorta la grabación.",
     // Rate limit
     demasiadasSolicitudes: "Demasiadas solicitudes. Espera un momento y vuelve a intentarlo.",
+  },
+
+  // --- Pie de página (src/components/PiePagina.tsx) ------------------------
+  pie: {
+    confianza:
+      "Sin cuenta ni tarjeta. Tu pitch no se guarda en nuestro servidor; el historial vive solo en este navegador.",
+    desarrolladoPor: "Desarrollado por Francisco Ocampo",
+    licencia: "Código abierto (MIT)",
+    codigoFuente: "Código fuente",
   },
 
   // --- Error boundaries (src/app/error.tsx, src/app/global-error.tsx) ------

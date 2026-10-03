@@ -233,10 +233,65 @@ button:disabled {
   gap: 1rem;
 }
 
-.pc-masthead p {
+.pc-masthead-copy {
+  max-width: 40rem;
+}
+
+.pc-masthead-lede {
+  margin: 0.5rem 0 0;
+  color: var(--text);
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+
+.pc-masthead-hint {
   margin: 0.35rem 0 0;
-  max-width: 36rem;
   color: var(--text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.pc-site-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pc-site-footer-trust {
+  margin: 0;
+  max-width: 42rem;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.pc-site-footer-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.pc-site-footer-sep {
+  color: var(--border);
+  user-select: none;
+}
+
+.pc-site-footer-link {
+  color: var(--signal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pc-site-footer-link:hover {
+  color: var(--signal-peak);
 }
 
 .pc-masthead-tools {
