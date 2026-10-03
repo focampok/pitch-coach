@@ -10,6 +10,8 @@ import {
 import { cabecerasIdioma } from "@/lib/idiomas";
 import { extraerPalabrasScribe } from "@/lib/guion-transcripcion";
 import { useIdioma } from "./ProveedorIdioma";
+import { AnilloSenal } from "./AnilloSenal";
+import { IconoPausa, IconoPlay } from "./ui/IconosTransporte";
 
 interface GrabadorVozProps {
   /** Duración máxima del pitch en minutos (presets 1–7, docs/alcance.md §7). */
@@ -76,14 +78,19 @@ export default function GrabadorVoz({
   const [duracionTotal, setDuracionTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [mensajeCoach, setMensajeCoach] = useState<string | null>(null);
+  const [nivel, setNivel] = useState(0);
+  const [pausado, setPausado] = useState(false);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioRef = useRef<AudioContext | null>(null);
+  const rafRef = useRef(0);
   const chunksRef = useRef<Blob[]>([]);
   const mimeRef = useRef("");
   const abortTranscripcionRef = useRef<AbortController | null>(null);
   const tiempoRestanteRef = useRef(0);
   const duracionTotalRef = useRef(0);
+  const pausadoRef = useRef(false);
 
   const soporte = useSyncExternalStore(
     () => () => {},
@@ -92,10 +99,18 @@ export default function GrabadorVoz({
   );
 
   const soltarMicrófono = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
+    const audio = audioRef.current;
+    audioRef.current = null;
+    if (audio && audio.state !== "closed") void audio.close();
+    setNivel(0);
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     recorderRef.current = null;
     chunksRef.current = [];
+    pausadoRef.current = false;
+    setPausado(false);
   }, []);
 
   const finalizarConTexto = useCallback(
@@ -169,6 +184,33 @@ export default function GrabadorVoz({
     }
   }, [soltarMicrófono]);
 
+  // MediaRecorder.pause() deja de escribir datos y congela el tiempo restante:
+  // lo pausado no cuenta como pitch hablado (docs/alcance.md §7).
+  const pausarGrabacion = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state !== "recording") return;
+    try {
+      recorder.pause();
+      pausadoRef.current = true;
+      setPausado(true);
+      setNivel(0);
+    } catch {
+      // Sin soporte de pausa seguimos grabando en continuo.
+    }
+  }, []);
+
+  const reanudarGrabacion = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state !== "paused") return;
+    try {
+      recorder.resume();
+      pausadoRef.current = false;
+      setPausado(false);
+    } catch {
+      // Sin soporte de pausa no hay nada que reanudar.
+    }
+  }, []);
+
   const iniciarGrabacion = useCallback(async () => {
     if (!capturaDisponible()) {
       setMostrarRespaldo(true);
@@ -198,6 +240,29 @@ export default function GrabadorVoz({
 
     streamRef.current = stream;
     recorderRef.current = recorder;
+
+    try {
+      const audio = new AudioContext();
+      const fuente = audio.createMediaStreamSource(stream);
+      const analyser = audio.createAnalyser();
+      analyser.fftSize = 1024;
+      fuente.connect(analyser);
+      audioRef.current = audio;
+      const buffer = new Uint8Array(analyser.fftSize);
+      const medir = () => {
+        analyser.getByteTimeDomainData(buffer);
+        let suma = 0;
+        for (let i = 0; i < buffer.length; i++) {
+          const valor = (buffer[i] - 128) / 128;
+          suma += valor * valor;
+        }
+        setNivel(Math.min(1, Math.sqrt(suma / buffer.length) * 3.2));
+        rafRef.current = requestAnimationFrame(medir);
+      };
+      rafRef.current = requestAnimationFrame(medir);
+    } catch {
+      // La grabación sigue sin el anillo vivo.
+    }
 
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -242,6 +307,8 @@ export default function GrabadorVoz({
     setTiempoRestante(duracionMaxima * 60);
     tiempoRestanteRef.current = duracionMaxima * 60;
     setEstado("grabando");
+    pausadoRef.current = false;
+    setPausado(false);
     setMensajeCoach(null);
     setMostrarRespaldo(false);
   }, [duracionMaxima, soltarMicrófono, textos, transcribirBlob]);
@@ -270,11 +337,14 @@ export default function GrabadorVoz({
     setError(null);
     setMostrarRespaldo(false);
     setMensajeCoach(null);
+    pausadoRef.current = false;
+    setPausado(false);
   }, [soltarMicrófono]);
 
   useEffect(() => {
     if (estado !== "grabando") return;
     const id = window.setInterval(() => {
+      if (pausadoRef.current) return;
       const siguiente = Math.max(0, tiempoRestanteRef.current - 1);
       tiempoRestanteRef.current = siguiente;
       setTiempoRestante(siguiente);
@@ -299,37 +369,92 @@ export default function GrabadorVoz({
     totalSegundos > 0
       ? Math.min(100, ((totalSegundos - tiempoRestante) / totalSegundos) * 100)
       : 0;
-  const indicadorCoach = textoIndicadorCoach(estado, mensajeCoach, textos);
+  const indicadorCoach =
+    estado === "grabando" && pausado
+      ? textos.grabador.grabacionPausada
+      : textoIndicadorCoach(estado, mensajeCoach, textos);
+
+  const modoAnillo = estado === "grabando" && !pausado ? "vivo" : "reposo";
 
   return (
-    <section className="w-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-zinc-800">{textos.grabador.titulo}</h2>
+    <section className="pc-panel w-full p-6">
+      <div className="flex items-center gap-4">
+        <div className="pc-score" style={{ width: 72, height: 72 }}>
+          <AnilloSenal
+            modo={modoAnillo}
+            nivel={nivel}
+            etiqueta={
+              estado === "grabando"
+                ? pausado
+                  ? textos.grabador.grabacionPausada
+                  : textos.grabador.grabando
+                : estado === "transcribiendo"
+                  ? textos.grabador.transcribiendo
+                  : textos.grabador.titulo
+            }
+          />
+        </div>
+        <div>
+          <h2 className="pc-display text-2xl">{textos.grabador.titulo}</h2>
+          {estado === "grabando" && (
+            <p
+              className="text-sm"
+              style={{ color: pausado ? "var(--text-muted)" : "var(--signal)" }}
+            >
+              {pausado ? textos.grabador.grabacionPausada : textos.grabador.grabando}
+            </p>
+          )}
+          {estado === "transcribiendo" && (
+            <p className="text-sm" role="status" style={{ color: "var(--text-muted)" }}>
+              {textos.grabador.transcribiendo}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        {estado === "inactivo" && soporte && (
+          <button type="button" onClick={() => void iniciarGrabacion()} className="pc-btn">
+            {textos.grabador.comenzar}
+          </button>
+        )}
         {estado === "grabando" && (
-          <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-sm font-semibold text-red-600">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-            {textos.grabador.grabando}
-          </span>
+          <div
+            className="pc-transporte"
+            role="group"
+            aria-label={textos.grabador.controlesGrabacion}
+          >
+            <button
+              type="button"
+              onClick={pausado ? reanudarGrabacion : pausarGrabacion}
+              className="pc-btn pc-btn-quiet pc-transporte-btn"
+              aria-pressed={pausado}
+            >
+              {pausado ? <IconoPlay /> : <IconoPausa />}
+              {pausado ? textos.grabador.reanudar : textos.grabador.pausar}
+            </button>
+            <button type="button" onClick={detenerGrabacion} className="pc-btn">
+              {textos.grabador.detener}
+            </button>
+          </div>
         )}
         {estado === "transcribiendo" && (
-          <span
-            role="status"
-            className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700"
-          >
-            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-            {textos.grabador.transcribiendo}
-          </span>
+          <p className="text-sm" role="status" style={{ color: "var(--text-muted)" }}>
+            {textos.grabador.transcribiendoEspera}
+          </p>
+        )}
+        {estado === "finalizado" && (
+          <button type="button" onClick={reiniciar} className="pc-btn pc-btn-quiet">
+            {textos.grabador.grabarDeNuevo}
+          </button>
         )}
       </div>
 
-      {/* Indicador del coach: temporal, solo texto. El reemplazo visual
-          (animación tipo esfera) llega en la fase de UX/UI. */}
       {indicadorCoach !== null && (
-        <p className="mt-4 text-center text-sm font-medium text-zinc-600">
+        <p className="mt-4 text-sm" style={{ color: "var(--text-muted)" }}>
           {indicadorCoach}
         </p>
       )}
-      {/* El texto visible ya no es región viva; se anuncia solo la frase final. */}
       {estado === "finalizado" && mensajeCoach !== null && (
         <p className="sr-only" aria-live="polite">
           {mensajeCoach}
@@ -337,30 +462,27 @@ export default function GrabadorVoz({
       )}
 
       {estado === "grabando" && (
-        <div className="mt-4">
-          <div className="flex items-baseline justify-between text-sm text-zinc-500">
+        <div className="pc-tiempo mt-4">
+          <div className="flex items-baseline justify-between text-sm" style={{ color: "var(--text-muted)" }}>
             <span>{textos.grabador.tiempoRestante}</span>
-            <span className="font-mono text-2xl font-semibold tabular-nums text-zinc-900">
+            <span className="pc-display text-2xl tabular-nums" style={{ color: "var(--text)" }}>
               {formatoTiempo(tiempoRestante)}
             </span>
           </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-[width] duration-1000 ease-linear"
-              style={{ width: `${progreso}%` }}
-            />
+          <div className="pc-tiempo-barra mt-2">
+            <div className="pc-tiempo-barra-fill" style={{ width: `${progreso}%` }} />
           </div>
         </div>
       )}
 
-      <div className="mt-4 min-h-32 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+      <div className="mt-4 min-h-32 rounded-xl p-4" style={{ background: "var(--ground)" }}>
+        <p className="mb-2 text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
           {estado === "finalizado" ? textos.grabador.transcripcionFinal : textos.grabador.transcripcion}
         </p>
         {transcripcionFinal ? (
-          <p className="whitespace-pre-wrap text-zinc-800">{transcripcionFinal}</p>
+          <p className="whitespace-pre-wrap">{transcripcionFinal}</p>
         ) : (
-          <p className="text-zinc-400">
+          <p style={{ color: "var(--text-muted)" }}>
             {estado === "grabando"
               ? textos.grabador.esperandoGrabacion
               : estado === "transcribiendo"
@@ -383,7 +505,7 @@ export default function GrabadorVoz({
             enviarTextoRespaldo();
           }}
         >
-          <p className="text-sm text-zinc-600">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
             {soporte
               ? textos.grabador.ayudaRespaldo
               : textos.grabador.ayudaSinSoporte}
@@ -392,58 +514,21 @@ export default function GrabadorVoz({
             value={textoRespaldo}
             onChange={(event) => setTextoRespaldo(event.target.value)}
             rows={4}
-            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-zinc-800"
+            className="w-full rounded-xl p-3"
+            style={{ background: "var(--ground)", color: "var(--text)", border: "1px solid var(--border)" }}
             placeholder={textos.grabador.placeholderRespaldo}
           />
-          <button
-            type="submit"
-            className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
-          >
+          <button type="submit" className="pc-btn">
             {textos.grabador.enviarTexto}
           </button>
         </form>
       )}
 
       {error && (
-        <p role="alert" className="mt-3 text-sm text-red-600">
+        <p role="alert" className="pc-error mt-3 text-sm">
           {error}
         </p>
       )}
-
-      <div className="mt-5">
-        {estado === "inactivo" && soporte && (
-          <button
-            type="button"
-            onClick={() => void iniciarGrabacion()}
-            className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
-          >
-            {textos.grabador.comenzar}
-          </button>
-        )}
-        {estado === "grabando" && (
-          <button
-            type="button"
-            onClick={detenerGrabacion}
-            className="rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700"
-          >
-            {textos.grabador.detener}
-          </button>
-        )}
-        {estado === "transcribiendo" && (
-          <p className="text-sm text-zinc-500" role="status">
-            {textos.grabador.transcribiendoEspera}
-          </p>
-        )}
-        {estado === "finalizado" && (
-          <button
-            type="button"
-            onClick={reiniciar}
-            className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
-          >
-            {textos.grabador.grabarDeNuevo}
-          </button>
-        )}
-      </div>
     </section>
   );
 }
