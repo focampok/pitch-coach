@@ -14,8 +14,9 @@ import {
   estaExcluido,
   limpiarTermino,
 } from "@/lib/tavily";
-import { PREFIJOS, esEntidadAmbigua } from "@/lib/query-tavily";
+import { PREFIJOS, esEntidadAmbigua, validarRespuestaQuery } from "@/lib/query-tavily";
 import { MAX_ENTIDADES, MAX_ENTIDAD_CARACTERES } from "@/lib/entidades-tavily";
+import { comparteEntidad } from "@/lib/validar-sugerencia";
 import { reiniciar } from "@/lib/rate-limit";
 
 // -----------------------------------------------------------------------------
@@ -295,6 +296,20 @@ const SALIDA_LOG = () => logSpy.mock.calls.map(([mensaje]) => String(mensaje)).j
 // =============================================================================
 // Query pura (Tarea 2)
 // =============================================================================
+
+describe("validarRespuestaQuery", () => {
+  it("acepta una frase corta y rechaza cifras inventadas o más de 12 palabras", () => {
+    expect(validarRespuestaQuery({ query: "ice cream market size United States" })).toBe(
+      "ice cream market size United States",
+    );
+    expect(() => validarRespuestaQuery({ query: "ice cream market usd 3200 million" })).toThrow();
+    expect(() =>
+      validarRespuestaQuery({
+        query: "one two three four five six seven eight nine ten eleven twelve thirteen",
+      }),
+    ).toThrow();
+  });
+});
 
 describe("limpiarTermino / construirQueryTavily (puro)", () => {
   it("quita puntuación de oración y colapsa espacios", () => {
@@ -662,6 +677,59 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
     expect(validacion.response_format?.json_schema?.strict).toBe(true);
     // El tema debe pedirse en las instrucciones (system).
     expect(validacion.messages?.[0].content ?? "").toMatch(/RELEVANCIA|relevant/i);
+  });
+
+  it("descarta una cifra vecina aunque el modelo la marque relevante (helado vs lácteos de Nigeria)", async () => {
+    const respuestas = respuestasOk();
+    respuestas.entidades = ["ice cream", "Ice Cream Canteen"];
+    respuestas.validacion = {
+      util: true,
+      relevante: true,
+      cifra: "1.60 billion liters in 2024",
+      cita: "The Nigeria dairy market was valued at 1.60 billion Liters in 2024.",
+      anio: "2024",
+    };
+    const fetchMock = fetchConDispatch(respuestas, {
+      busqueda: () =>
+        jsonResponse({
+          results: [
+            {
+              title: "Nigeria Dairy Market Growth Analysis Report 2025-2034",
+              url: "https://uk.finance.yahoo.com/news/nigeria-dairy-market-growth-analysis-113300686.html",
+              score: 0.81,
+            },
+          ],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion:
+          "The Ice Cream Canteen keeps a pint of ice cream frozen for hours.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+
+    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(SALIDA_INFO()).toContain("motivo=otro-tema");
+  });
+
+  it("comparteEntidad exige una palabra del pitch en lo que se va a mostrar", () => {
+    expect(
+      comparteEntidad(
+        "Nigeria Dairy Market. The Nigeria dairy market was valued at 1.60 billion Liters in 2024.",
+        ["ice cream", "Ice Cream Canteen"],
+      ),
+    ).toBe(false);
+    expect(
+      comparteEntidad(
+        "El mercado de energía solar en Guatemala alcanzó USD 320 millones en 2024",
+        ["energía solar", "Guatemala"],
+      ),
+    ).toBe(true);
   });
 
   it("degrada a 'sin sugerencia' si el modelo no confirma relevancia aunque cite cifra", async () => {

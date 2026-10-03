@@ -189,8 +189,11 @@ export function validarRespuestaQuery(datos: unknown): string {
   }
   const bruto = (datos as Record<string, unknown>).query;
   const query = recortarTexto(typeof bruto === "string" ? bruto : "", MAX_QUERY_MODELO_CARACTERES);
-  if (query === "") {
-    throw new Error("El modelo devolvió una query vacía.");
+  const palabras = query.split(/\s+/).filter(Boolean);
+  // Una frase larga o con números suele ser una cifra inventada por el modelo
+  // (el año lo agrega el llamador). Mejor fallar y usar la query de respaldo.
+  if (query === "" || palabras.length > 12 || /\d/.test(query)) {
+    throw new Error("La query del modelo no es una frase corta y sin cifras.");
   }
   return query;
 }
@@ -201,7 +204,7 @@ function construirSystemQuery(idioma: Idioma): string {
 
 Rules:
 - The phrase must target a NUMERIC datum (market size, growth, price, users), never a concept or a methodology.
-- Use only the terms you receive. Do not invent proper nouns.
+- Use only the terms you receive. Do not invent proper nouns, countries, or numbers.
 - FORBIDDEN: commentary or evaluation terms such as "lacks", "no data", "missing", "without figure", "does not mention".
 - Write it in the pitch's language. No punctuation, no quotes.
 
@@ -212,7 +215,7 @@ Reply ONLY with the requested structured JSON.`;
 
 Reglas:
 - La frase debe apuntar a un DATO numérico (tamaño de mercado, crecimiento, precio, usuarios), nunca a un concepto ni a una metodología.
-- Usa solo los términos que recibes. No inventes nombres propios.
+- Usa solo los términos que recibes. No inventes nombres propios, países ni números.
 - PROHIBIDO: términos de comentario o evaluación como "carece", "no da", "falta", "sin cifra", "no se menciona".
 - Escríbela en el idioma del pitch. Sin puntuación, sin comillas.
 

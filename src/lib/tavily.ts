@@ -47,7 +47,7 @@ import {
   type DatosQueryTavily,
 } from "./query-tavily";
 import { extraerContenido } from "./tavily-extract";
-import { generarFraseHablada, validarContenido } from "./validar-sugerencia";
+import { comparteEntidad, generarFraseHablada, validarContenido } from "./validar-sugerencia";
 
 // `limpiarTermino` y el constructor puro viven en módulos base (para que la
 // Fase B no cree ciclos). Se reexportan acá porque esta es la ruta canónica de
@@ -381,12 +381,22 @@ export async function enriquecerConTavily(
             continue;
           }
           extraido = true;
+          motivo = "sin-cifra";
 
           // Paso 6: validación obligatoria — sin cifra citable Y RELEVANTE al
           // tema/sector del pitch, se descarta. Las entidades son el contexto
           // de comparación (mismos términos cortos que ya viajan a Tavily).
           const validacion = await validarContenido(contenido.contenido, idioma, entidades);
           if (!validacion.util) continue;
+
+          // Segunda barrera, sin modelo: lo que se muestra (título, cita, cifra)
+          // tiene que repetir una palabra del pitch. Cierra el caso en que el
+          // validador acepta una cifra vecina (helado → lácteos de otro país).
+          const corpus = `${candidato.title ?? ""} ${validacion.cita} ${validacion.cifra}`;
+          if (!comparteEntidad(corpus, entidades)) {
+            motivo = "otro-tema";
+            continue;
+          }
 
           // Paso 7: frase hablada (con respaldo determinista).
           const frase = await generarFraseHablada({
