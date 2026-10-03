@@ -40,34 +40,13 @@ export default function Error({
     Sentry.captureException(error);
   }, [error]);
 
+  // Este boundary vive DENTRO del layout raíz, así que globals.css sí está
+  // cargado: se usan los tokens y las clases del Acta, no estilos sueltos.
   return (
-    <div
-      style={{
-        minHeight: "60vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "1rem",
-        textAlign: "center",
-        padding: "2rem",
-      }}
-    >
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 600 }}>{textos.errores.titulo}</h1>
-      <p style={{ maxWidth: "32rem", opacity: 0.7 }}>{textos.errores.mensaje}</p>
-      <button
-        onClick={() => reset()}
-        style={{
-          marginTop: "0.5rem",
-          padding: "0.5rem 1.25rem",
-          borderRadius: "0.5rem",
-          border: "1px solid currentColor",
-          background: "transparent",
-          color: "inherit",
-          cursor: "pointer",
-          fontSize: "0.95rem",
-        }}
-      >
+    <div className="mx-auto flex w-full max-w-[32rem] flex-1 flex-col items-center justify-center gap-4 px-6 py-12 text-center">
+      <h1 className="pc-display text-2xl">{textos.errores.titulo}</h1>
+      <p style={{ color: "var(--text-muted)" }}>{textos.errores.mensaje}</p>
+      <button type="button" onClick={() => reset()} className="pc-btn">
         {textos.errores.reintentar}
       </button>
     </div>

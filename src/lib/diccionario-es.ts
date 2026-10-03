@@ -77,7 +77,6 @@ export const es = {
     reanudar: "Reanudar grabación",
     grabacionPausada: "Grabación en pausa",
     controlesGrabacion: "Controles de grabación",
-    transcribiendoEspera: "Transcribiendo… espera un momento.",
     grabarDeNuevo: "Grabar de nuevo",
     errorTextoVacio: "El texto está vacío. Escribe tu pitch o respuesta.",
     errorTranscripcion: "No se pudo transcribir el audio.",
@@ -106,6 +105,8 @@ export const es = {
 
   // --- Dashboard del análisis (src/components/DashboardResultado.tsx) -----
   dashboard: {
+    /** Título de la sección de resultado (visible sólo para lectores de pantalla). */
+    titulo: "Resultado del análisis",
     score: (puntos: number) => `Score ${puntos} de 100`,
     rubrica: "Rúbrica",
     rubricaUltra: "Rúbrica (Ultra)",

@@ -5,6 +5,15 @@
   flex-direction: column;
   gap: 1.75rem;
   width: 100%;
+  /* Aire al llevar la vista al resultado recién generado. */
+  scroll-margin-top: 1.5rem;
+}
+
+/* El título del resultado es sólo estructura: encabeza la sección para lectores
+   de pantalla y es el destino del foco al llegar el análisis. No se pinta, y
+   como no es un control del usuario, no lleva anillo de foco. */
+.pc-dashboard-titulo:focus {
+  outline: none;
 }
 
 .pc-resultado-cuerpo {
@@ -115,21 +124,6 @@
   font-family: var(--font-source), "Source Sans 3", sans-serif;
   font-size: 0.95rem;
   color: var(--signal);
-}
-
-.pc-veredicto button {
-  font-size: 0.85rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--sunken);
-  color: var(--text);
-  cursor: pointer;
-}
-
-.pc-veredicto button:disabled {
-  opacity: 0.6;
-  cursor: default;
 }
 
 .pc-tiempo-barra {
@@ -382,16 +376,6 @@ mark.pc-muletilla {
 
 .pc-tavily-fuente a {
   color: var(--signal);
-}
-
-.pc-tavily-escuchar {
-  font-size: 0.85rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--ground);
-  color: var(--text);
-  cursor: pointer;
 }
 
 .pc-ultra-bloque {

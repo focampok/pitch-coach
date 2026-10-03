@@ -198,6 +198,7 @@ export function SparringCoach({
             <GrabadorVoz
               key={`sparring-${indice}`}
               duracionMaxima={1}
+              variante="incrustado"
               onTranscripcionCompleta={(texto) => {
                 void evaluar(texto);
               }}

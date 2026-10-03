@@ -64,7 +64,6 @@ export const en: Diccionario = {
     reanudar: "Resume recording",
     grabacionPausada: "Recording paused",
     controlesGrabacion: "Recording controls",
-    transcribiendoEspera: "Transcribing… hang on a moment.",
     grabarDeNuevo: "Record again",
     errorTextoVacio: "The text is empty. Type your pitch or answer.",
     errorTranscripcion: "Could not transcribe the audio.",
@@ -92,6 +91,8 @@ export const en: Diccionario = {
 
   // --- Dashboard del análisis (src/components/DashboardResultado.tsx) -----
   dashboard: {
+    /** Section heading for the result (screen-reader only). */
+    titulo: "Analysis result",
     score: (puntos: number) => `Score ${puntos} of 100`,
     rubrica: "Rubric",
     rubricaUltra: "Rubric (Ultra)",

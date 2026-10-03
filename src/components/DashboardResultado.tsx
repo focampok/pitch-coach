@@ -176,6 +176,7 @@ function CabeceraScore({
           autoPlay={false}
           voz={vozSesion}
           onVozUsada={onVozUsada}
+          className="pc-btn pc-btn-quiet pc-btn-pill"
         />
       </div>
     </header>
@@ -196,6 +197,8 @@ export function DashboardResultado({
 }: DashboardResultadoProps) {
   const { idioma, textos } = useIdioma();
   const transcripcionTituloId = useId();
+  const raizRef = useRef<HTMLDivElement | null>(null);
+  const tituloRef = useRef<HTMLHeadingElement | null>(null);
   const patrones = muletillasPatterns ?? patronesMuletillas(idioma);
   const [sugerencias, setSugerencias] = useState<SugerenciaTavily[]>([]);
   const [analisisUltra, setAnalisisUltra] = useState<ResultadoAnalisis | null>(null);
@@ -339,6 +342,17 @@ export function DashboardResultado({
     transcripcion,
   ]);
 
+  // Al llegar el resultado lo anunciamos y llevamos la vista ahí: en móvil el
+  // panel aparece debajo del grabador, fuera de pantalla, y el usuario no
+  // debería tener que buscarlo. Mismo criterio que el bloque de Ultra.
+  useEffect(() => {
+    tituloRef.current?.focus({ preventScroll: true });
+    const nodo = raizRef.current;
+    if (nodo === null) return;
+    const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    nodo.scrollIntoView({ behavior: reducido ? "auto" : "smooth", block: "start" });
+  }, []);
+
   const ultraRef = useRef<HTMLElement | null>(null);
 
   // Al terminar el Análisis Ultra llevamos al usuario a la sección recién
@@ -367,7 +381,14 @@ export function DashboardResultado({
       : undefined;
 
   return (
-    <div className="pc-dashboard">
+    <div className="pc-dashboard" ref={raizRef}>
+      <h2
+        className="sr-only pc-dashboard-titulo"
+        ref={tituloRef}
+        tabIndex={-1}
+      >
+        {textos.dashboard.titulo}
+      </h2>
       <CabeceraScore
         score={resultado.score}
         veredicto={resultado.veredicto_corto}
@@ -480,7 +501,7 @@ export function DashboardResultado({
                   voz={vozSesion}
                   onVozUsada={onVozUsada}
                   etiquetaInactivo={textos.dashboard.escucharDato}
-                  className="pc-tavily-escuchar"
+                  className="pc-btn pc-btn-pill pc-btn-pill-lienzo"
                 />
               </li>
             ))}
@@ -508,10 +529,14 @@ export function DashboardResultado({
         )}
       </section>
 
-      <section className="pc-transcripcion" aria-labelledby={transcripcionTituloId}>
+      <section className="pc-transcripcion">
         <h3 id={transcripcionTituloId}>{textos.dashboard.transcripcion}</h3>
         <div
           className="pc-transcripcion-cuerpo"
+          // Caja con scroll propio: necesita ser enfocable con el teclado y
+          // llevar un nombre. `role="region"` es lo que hace efectivo el
+          // `aria-labelledby` acá (sobre un div genérico se ignora).
+          role="region"
           tabIndex={0}
           aria-labelledby={transcripcionTituloId}
           // `resaltarMuletillas` escapa HTML de la transcripción (viene de STT,

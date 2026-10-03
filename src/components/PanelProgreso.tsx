@@ -48,7 +48,7 @@ export function PanelProgreso() {
       <div className="flex items-center justify-between gap-3">
         <h2 className="pc-display text-2xl">{textos.progreso.titulo}</h2>
         {sesiones.length > 0 && (
-          <button type="button" onClick={borrar} className="text-sm underline" style={{ color: "var(--text-muted)" }}>
+          <button type="button" onClick={borrar} className="pc-btn-texto">
             {textos.progreso.borrar}
           </button>
         )}

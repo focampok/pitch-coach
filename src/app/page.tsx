@@ -126,7 +126,8 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setMostrarProgreso((visible) => !visible)}
-            className="text-sm font-medium underline"
+            aria-expanded={mostrarProgreso}
+            className="pc-btn-texto"
           >
             {mostrarProgreso ? textos.inicio.ocultarProgreso : textos.inicio.verProgreso}
           </button>

@@ -8,11 +8,13 @@ import { useIdioma } from "./ProveedorIdioma";
  * Toggle de idioma (ES | EN).
  *
  * Las opciones salen de IDIOMAS (el registro), no de una lista escrita acá: un
- * idioma nuevo aparece solo. El nombre accesible de cada botón es el nombre del
- * idioma en su propio idioma ("Español" / "English"), no la sigla visible.
+ * idioma nuevo aparece solo.
  *
- * Presentacional a propósito: el diseño visual definitivo es de una fase
- * posterior; acá solo tiene que ser usable y accesible.
+ * ACCESIBILIDAD (WCAG 2.5.3, "Label in Name", nivel A)
+ * El nombre accesible de cada botón EMPIEZA por la sigla visible ("ES") y
+ * sigue con el nombre del idioma en su propio idioma ("Español"). No puede ser
+ * sólo "Español": quien usa control por voz dice lo que ve, y si el nombre
+ * accesible no contiene el texto visible, el comando no coincide.
  */
 export default function SelectorIdioma() {
   const { idioma, setIdioma, textos } = useIdioma();
@@ -27,22 +29,25 @@ export default function SelectorIdioma() {
       {IDIOMAS.map((codigo) => {
         const activo = codigo === idioma;
         const nombre = registroIdioma(codigo).nombre;
+        const sigla = codigo.toUpperCase();
 
         return (
           <button
             key={codigo}
             type="button"
             aria-pressed={activo}
-            aria-label={nombre}
+            aria-label={`${sigla} — ${nombre}`}
             lang={codigo}
             onClick={() => setIdioma(codigo)}
-            className="px-3 py-1.5 text-sm font-semibold"
+            // Objetivo táctil de 44px (WCAG 2.2 AA / Apple HIG), igual que el
+            // resto de los controles.
+            className="inline-flex min-h-11 items-center px-4 py-1.5 text-sm font-semibold"
             style={{
               background: activo ? "var(--field)" : "transparent",
               color: activo ? "var(--bone)" : "var(--text-muted)",
             }}
           >
-            {codigo.toUpperCase()}
+            {sigla}
           </button>
         );
       })}

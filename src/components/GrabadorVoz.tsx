@@ -17,6 +17,12 @@ interface GrabadorVozProps {
   /** Duración máxima del pitch en minutos (presets 1–7, docs/alcance.md §7). */
   duracionMaxima: DuracionMaxima;
   /**
+   * "incrustado" cuando el grabador vive dentro de otro panel (SparringCoach):
+   * se disuelve en ese panel en vez de hundir un panel sobre otro hundido
+   * (Regla del Hundido, DESIGN.md).
+   */
+  variante?: "panel" | "incrustado";
+  /**
    * Se dispara al terminar (grabación + transcripción, o envío de texto de
    * respaldo) con el texto completo y el tiempo real en segundos
    * (docs/alcance.md §7: el tiempo usado entra como contexto de la evaluación).
@@ -67,6 +73,7 @@ function nombreArchivo(mime: string): string {
 
 export default function GrabadorVoz({
   duracionMaxima,
+  variante = "panel",
   onTranscripcionCompleta,
 }: GrabadorVozProps) {
   const { idioma, textos } = useIdioma();
@@ -377,7 +384,9 @@ export default function GrabadorVoz({
   const modoAnillo = estado === "grabando" && !pausado ? "vivo" : "reposo";
 
   return (
-    <section className="pc-panel w-full p-6">
+    <section
+      className={variante === "incrustado" ? "w-full" : "pc-panel w-full p-6"}
+    >
       <div className="flex items-center gap-4">
         <div className="pc-score" style={{ width: 72, height: 72 }}>
           <AnilloSenal
@@ -437,11 +446,6 @@ export default function GrabadorVoz({
               {textos.grabador.detener}
             </button>
           </div>
-        )}
-        {estado === "transcribiendo" && (
-          <p className="text-sm" role="status" style={{ color: "var(--text-muted)" }}>
-            {textos.grabador.transcribiendoEspera}
-          </p>
         )}
         {estado === "finalizado" && (
           <button type="button" onClick={reiniciar} className="pc-btn pc-btn-quiet">

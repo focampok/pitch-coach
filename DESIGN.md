@@ -74,7 +74,8 @@ components:
     backgroundColor: "{colors.sunken}"
     textColor: "{colors.text}"
     rounded: "{rounded.pill}"
-    padding: "6px 12px"
+    padding: "8px 18px"
+    minHeight: "44px"
   panel:
     backgroundColor: "{colors.sunken}"
     rounded: "{rounded.md}"
@@ -217,6 +218,8 @@ No hay sombras. La profundidad es un escalón hacia abajo: el lienzo, y sobre é
 
 **The Sunken Rule.** Una superficie nueva es hundida o es el propio lienzo. No se levanta con blanco ni con sombra. `--elevated` no se aplica.
 
+**The No Sunken-on-Sunken Rule.** Hundir un panel dentro de otro panel hundido no crea profundidad: son el mismo relleno y solo queda un filete de más. Lo que vive dentro de un panel hundido se disuelve en él (sin fondo ni borde propios, como el grabador dentro de "Resolver hallazgos") o se pinta con el lienzo.
+
 ## Shapes
 
 Esquinas cortas y una geometría. El botón es 8px. El panel y la alerta son 12px. La fila de rúbrica es 10px. Las píldoras (idioma activo, escuchar, chip de muletilla, barra de tiempo) cierran a 999px. La marca dentro de la transcripción es 3px.
@@ -235,6 +238,8 @@ El anillo es un arco, no un círculo con pista. Trazo de 10 en un viewBox de 120
 - **Primary:** campo con texto hueso, padding 12px 16px, 600, 0.875rem. En claro el hover llena con el pico. En oscuro el pico es claro, así que el hover mantiene el campo y solo el filete pasa a la señal.
 - **Hover / Focus:** el foco de todo control es un outline de 2px en la señal, separado 3px. No hay transición de color.
 - **Quiet:** hundido, texto de tinta, filete. El hover toma el tinte. Deshabilitado: opacidad 0.6.
+- **Pill (acciones de escucha):** radio píldora y 0.85rem, pero **nunca por debajo del objetivo táctil de 44px** — la forma no exime del mínimo. La mecánica la aporta el botón base; la píldora solo cambia la forma. Sobre una tarjeta hundida (los datos sugeridos) se pinta con el lienzo, no con otro hundido: ver la Regla del Hundido.
+- **Text (acciones terciarias):** "Tu progreso", "Borrar historial". Se leen como enlace subrayado, pero conservan los 44px de alto para poder tocarse.
 
 ### Chips
 

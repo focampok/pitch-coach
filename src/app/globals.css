@@ -67,6 +67,17 @@ body {
   outline-offset: 3px;
 }
 
+/* El preflight de Tailwind 4 no pone `cursor: pointer` en los botones. Sin
+   esto, los selectores (tipo, duración, idioma) no se sienten clicables.
+   `.pc-btn` ya lo declara; esta regla cubre los botones sin esa clase. */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
 .pc-display {
   font-family: var(--font-alike), Alike, serif;
   font-weight: 400;
@@ -116,6 +127,53 @@ body {
   color: var(--text);
 }
 
+/* Acción de escucha: píldora. La mecánica (objetivo táctil de 44px, foco,
+   cursor, transición, deshabilitado) la aporta `.pc-btn`; acá sólo la forma.
+   No fija fondo: cada contexto lo elige (hundido sobre el lienzo, lienzo
+   sobre una tarjeta hundida). */
+.pc-btn-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.85rem;
+}
+
+/* Una píldora que vive sobre una tarjeta hundida se pinta con el lienzo, no
+   con otro hundido (Regla del Hundido, DESIGN.md). */
+.pc-btn-pill-lienzo {
+  background: var(--ground);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.pc-btn-pill-lienzo:hover {
+  background: var(--signal-tint);
+  color: var(--text);
+}
+
+/* Acción terciaria de texto (progreso, borrar historial). Conserva el objetivo
+   táctil de 44px sin dejar de leerse como un enlace subrayado. */
+.pc-btn-texto {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.25rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+
+.pc-btn-texto:hover {
+  color: var(--text);
+}
+
 /* Transporte de audio (play / pausa / detener).
    El grupo ordena los controles; cada botón conserva el estilo del contexto
    (pill del veredicto, quiet del grabador) pero nunca baja del objetivo táctil
@@ -143,7 +201,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pc-btn {
+  .pc-btn,
+  .pc-btn-texto {
     transition: none;
   }
 }
