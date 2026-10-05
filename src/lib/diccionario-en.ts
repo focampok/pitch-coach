@@ -58,6 +58,7 @@ export const en: Diccionario = {
     transcripcionVacia: "Your pitch transcript will show up here.",
     ayudaRespaldo: "If you can't use the microphone, type the text.",
     ayudaSinSoporte: "This browser can't record audio. Type the text.",
+    etiquetaRespaldo: "Pitch text",
     placeholderRespaldo: "Type your pitch or answer…",
     enviarTexto: "Send text",
     comenzar: "Start recording",
@@ -210,6 +211,7 @@ export const en: Diccionario = {
     desarrolladoPor: "Built by Francisco Ocampo",
     licencia: "Open source (MIT)",
     codigoFuente: "Source code",
+    hackathon: "Built for the Nebius × NVIDIA Global AI Hackathon 2026",
   },
 
   // --- Error boundaries (src/app/error.tsx, src/app/global-error.tsx) ------

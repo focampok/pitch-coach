@@ -163,7 +163,10 @@ function CabeceraScore({
     <header className="pc-dashboard-header">
       <div className="pc-score">
         <AnilloSenal modo="asentado" score={score} etiqueta={etiquetaScore} />
-        <span className="pc-score-leyenda">
+        {/* Cifra visible duplicada: el nombre accesible del anillo ya anuncia
+            el score completo ("Score 64 de 100"), así que la leyenda se oculta
+            al lector para no repetirlo. */}
+        <span className="pc-score-leyenda" aria-hidden="true">
           <span className="pc-score-num">{score}</span>
           <span className="pc-score-max">/100</span>
         </span>

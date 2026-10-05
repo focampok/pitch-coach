@@ -161,8 +161,9 @@ resto del resultado sigue.
   `docs/README.md`.
 - Demo en línea funcionando:
   `https://pitch-coach-production-1c0c.up.railway.app`.
-- Capturas del estado actual en `public/screenshots/` — **son del mundo visual
-  anterior y este rediseño las reemplaza**; no son una referencia a preservar.
+- Capturas del estado actual en `public/screenshots/` (`01.png` selección,
+  `02.png` coach, `03.png` dashboard) — **del mundo visual vigente (rediseño
+  "Acta")**; alimentan el README y el material de submission.
 - Material de dirección visual y referencias en `docs/referencias-ui/`.
 - **No existe el video de submission.** Es requisito (YouTube público, ≤3 min,
   inglés, con audio). No inventar un enlace.

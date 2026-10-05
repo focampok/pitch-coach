@@ -8,7 +8,6 @@
   color-scheme: light;
   --ground: #f9f8f6;
   --sunken: #f1f0ed;
-  --elevated: #ffffff;
   --text: #1a1917;
   --text-muted: #6b6862;
   --signal: #285828;
@@ -18,7 +17,9 @@
   --field: #1e4022;
   --bone: #f4f3f0;
   --attention: #9e4a38;
-  --border: #d6d2c9;
+  /* Filete a 3:1 (WCAG 1.4.11) sobre lienzo y hundido. Ver
+     scripts/contraste-filete.mjs. */
+  --border: #8d8880;
   --background: var(--ground);
   --foreground: var(--text);
 }
@@ -28,7 +29,6 @@
     color-scheme: dark;
     --ground: #0f0f0e;
     --sunken: #1a1a18;
-    --elevated: #242422;
     --text: #f4f3f0;
     --text-muted: #a3a099;
     --signal: #a3c48f;
@@ -38,7 +38,7 @@
     --field: #1e4022;
     --bone: #f4f3f0;
     --attention: #c97c68;
-    --border: #35352f;
+    --border: #6b6a62;
     --background: var(--ground);
     --foreground: var(--text);
   }
@@ -292,6 +292,13 @@ button:disabled {
 
 .pc-site-footer-link:hover {
   color: var(--signal-peak);
+}
+
+.pc-site-footer-hackathon {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
 
 .pc-masthead-tools {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import type { DuracionMaxima, PalabraTranscripcion } from "@/types/pitch";
 import {
   elegirMensajeAsintiendo,
@@ -77,6 +77,7 @@ export default function GrabadorVoz({
   onTranscripcionCompleta,
 }: GrabadorVozProps) {
   const { idioma, textos } = useIdioma();
+  const idAyudaRespaldo = useId();
   const [estado, setEstado] = useState<EstadoGrabador>("inactivo");
   const [transcripcionFinal, setTranscripcionFinal] = useState("");
   const [textoRespaldo, setTextoRespaldo] = useState("");
@@ -509,7 +510,7 @@ export default function GrabadorVoz({
             enviarTextoRespaldo();
           }}
         >
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+          <p id={idAyudaRespaldo} className="text-sm" style={{ color: "var(--text-muted)" }}>
             {soporte
               ? textos.grabador.ayudaRespaldo
               : textos.grabador.ayudaSinSoporte}
@@ -518,6 +519,8 @@ export default function GrabadorVoz({
             value={textoRespaldo}
             onChange={(event) => setTextoRespaldo(event.target.value)}
             rows={4}
+            aria-label={textos.grabador.etiquetaRespaldo}
+            aria-describedby={idAyudaRespaldo}
             className="w-full rounded-xl p-3"
             style={{ background: "var(--ground)", color: "var(--text)", border: "1px solid var(--border)" }}
             placeholder={textos.grabador.placeholderRespaldo}

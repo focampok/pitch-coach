@@ -13,7 +13,7 @@ colors:
   field: "#1e4022"
   bone: "#f4f3f0"
   attention: "#9e4a38"
-  border: "#d6d2c9"
+  border: "#8d8880"
 typography:
   display:
     fontFamily: "Alike, serif"
@@ -89,7 +89,7 @@ components:
     backgroundColor: "{colors.sunken}"
     rounded: "{rounded.pill}"
     padding: "4px 11px"
-  row-open:
+  row-covered:
     backgroundColor: "{colors.signal-tint}"
     textColor: "{colors.signal}"
     rounded: "{rounded.row}"
@@ -113,7 +113,7 @@ components:
 
 Pitch Coach se lee como el acta de un examen, no como un tablero de celebración. El papel es hueso, las superficies se hunden un paso, y el único color con voz es un olivo. El anillo geométrico es la medición: en reposo es un arco corto, al hablar crece con la voz, y al llegar el resultado ese mismo arco es el score.
 
-La densidad es la de una hoja, no la de un dashboard. Hasta 1120px, y desde 960px en dos columnas, serif solo en la frase que se recuerda (el veredicto, el nombre del producto, el título de sección) y una sans para todo lo que se lee seguido. La fila que falta en la rúbrica es la única que toma el tinte. El resto de la lista permanece en silencio. Los cuatro tipos de pitch se presentan con el mismo peso; el elegido cambia de tinte, no de importancia.
+La densidad es la de una hoja, no la de un dashboard. Hasta 1120px, y desde 960px en dos columnas, serif solo en la frase que se recuerda (el veredicto, el nombre del producto, el título de sección) y una sans para todo lo que se lee seguido. La fila cumplida de la rúbrica es la única que toma el tinte. El resto de la lista permanece en silencio. Los cuatro tipos de pitch se presentan con el mismo peso; el elegido cambia de tinte, no de importancia.
 
 El mundo anterior queda retirado: lienzo blanco, acento esmeralda, Arial que ganaba a una Geist declarada y no usada, círculo de score de 88px pintado de verde, ámbar o rojo, y una sopa de azul, rojo y amarillo. No se genera ninguna pantalla nueva en ese estilo.
 
@@ -134,10 +134,10 @@ Los valores de abajo son el modo claro (`:root`). El modo oscuro reasigna los mi
 
 ### Primary
 
-- **Olivo de señal** (`{colors.signal}`): el arco asentado, la fila abierta, la línea de sesión y el foco. Es el color que dice "esto es lo que falta mirar".
+- **Olivo de señal** (`{colors.signal}`): el arco asentado, la fila cumplida, la línea de sesión y el foco. Es el color de la medición.
 - **Pico** (`{colors.signal-peak}`): el extremo oscuro del mismo olivo. En claro llena el hover del botón primario. En vivo, el arco llega aquí solo cuando la voz pasa el umbral alto.
 - **Reposo** (`{colors.signal-rest}`): el paso medio de la rampa. El arco en silencio y el relleno de la barra de tiempo usan este valor en los dos modos.
-- **Tinte** (`{colors.signal-tint}`): el campo de la fila abierta y del tipo de pitch elegido. También el fondo de la muletilla marcada dentro de la transcripción.
+- **Tinte** (`{colors.signal-tint}`): el campo de la fila cumplida y del tipo de pitch elegido. También el fondo de la muletilla marcada dentro de la transcripción.
 - **Campo** (`{colors.field}`): el botón primario. Texto hueso encima.
 
 ### Neutral
@@ -169,9 +169,9 @@ Misma rampa, invertida en claridad. El reposo no cambia.
 | Tinte | `{colors.signal-tint}` | `#1e4022` |
 | Campo | `{colors.field}` | `{colors.field}` |
 | Atención | `{colors.attention}` | `#c97c68` |
-| Filete | `{colors.border}` | `#35352f` |
+| Filete | `{colors.border}` | `#6b6a62` |
 
-`--elevated` existe en la hoja (`#ffffff` en claro, `#242422` en oscuro) y ninguna superficie lo usa. No es un token de producción.
+No hay token de elevación. La profundidad se resuelve hundiendo, no elevando: ninguna superficie se pinta con blanco ni con sombra (ver la Regla del Hundido).
 
 ### Named Rules
 
@@ -212,11 +212,11 @@ El ritmo observado es 6px entre filas de rúbrica, 12px de padding vertical en c
 
 ## Elevation & Depth
 
-No hay sombras. La profundidad es un escalón hacia abajo: el lienzo, y sobre él un panel hundido. La fila abierta no se eleva; se tiñe. El anillo no tiene halo.
+No hay sombras. La profundidad es un escalón hacia abajo: el lienzo, y sobre él un panel hundido. La fila cumplida no se eleva; se tiñe. El anillo no tiene halo.
 
 ### Named Rules
 
-**The Sunken Rule.** Una superficie nueva es hundida o es el propio lienzo. No se levanta con blanco ni con sombra. `--elevated` no se aplica.
+**The Sunken Rule.** Una superficie nueva es hundida o es el propio lienzo. No se levanta con blanco ni con sombra.
 
 **The No Sunken-on-Sunken Rule.** Hundir un panel dentro de otro panel hundido no crea profundidad: son el mismo relleno y solo queda un filete de más. Lo que vive dentro de un panel hundido se disuelve en él (sin fondo ni borde propios, como el grabador dentro de "Resolver hallazgos") o se pinta con el lienzo.
 
@@ -270,11 +270,15 @@ El mismo componente en la grabación y en el resultado. En la grabación mide 72
 
 ### Rubric row
 
-Fila horizontal, radio 10px, padding 11px 14px. Una marca de 28px (cuadrado de 8px con un punto) en señal. La primera rúbrica incumplida lleva la clase abierta: fondo tinte, texto de señal, marca sobre el lienzo. Las demás no tienen fondo propio. Cumplido o no no cambia el color del punto.
+Fila horizontal, radio 10px, padding 11px 14px. Una marca de 28px: cuadrado de 8px en señal con un punto, o un check. La fila **cumplida** lleva la clase `cumplido`: fondo tinte, texto de señal y la marca sobre el campo (cuadrado en campo, check en hueso). Las **pendientes** no tienen fondo propio: marca hundida con el punto en tinta. El estado se lee por forma (check o punto) y por color, nunca solo por color.
 
 ### Alert
 
 Panel hundido con filete y texto teja, radio 12px, padding 12px 16px. Sirve para el fallo de análisis, de ultra y de sparring.
+
+### Named Rules
+
+**The Covered Mark Rule.** El tinte señala la rúbrica cumplida, no la que falta. La marca cambia de forma y de color a la vez: check sobre el campo si está cumplida, punto hundido si no. El color nunca lee solo.
 
 ## Do's and Don'ts
 
@@ -283,7 +287,7 @@ Panel hundido con filete y texto teja, radio 12px, padding 12px 16px. Sirve para
 - **Do** usar los tokens de `:root` y su reasignación oscura. Un color nuevo tiene que ser un paso de esta rampa o no existe.
 - **Do** dejar el foco visible: outline de 2px en la señal, offset de 3px.
 - **Do** tratar los cuatro tipos de pitch con la misma forma. La selección es tinte, no jerarquía.
-- **Do** marcar la primera rúbrica que falta con el tinte, y dejar las otras en silencio.
+- **Do** marcar la rúbrica cumplida con el tinte y el check, y dejar las pendientes en silencio.
 
 ### Don't:
 

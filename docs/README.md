@@ -1,8 +1,7 @@
 # Documentación — Pitch Coach
 
-Índice orientado por objetivo ([Diátaxis](https://diataxis.fr/)). Antes de la
-fase de UX/UI, estos documentos son la fuente de verdad del producto y del
-código.
+Índice orientado por objetivo ([Diátaxis](https://diataxis.fr/)). Estos
+documentos son la fuente de verdad del producto y del código.
 
 **Fuente de verdad del diseño:** `PRODUCT.md` (capa de producto, sin tokens),
 `DESIGN.md` (único destino formal del sistema visual y sus tokens) y
@@ -33,8 +32,9 @@ código.
 | [alcance.md](alcance.md) | Problema, loop de usuario, rúbricas, bilingüe, servicios, fuera de alcance |
 | [status.md](status.md) | Tabla implementado ↔ archivos, variables de entorno, tests, Sentry (resumen) |
 | [PRODUCT.md](../PRODUCT.md) | Capa de producto: usuarios, propósito, contexto, hackathon, principios (sin tokens) |
-| [DESIGN.md](../DESIGN.md) | Sistema visual y tokens — **fuente de verdad del diseño** (hoy pre-rediseño, anti-referencia) |
+| [DESIGN.md](../DESIGN.md) | Sistema visual y tokens — **fuente de verdad del diseño** |
 | [referencias-ui/](referencias-ui/README.md) | Evidencia y dirección visual **propuesta** (paleta, animación, referencias) |
+| [mejoras_ux.md](mejoras_ux.md) | Revisión de diseño (5 oct): fortalezas, hallazgos priorizados (deriva doc↔código, selectores, filetes) y plan de acción |
 | [`.env.example`](../.env.example) | Lista completa de variables y defaults documentados |
 | [CLAUDE.md](../CLAUDE.md) | Convenciones del repo para humanos y agentes |
 
@@ -64,15 +64,17 @@ cuerpo aún no se leyó. Detalle en [alcance.md §15](alcance.md).
 - **`post-nebius.md`** — narrativa antes/después + arquitectura Nebius actualizada.
 - **`status.md`** — tabla archivo ↔ código y notas de verificación (fuente viva).
 
-## Próxima fase (UX/UI)
+## Estado UX/UI
 
-En [alcance.md §5.1](alcance.md) y [status.md](status.md): el coach es un
-indicador de texto temporal; la animación y el lenguaje visual se definirán en
-UX/UI. La dirección es **anti-orbe** (sin esfera/orbe brillante): un indicador
-en vivo que reacciona al audio, con un solo matiz. No hay STT en vivo (Scribe
+El lenguaje visual está definido y en su mayor parte implementado: el indicador
+en vivo es el anillo de [`AnilloSenal.tsx`](../src/components/AnilloSenal.tsx),
+un arco que reacciona al audio durante la grabación y se asienta como score en el
+resultado (tres modos del mismo trazo). La dirección es **anti-orbe** (sin
+esfera/orbe brillante), con un solo matiz olivo. No hay STT en vivo (Scribe
 Realtime) en el alcance actual.
 
-Fuentes de diseño para esa fase, en este orden:
+Los hallazgos y el plan de cierre de esta fase están en
+[mejoras_ux.md](mejoras_ux.md). Fuentes de diseño, en este orden:
 
 1. [`PRODUCT.md`](../PRODUCT.md) — capa de producto y compromisos de marca.
 2. [`DESIGN.md`](../DESIGN.md) — sistema visual vigente y **destino formal** de

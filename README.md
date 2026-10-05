@@ -28,8 +28,9 @@ score, puntos cumplidos/faltantes y transcripción resaltada.
   validación y frase lista para decir en voz alta.
 - **Tu progreso** — historial local (últimas 20 prácticas en este navegador).
 
-Indicador de estado del coach en texto (`Escuchando…` / `Transcribiendo…` / frase
-final), en el idioma de la sesión. Sesión anónima, sin login.
+Indicador de estado en vivo: el anillo reacciona a la voz y acompaña los
+mensajes de estado (`Escuchando…` / `Transcribiendo…` / frase final), en el
+idioma de la sesión. Sesión anónima, sin login.
 
 Demo en línea:
 [https://pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/).
@@ -40,7 +41,7 @@ Documentación del producto e implementación: [`docs/README.md`](docs/README.md
 
 | Selección del pitch | Coach (indicador) | Dashboard de resultados |
 | :---: | :---: | :---: |
-| <img src="public/screenshots/selector.png" alt="Pantalla de selección de tipo de pitch y duración máxima" width="400"> | <img src="public/screenshots/avatar.png" alt="Indicador del coach durante la grabación" width="400"> | <img src="public/screenshots/dashboard.png" alt="Dashboard con score, rúbrica, muletillas y veredicto" width="400"> |
+| <img src="public/screenshots/01.png" alt="Pantalla de selección de tipo de pitch y duración máxima" width="400"> | <img src="public/screenshots/02.png" alt="Indicador del coach durante la grabación" width="400"> | <img src="public/screenshots/03.png" alt="Dashboard con score, rúbrica, muletillas y veredicto" width="400"> |
 
 ## Limitaciones conocidas
 
@@ -51,8 +52,8 @@ Documentación del producto e implementación: [`docs/README.md`](docs/README.md
 - **STT** — requiere `ELEVENLABS_API_KEY` (Scribe). Sin ella, o sin micrófono,
   hay campo de texto de respaldo.
 - **Transcripción no en vivo** — grabar → detener → transcribir el clip completo.
-- **Coach visual** — indicador de texto temporal; la animación en vivo (no un
-  orbe/esfera) está planificada para la fase de UX/UI.
+- **Coach visual** — anillo en vivo (anti-orbe) que reacciona al audio y se
+  asienta como score; los mensajes de estado lo acompañan.
 - **Proveedores externos** — Nebius, ElevenLabs y Tavily tienen rate limits y
   dependen de internet; el TTS cae a SpeechSynthesis si falla ElevenLabs.
 
@@ -67,6 +68,30 @@ Documentación del producto e implementación: [`docs/README.md`](docs/README.md
 - **Sentry** — errores y tracing (opcional; ver `.env.example`)
 - **Railway** — deploy (`Dockerfile` solo producción)
 
+## Cómo corre
+
+**Token Factory (NVIDIA, en cada práctica).** El servidor llama a
+`https://api.tokenfactory.nebius.com/v1/chat/completions` desde
+`src/lib/proveedor-nebius.ts`. Nemotron entra en tres modos:
+
+- Análisis de la toma: `nvidia/nemotron-3-super-120b-a12b` (Super).
+- Análisis Ultra, solo si el usuario lo pide: `nvidia/Nemotron-3-Ultra-550b-a55b`.
+- Sparring, entidades, la query de búsqueda y la validación de la sugerencia:
+  `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (Nano).
+
+El modelo no pone el score. La rúbrica está en `src/lib/rubricas.ts`; el
+servidor lo deriva y cuenta las muletillas. Detalle:
+[`docs/guia-integracion-nebius.md`](docs/guia-integracion-nebius.md).
+
+**Tavily (solo si falta un punto).** Search y extract desde el servidor
+(`src/lib/tavily.ts`, `POST /api/enriquecer`). La transcripción no se envía.
+Como máximo dos puntos por práctica (`MAX_PUNTOS_ENRIQUECIDOS`). Si no hay
+cifra usable, no hay sugerencia. Detalle:
+[`docs/guia-integracion-tavily.md`](docs/guia-integracion-tavily.md).
+
+La app llama a Token Factory en runtime. Gemini sigue siendo contingencia
+manual (`MODEL_PROVIDER=gemini`) y no es el camino de la demo.
+
 ## Setup local
 
 Desarrollo nativo en Linux (sin Docker para el día a día).
@@ -75,7 +100,7 @@ Desarrollo nativo en Linux (sin Docker para el día a día).
 2. `npm install`
 3. Copiar `.env.example` a `.env.local` y completar al menos:
    - `MODEL_PROVIDER` — `nebius` (default) o `gemini`
-   - `NEBIUS_API_KEY` — **requerida** con Nebius (default)
+   - `NEBIUS_API_KEY` — **requerida** con Nebius (default). Es la clave de Token Factory.
    - `GEMINI_API_KEY` — **requerida** solo si `MODEL_PROVIDER=gemini`
 4. Opcional pero recomendado para el loop completo:
    - `ELEVENLABS_API_KEY` — STT + TTS

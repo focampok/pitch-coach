@@ -71,6 +71,7 @@ export const es = {
     transcripcionVacia: "Aquí se mostrará la transcripción de tu pitch.",
     ayudaRespaldo: "Si no puedes usar el micrófono, escribe el texto.",
     ayudaSinSoporte: "Este navegador no puede grabar audio. Escribe el texto.",
+    etiquetaRespaldo: "Texto del pitch",
     placeholderRespaldo: "Escribe tu pitch o respuesta…",
     enviarTexto: "Enviar texto",
     comenzar: "Comenzar a grabar",
@@ -224,6 +225,7 @@ export const es = {
     desarrolladoPor: "Desarrollado por Francisco Ocampo",
     licencia: "Código abierto (MIT)",
     codigoFuente: "Código fuente",
+    hackathon: "Desarrollado para Nebius × NVIDIA Global AI Hackathon 2026",
   },
 
   // --- Error boundaries (src/app/error.tsx, src/app/global-error.tsx) ------

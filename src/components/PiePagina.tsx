@@ -22,6 +22,7 @@ export function PiePagina() {
           {textos.pie.codigoFuente}
         </a>
       </p>
+      <p className="pc-site-footer-hackathon">{textos.pie.hackathon}</p>
     </footer>
   );
 }
