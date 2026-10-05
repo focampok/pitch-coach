@@ -59,16 +59,16 @@ Best Apps and Agents Track
 ```
 Pitch Coach already existed before the submission period. The first commit is 18 August 2026, and through the pre-Nebius baseline the pitch was analyzed only with the Gemini API: one prompt string, a model-assigned score, and rubric point names invented by the model.
 
-During the submission period the analysis path was rebuilt on Nebius Token Factory. NVIDIA Nemotron is now the default runtime, called from the Next.js server at https://api.tokenfactory.nebius.com/v1/chat/completions. Three sizes share one API key. Nemotron 3 Super (nvidia/nemotron-3-super-120b-a12b) scores every recording against a fixed five-point rubric. Nemotron 3 Ultra (nvidia/Nemotron-3-Ultra-550b-a55b) runs only when the user asks for Ultra analysis, with thinking left on and a 4–8 step trace. Nemotron 3 Nano (nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B) handles the fast calls: follow-up questions, search-query writing, and citation checks.
+During the submission period the analysis path was rebuilt on Nebius Token Factory. NVIDIA Nemotron is now the default runtime, called from the Next.js server at https://api.tokenfactory.nebius.com/v1/chat/completions. Three sizes share one API key. Nemotron 3 Super (nvidia/nemotron-3-super-120b-a12b) judges every recording against a fixed five-point rubric. The server computes the score. Nemotron 3 Ultra (nvidia/Nemotron-3-Ultra-550b-a55b) runs only when the user asks for Ultra analysis, with thinking left on and a 4–8 step trace. Nemotron 3 Nano (nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B) handles the fast calls: follow-up questions, the short entities used for search, search-query writing, and citation checks.
 
 The same period changed the contract around the model. System and user messages are separate. The transcript is delimited as untrusted data. Nebius strict json_schema fixes the rubric length, and the server assigns point names and computes the score. The product also became bilingual (Spanish and English), replaced browser speech recognition with server-side transcription, and added an optional Ultra pass plus a short coaching loop on missed rubric points.
 
-Tavily is part of that update and runs in production, not as a mock. When a rubric point fails, POST /api/enriquecer calls https://api.tavily.com/search and then https://api.tavily.com/extract. Nano accepts the suggestion only when the page contains a quoted figure that matches the pitch topic. The dashboard shows the figure, the source link, and a sentence the user can say aloud. Earlier manual tests had shown the first search hit was often a how-to article, the wrong language, or a real number from another industry, so the app discards those results instead of displaying them.
+Tavily is part of that update and runs in production, not as a mock. When a rubric point fails, POST /api/enriquecer calls https://api.tavily.com/search and then https://api.tavily.com/extract. The transcript is not sent; the request carries short entities and the point name, and at most two points are enriched per practice. Nano accepts the suggestion only when the page contains a quoted figure that matches the pitch topic. If there is no usable figure, the dashboard shows no suggestion. When one is accepted, it shows the figure, the source link, and a sentence the user can say aloud. Earlier manual tests had shown the first search hit was often a how-to article, the wrong language, or a real number from another industry, so the app discards those results instead of displaying them.
 ```
 
 ## 7. Public code repository
 
-El remoto es `https://github.com/focampok/pitch-coach`, con licencia MIT en el repositorio. Hoy el repo está **privado**. Las reglas exigen un repositorio público con la licencia visible en la página. Hazlo público antes de enviar y pega esta URL.
+El remoto es `https://github.com/focampok/pitch-coach`. El repositorio ya es **público**, con licencia MIT en `LICENSE` y nombrada en el README. Las reglas piden que esa licencia se vea en la página del repo (About). Pega esta URL.
 
 **Pegar**
 
@@ -78,10 +78,12 @@ https://github.com/focampok/pitch-coach
 
 ## 8. Working demo
 
+Es la demo de producción del README. No pegues el hostname antiguo de Railway (`*.up.railway.app`): en el README quedó comentado.
+
 **Pegar**
 
 ```
-https://pitch-coach-production-1c0c.up.railway.app
+https://pitch-coach.focampo.com
 ```
 
 ## 9. Which models, and why that size
@@ -95,7 +97,7 @@ nvidia/nemotron-3-super-120b-a12b is the default analysis. Every recording needs
 
 nvidia/Nemotron-3-Ultra-550b-a55b (Nemotron 3 Ultra, 550B) is opt-in. The dashboard button "Ultra analysis" resends the same transcript with thinking left on and asks for a 4–8 step trace. The timeout for that call is 90 seconds. Ultra is reserved for the pass where extended reasoning is the feature, which matches the track guidance to reach for Ultra only when the task needs it.
 
-nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B (Nemotron 3 Nano, 30B) is the fast tier. It writes the Tavily search query, checks that an extracted page really contains an on-topic quoted figure, drafts the sentence the user can speak, and runs the follow-up questions on missed rubric points. Those calls are short, schema-bound, and numerous (a failed pitch can trigger several of them). Nano keeps that loop responsive. Thinking is disabled on this tier as well.
+nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B (Nemotron 3 Nano, 30B) is the fast tier. It extracts the short entities for search, writes the Tavily search query, checks that an extracted page really contains an on-topic quoted figure, drafts the sentence the user can speak, and runs the follow-up questions on missed rubric points. Enrichment is capped at two points per practice, and the transcript is not sent to Tavily. Those Nano calls are short, schema-bound, and can stack on one take. Nano keeps that loop responsive. Thinking is disabled on this tier as well.
 
 No other NVIDIA model is on the request path. Gemini remains a manual contingency behind MODEL_PROVIDER and is not the default.
 ```
@@ -156,7 +158,7 @@ What that API made practical:
 - A per-request thinking switch. chat_template_kwargs.enable_thinking false on Super and Nano holds latency to a 20-second client timeout. Omitting it on Ultra enables the reasoning trace, with a 90-second timeout.
 - The same retry policy as the rest of the app: 408, 429, and 5xx back off; a truncated completion retries once with a higher max_tokens.
 
-Tavily is separate from Nebius and is also a live server-side call. /api/enriquecer posts to https://api.tavily.com/search and https://api.tavily.com/extract, then asks Nano whether the extracted page contains a quoted, on-topic figure. Search results are not shown raw.
+Tavily is separate from Nebius and is also a live server-side call. /api/enriquecer posts to https://api.tavily.com/search and https://api.tavily.com/extract, then asks Nano whether the extracted page contains a quoted, on-topic figure. The transcript is not part of that request, and at most two rubric points are enriched per practice. Search results are not shown raw. If no usable figure comes back, the dashboard shows no suggestion.
 
 I did not use Nebius to train, to batch jobs, or to autoscale a model I host. The win was API access to three Nemotron sizes with structured output, from the same Node process that already served the coach.
 ```
@@ -206,7 +208,7 @@ Seven changes, in the order they cost me time:
 
 6. Multilingual notes for structured output. Spanish and English both work here, but only after the language was repeated in the system prompt and in the schema descriptions. A guide that says which of those two actually binds the output language would shorten that experiment.
 
-7. Stronger quote-and-reject behavior on Nano. The fast tier validates web extracts. It must copy a figure verbatim and reject a real number from another industry. A tighter schema gets there; the model still accepts an off-topic figure if the relevance field is not mandatory. A small checkpoint aimed at "quote this span or refuse" would remove a lot of that schema weight.
+7. Stronger quote-and-reject behavior on Tavily. The fast tier validates web extracts. It must copy a figure verbatim and reject a real number from another industry. A tighter schema gets there; the model still accepts an off-topic figure if the relevance field is not mandatory. A small checkpoint aimed at "quote this span or refuse" would remove a lot of that schema weight.
 ```
 
 ## 17. What you hope to see from the Nemotron team next
@@ -227,7 +229,7 @@ Thinking as a documented request field. On, off, and "how many reasoning tokens 
 
 **Selección:** Yes.
 
-El desplegable no pide un párrafo. El argumento para el bono queda en las secciones 6, 9 y 13. Para calificar, el proyecto tiene que llamar a la API de Tavily en runtime. Aquí eso es `POST /api/enriquecer` → `https://api.tavily.com/search` y `https://api.tavily.com/extract`, con la clave solo en el servidor. Si la validación no encuentra una cifra citada y pertinente, la sugerencia no se muestra.
+El desplegable no pide un párrafo. El argumento para el bono queda en las secciones 6, 9 y 13. Para calificar, el proyecto tiene que llamar a la API de Tavily en runtime. Aquí eso es `POST /api/enriquecer` → `https://api.tavily.com/search` y `https://api.tavily.com/extract`, con la clave solo en el servidor. La transcripción no se envía. Como máximo dos puntos por práctica. Si la validación no encuentra una cifra citada y pertinente, la sugerencia no se muestra.
 
 ## 19. Builders & Brews city
 
@@ -244,8 +246,9 @@ Guatemala no está en la lista de territorios excluidos de las reglas (Brasil, Q
 
 ## 21. Antes de enviar
 
-- Haz público `https://github.com/focampok/pitch-coach`. La licencia MIT ya está en el repo; tiene que verse en el About de GitHub.
-- El README nombra Nebius Token Factory y Tavily. Las reglas piden además dejar claro el uso de NVIDIA Nemotron, dónde Token Factory aceleró el flujo y qué otros servicios de Nebius entraron. Hoy los ids de Super, Ultra y Nano no están en el README. Conviene un apartado corto antes de que un juez abra el repo.
+- El repositorio `https://github.com/focampok/pitch-coach` ya es público. La licencia MIT está en `LICENSE` y en el README; confírmala en el About de GitHub antes de enviar.
+- El README (sección «Cómo corre») ya nombra Nebius Token Factory, los tres ids de NVIDIA Nemotron (Super, Ultra y Nano), que el servidor calcula el score, y Tavily (search y extract, sin enviar la transcripción, como máximo dos puntos). No hay otro servicio de Nebius en el proyecto: la inferencia es Token Factory. Con eso un juez ve el uso de Nemotron sin abrir el código.
+- Demo: `https://pitch-coach.focampo.com`.
 - Video público en YouTube, de menos de 3 minutos, con el proyecto funcionando y con Token Factory y Nemotron visibles en el relato. No forma parte de esta ficha.
 - No subas archivo en "Upload a File". El repo y la demo cubren el envío.
 - La app en Railway llama a Token Factory en runtime. Eso cumple el requisito de "correr en Token Factory". No hace falta decir que el hosting es Nebius.

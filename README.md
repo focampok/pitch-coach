@@ -33,7 +33,8 @@ mensajes de estado (`Escuchando…` / `Transcribiendo…` / frase final), en el
 idioma de la sesión. Sesión anónima, sin login.
 
 Demo en línea:
-[https://pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/).
+<!-- [https://pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/). -->
+[https://pitch-coach.focampo.com](https://pitch-coach.focampo.com).
 
 Documentación del producto e implementación: [`docs/README.md`](docs/README.md).
 
