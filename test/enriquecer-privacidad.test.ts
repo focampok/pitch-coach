@@ -20,8 +20,8 @@ vi.mock("@sentry/nextjs", () => ({
 // que para llegar al catch se hace que enriquecerConTavily lance un ErrorModelo
 // cuyo `message` arrastra el cuerpo del proveedor —que ecoa la petición con la
 // transcripción—. Es la forma real de src/lib/proveedor-nebius.ts.
-vi.mock("@/lib/tavily", () => ({
-  enriquecerConTavily: vi.fn(async () => {
+vi.mock("@/lib/evidencia-pitch", () => ({
+  evidenciaDePitch: vi.fn(async () => {
     const error = new Error(
       `El modelo respondió con error 400: {"error":{"message":"prompt inválido: ${h.TRANSCRIPCION}"}}`,
     );
@@ -103,7 +103,7 @@ describe("/api/enriquecer — la transcripción no se filtra por el camino de er
 
     expect(res.status).toBe(200);
     const texto = await res.text();
-    expect(JSON.parse(texto)).toEqual({ sugerencias: [] });
+    expect(JSON.parse(texto)).toEqual({ sugerencias: [], sala: null, cifras: [] });
     expect(texto).not.toContain(h.TRANSCRIPCION);
     expect(texto).not.toContain("TENGO-UNA-IDEA-DE-NEGOCIO-SECRETA");
   });

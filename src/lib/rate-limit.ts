@@ -30,11 +30,12 @@ export const MAX_SOLICITUDES = 10;
  *     con `search_depth: "basic"`) + hasta 2 Extract (máximo `MAX_CANDIDATOS`)
  *     + 1 validación (`rapido`) + 1 frase (`rapido`). El resto de puntos no
  *     genera ninguna llamada externa.
- * Es decir, hasta 1 + 2 × 6 = ~13 llamadas externas por invocación. Con el techo
- * global de 10/10 min esto vaciaría el free tier de Tavily en horas de abuso;
- * el techo de 5 mantiene el costo por ventana acotado. No se baja más porque el
- * flujo verificado ya intenta varios caminos antes de descartar un punto: un
- * techo menor dejaría la feature inutilizable en el uso normal.
+ *   - además, como máximo: 1 búsqueda de objeción de sala y 1 contraste de
+ *     una cifra ya dicha (cada una con extract y validación).
+ * Es decir, una práctica sigue siendo una sola petición HTTP, con más llamadas
+ * adentro (sala y cifra dicha). El techo de 5 / 10 min se mantiene: cada
+ * práctica legítima ya consume una de esas cinco, y bajarlo la dejaría en el
+ * límite durante un ensayo normal.
  *
  * Si el costo por punto crece otra vez, este número (y su test) deben revisarse.
  */

@@ -44,6 +44,11 @@ const NOMBRE_ENTIDADES = "entidades_tavily";
 const NOMBRE_QUERY = "query_tavily";
 const NOMBRE_VALIDACION = "validacion_tavily";
 const NOMBRE_FRASE = "frase_dato_tavily";
+const NOMBRE_OBJECION = "objecion_sala";
+const NOMBRE_CIFRAS = "cifras_dichas";
+
+/** Respuesta cuando la sala y el contraste de cifras dichas no aportan nada. */
+const EVIDENCIA_VACIA = { sugerencias: [], sala: null, cifras: [] };
 
 const CIFRA_OK = "USD 320 millones en 2024";
 const CITA_OK = "El mercado de energía solar en Guatemala alcanzó USD 320 millones en 2024";
@@ -116,6 +121,8 @@ interface RespuestasModelo {
     anio?: string;
   };
   frase?: string;
+  objecion?: { util: boolean; objecion: string; cita: string };
+  cifras?: string[];
   /** Nombres de esquema que deben FALLAR (para probar la degradación). */
   fallar?: string[];
 }
@@ -205,6 +212,12 @@ function respuestaSegunEsquema(nombre: string, respuestas: RespuestasModelo): Re
     }
     case NOMBRE_FRASE:
       return respuestaChat({ frase: respuestas.frase ?? FRASE_OK });
+    case NOMBRE_OBJECION:
+      return respuestaChat(
+        respuestas.objecion ?? { util: false, objecion: "", cita: "" },
+      );
+    case NOMBRE_CIFRAS:
+      return respuestaChat({ cifras: respuestas.cifras ?? [] });
     default:
       throw new Error(`esquema inesperado: ${nombre || "(vacío)"}`);
   }
@@ -271,6 +284,37 @@ function cuerpoDeEsquema<T>(fetchMock: ReturnType<typeof vi.fn>, nombre: string)
 
 function llamadasDe(fetchMock: ReturnType<typeof vi.fn>, filtro: (url: string) => boolean) {
   return fetchMock.mock.calls.filter(([url]) => filtro(String(url)));
+}
+
+/** La objeción de sala abre con el ángulo de la sala, no con el prefijo de cifra. */
+function esQuerySala(query: string): boolean {
+  return /^(pregunta de |investor question|classroom assessment|criterio de comite|innovation committee|technical buyer)/.test(
+    query,
+  );
+}
+
+function cuerposBusqueda(
+  fetchMock: ReturnType<typeof vi.fn>,
+): CuerpoBusqueda[] {
+  return llamadasDe(fetchMock, esBusqueda).map(([, init]) =>
+    JSON.parse(String((init as { body?: string } | undefined)?.body ?? "{}")) as CuerpoBusqueda,
+  );
+}
+
+/** Búsquedas de la cifra del punto, sin la de la sala ni la del contraste. */
+function busquedasDePunto(fetchMock: ReturnType<typeof vi.fn>): CuerpoBusqueda[] {
+  return cuerposBusqueda(fetchMock).filter((cuerpo) => {
+    const query = cuerpo.query ?? "";
+    return !esQuerySala(query) && !/^(estadistica|statistic)\b/.test(query);
+  });
+}
+
+function extraccionesDePunto(fetchMock: ReturnType<typeof vi.fn>) {
+  return llamadasDe(fetchMock, esExtraccion).filter(([, init]) => {
+    const body = JSON.parse(String((init as { body?: string } | undefined)?.body ?? "{}")) as CuerpoExtraccion;
+    const query = body.query ?? "";
+    return !esQuerySala(query) && !/^(estadistica|statistic)\b/.test(query);
+  });
 }
 
 function comoNextRequest(req: Request): NextRequest {
@@ -590,8 +634,9 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
     expect(s.frase).toBe(FRASE_OK);
     expect(typeof s.query).toBe("string");
 
-    // La búsqueda lleva filtros DUROS de idioma y de dominios excluidos.
-    const busqueda = cuerpoDe<CuerpoBusqueda>(fetchMock, esBusqueda);
+    // La búsqueda de la cifra lleva filtros duros. La de la sala va aparte.
+    const busqueda = busquedasDePunto(fetchMock)[0];
+    if (!busqueda) throw new Error("No hubo búsqueda de cifra.");
     expect(String(busqueda.query)).toContain("tamaño del mercado");
     expect(busqueda.language).toBe("es");
     expect(busqueda.filter_by_language).toBe(true);
@@ -607,10 +652,12 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       | undefined;
     expect(llamadaTavily?.[1].headers.Authorization).toBe("Bearer test-key");
 
-    // Extract corre SOLO sobre el mejor candidato, nunca sobre el excluido.
-    const extracciones = llamadasDe(fetchMock, esExtraccion);
+    // Extract de la cifra corre sobre el mejor candidato, nunca sobre el excluido.
+    const extracciones = extraccionesDePunto(fetchMock);
     expect(extracciones).toHaveLength(1);
-    const extraccion = cuerpoDe<CuerpoExtraccion>(fetchMock, esExtraccion);
+    const extraccion = JSON.parse(
+      String((extracciones[0]?.[1] as { body?: string } | undefined)?.body ?? "{}"),
+    ) as CuerpoExtraccion;
     expect(extraccion.urls).toEqual(["https://informe.test/solar"]);
     expect(String(extraccion.query)).toContain("tamaño del mercado");
     expect(extraccion.format).toBe("markdown");
@@ -666,7 +713,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
     // La relevancia se juzga con las entidades del pitch como contexto: deben
     // viajar al validador para comparar contra el sector buscado.
     const validacion = cuerpoDeEsquema<CuerpoModelo>(fetchMock, NOMBRE_VALIDACION);
@@ -713,7 +760,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
     expect(SALIDA_INFO()).toContain("motivo=otro-tema");
   });
 
@@ -748,7 +795,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
     // Sin relevancia confirmada, ni siquiera se pide la frase hablada.
     expect(
       fetchMock.mock.calls.some(([, init]) => {
@@ -773,9 +820,9 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
     // Se intentó extraer los dos candidatos, pero nunca se pidió la frase.
-    expect(llamadasDe(fetchMock, esExtraccion)).toHaveLength(MAX_CANDIDATOS);
+    expect(extraccionesDePunto(fetchMock)).toHaveLength(MAX_CANDIDATOS);
     expect(
       fetchMock.mock.calls.some(([, init]) => {
         const body = JSON.parse(String((init as { body?: string })?.body ?? "{}")) as CuerpoModelo;
@@ -801,7 +848,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
   });
 
   it("degrada a [] si la extracción no devuelve contenido", async () => {
@@ -819,7 +866,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
     // Sin contenido no hay nada que validar.
     expect(SALIDA_INFO()).toContain("motivo=sin-extraccion");
   });
@@ -839,7 +886,8 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    const busqueda = cuerpoDe<CuerpoBusqueda>(fetchMock, esBusqueda);
+    const busqueda = busquedasDePunto(fetchMock)[0];
+    if (!busqueda) throw new Error("No hubo búsqueda de cifra.");
     expect(String(busqueda.query).startsWith(PREFIJOS.es)).toBe(true);
     expect(String(busqueda.query)).toContain("energía solar");
   });
@@ -862,7 +910,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
   });
 
   it("usa topic 'general' cuando el tipo de pitch no es capital", async () => {
@@ -877,7 +925,8 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    const busqueda = cuerpoDe<CuerpoBusqueda>(fetchMock, esBusqueda);
+    const busqueda = busquedasDePunto(fetchMock)[0];
+    if (!busqueda) throw new Error("No hubo búsqueda de cifra.");
     expect(busqueda.topic).toBe("general");
     // Sin transcripción, la query degrada al nombre visible del tipo.
     expect(String(busqueda.query)).toContain("Tecnología");
@@ -900,7 +949,8 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    const busqueda = cuerpoDe<CuerpoBusqueda>(fetchMock, esBusqueda);
+    const busqueda = busquedasDePunto(fetchMock)[0];
+    if (!busqueda) throw new Error("No hubo búsqueda de cifra.");
     expect(busqueda.language).toBe("en");
     expect(busqueda.filter_by_language).toBe(true);
     expect(String(busqueda.query)).toContain("solar energy market size");
@@ -919,7 +969,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -945,8 +995,10 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    // Solo los 2 puntos dentro del techo disparan búsqueda, aunque hubo 4.
-    expect(llamadasDe(fetchMock, esBusqueda)).toHaveLength(MAX_PUNTOS_ENRIQUECIDOS);
+    // Solo los 2 puntos dentro del techo disparan la búsqueda de cifra.
+    // La sala suma una búsqueda más, sobre el primero de esos puntos.
+    expect(busquedasDePunto(fetchMock)).toHaveLength(MAX_PUNTOS_ENRIQUECIDOS);
+    expect(cuerposBusqueda(fetchMock).filter((cuerpo) => esQuerySala(cuerpo.query ?? ""))).toHaveLength(1);
 
     const json = (await res.json()) as { sugerencias: { punto: string }[] };
     expect([...json.sugerencias.map((s) => s.punto)].sort()).toEqual(["mercado", "solucion"]);
@@ -969,8 +1021,70 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ sugerencias: [] });
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("devuelve la objeción de sala cuando la página cita la pregunta", async () => {
+    const cita = "How much capital are you raising and what will it fund?";
+    const respuestas = respuestasOk();
+    respuestas.objecion = {
+      util: true,
+      objecion: "¿Cuánto capital estás levantando y para qué?",
+      cita,
+    };
+    const fetchMock = fetchConDispatch(respuestas, {
+      extraccion: (url) =>
+        jsonResponse({
+          results: [{ url, raw_content: `${CONTENIDO_EXTRAIDO} ${cita}` }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "es",
+        transcripcion: "Vendemos paneles solares en Guatemala.",
+        puntosSinCumplir: [{ punto: "ask" }],
+      }),
+    );
+
+    const json = (await res.json()) as {
+      sala: { sala: string; punto: string; objecion: string; url: string } | null;
+    };
+    expect(json.sala).toMatchObject({
+      sala: "inversion",
+      punto: "ask",
+      objecion: "¿Cuánto capital estás levantando y para qué?",
+      url: "https://informe.test/solar",
+    });
+  });
+
+  it("marca sin fuente una cifra dicha cuyo orden no aparece en la página", async () => {
+    const respuestas = respuestasOk();
+    respuestas.cifras = ["40%"];
+    respuestas.validacion = {
+      util: true,
+      relevante: true,
+      cifra: "USD 2 mil millones",
+      cita: "El mercado de energía solar en Guatemala alcanzó USD 2 mil millones en 2024",
+      anio: "2024",
+    };
+    const fetchMock = fetchConDispatch(respuestas);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "es",
+        transcripcion: "Vendemos paneles solares en Guatemala y crecimos 40% el último año.",
+        puntosSinCumplir: [{ punto: "ask" }],
+      }),
+    );
+
+    const json = (await res.json()) as { cifras: { cifra: string; estado: string }[] };
+    expect(json.cifras).toEqual([{ cifra: "40%", estado: "sin_fuente" }]);
   });
 });
 
@@ -1040,7 +1154,7 @@ describe("diario de diagnóstico (§6) y regla de privacidad", () => {
     // El fallo doble no rompe el dashboard: 200 con lista vacía...
     expect(res.status).toBe(200);
     const texto = await res.text();
-    expect(JSON.parse(texto)).toEqual({ sugerencias: [] });
+    expect(JSON.parse(texto)).toEqual(EVIDENCIA_VACIA);
     // ...y ni el cuerpo ni las cabeceras arrastran la transcripción.
     expect(texto).not.toContain(marca);
     expect(texto).not.toContain(transcripcion);

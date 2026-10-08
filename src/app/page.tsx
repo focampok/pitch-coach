@@ -191,6 +191,10 @@ export default function Home() {
           vozSesion={vozSesion}
           onVozUsada={setVozSesion}
           onUltraCompletado={marcarUltraUsado}
+          onPuntoCerrado={(punto) => {
+            if (!fechaSesion) return;
+            actualizarSesion(fechaSesion, { puntoCerrado: punto });
+          }}
         />
       )}
       {analisis !== null && (

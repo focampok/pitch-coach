@@ -18,6 +18,12 @@ export const en: Diccionario = {
       tecnologia: "Technology",
     },
     minutos: (cantidad: number) => `${cantidad} ${cantidad === 1 ? "minute" : "minutes"}`,
+    sala: {
+      inversion: "Investment panel",
+      aula: "Classroom",
+      comite: "Innovation committee",
+      comprador: "Technical buyer",
+    },
   },
 
   // --- Pantalla principal (src/app/page.tsx) -------------------------------
@@ -90,6 +96,8 @@ export const en: Diccionario = {
     rubrica: (cumplidos: number, total: number) => `Rubric ${cumplidos}/${total}`,
     ultra: "Ultra",
     hallazgos: (reforzados: number, hechas: number) => `Findings ${reforzados}/${hechas}`,
+    cerrado: (nombre: string) => `${nombre} closed`,
+    abierto: (nombre: string) => `${nombre} opened`,
   },
 
   // --- Dashboard del análisis (src/components/DashboardResultado.tsx) -----
@@ -119,6 +127,22 @@ export const en: Diccionario = {
     tiempoUsado: (real: number, maximo: number) => `${real}s of ${maximo}s used`,
     errorReanalisis: "Could not re-analyze the pitch.",
     errorReanalisisInesperado: "Unexpected error while re-analyzing the pitch.",
+    salaTitulo: "The room",
+    salaTexto: {
+      inversion: "In an investment panel, this point gets challenged like this",
+      aula: "In a classroom, this point gets asked like this",
+      comite: "In an innovation committee, this point gets challenged like this",
+      comprador: "In front of a technical buyer, this point gets challenged like this",
+    },
+    cifrasTitulo: "Figures you said",
+    cifraConFuente: (cifra: string) => `You said ${cifra}. There is a source of that order.`,
+    cifraSinFuente: (cifra: string) =>
+      `You said ${cifra}. We did not find a source of that order.`,
+    lineaTiempo: "Where the time went",
+    lineaVacia: "This take has no time marks.",
+    lineaSinUbicacion: "No covered points were placed on this audio.",
+    lineaCargando: "Placing the points on the audio…",
+    puntoCerradoToma: "Closed on the second take",
   },
 
   // --- Resolver hallazgos (src/components/SparringCoach.tsx) ---------------
@@ -144,6 +168,17 @@ export const en: Diccionario = {
     errorGenerarPreguntaInesperado: "Error while generating the question.",
     errorEvaluarRespuesta: "Could not evaluate the answer.",
     errorEvaluarRespuestaInesperado: "Error while evaluating the answer.",
+  },
+
+  segundaToma: {
+    titulo: "Second take",
+    oferta: (punto: string) => `Close “${punto}” in 45 seconds.`,
+    evaluando: "Checking the second take…",
+    cubierto: "This point is now covered.",
+    pendiente: "This point is still missing.",
+    cifraCitada: "The source figure shows up in what you said.",
+    cifraAusente:
+      "The source figure does not show up in what you said. The point is judged either way.",
   },
 
   // --- Reproductor del veredicto (src/components/ReproductorVeredicto.tsx) -

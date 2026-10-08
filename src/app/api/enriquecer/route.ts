@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { enriquecerConTavily } from "@/lib/tavily";
+import { evidenciaDePitch } from "@/lib/evidencia-pitch";
 import { limitar } from "@/lib/rate-limit";
 import { reportarFallo } from "@/lib/sentry-reporte";
 import { diccionario } from "@/lib/diccionarios";
@@ -42,8 +42,13 @@ const TIPOS_PITCH_VALIDOS = new Set<string>([
  *
  * Enriquecimiento opcional (§12): no es parte del loop crítico.
  * Si TAVILY_API_KEY no está configurada, o Tavily falla, devuelve
- * sugerencias: [] con 200 — el dashboard simplemente no muestra la sección,
- * nunca debe romper el resto de la UI.
+ * sugerencias: [], sala: null y cifras: [] con 200 — el dashboard simplemente
+ * no muestra la sección, nunca debe romper el resto de la UI.
+ *
+ * Además de las cifras para puntos no cumplidos, la misma llamada trae una
+ * objeción de sala (el primer punto no cumplido) y el contraste de una cifra
+ * que la persona ya dijo. Sin puntos fallidos igual se contrastan las cifras
+ * dichas, si hay transcripción.
  */
 export async function POST(req: NextRequest) {
   // Rate limit por IP (en memoria, por instancia — ver src/lib/rate-limit.ts).
@@ -74,13 +79,15 @@ export async function POST(req: NextRequest) {
 
   // `tema` transporta el tipo de pitch. Un valor desconocido no es dato del
   // que se pueda derivar una búsqueda: se degrada en silencio.
+  const vacio = { sugerencias: [], sala: null, cifras: [] };
+
   if (!tema || !TIPOS_PITCH_VALIDOS.has(tema)) {
-    return NextResponse.json({ sugerencias: [] });
+    return NextResponse.json(vacio);
   }
 
   if (!process.env.TAVILY_API_KEY) {
     // Degradación silenciosa: Tavily es opcional (§12).
-    return NextResponse.json({ sugerencias: [] });
+    return NextResponse.json(vacio);
   }
 
   const tipoPitch = tema as TipoPitch;
@@ -88,34 +95,32 @@ export async function POST(req: NextRequest) {
 
   try {
     const puntos = body.puntosSinCumplir ?? [];
-    if (puntos.length === 0) {
-      return NextResponse.json({ sugerencias: [] });
-    }
 
     // Solo se aceptan puntos que existan en la rúbrica del tipo; así el nombre
     // visible (y el comentario) que viajan a la query salen del producto y no
-    // de texto arbitrario del cliente.
+    // de texto arbitrario del cliente. Un cuerpo que no es un arreglo llega
+    // al catch (el filtro no existe en un string) y se reporta.
     const rubrica = obtenerRubrica(tipoPitch);
     const idsValidos = new Set(rubrica.map((punto) => punto.id));
     const puntosValidos = puntos.filter(
       (p) => typeof p?.punto === "string" && idsValidos.has(p.punto),
     );
-    if (puntosValidos.length === 0) {
-      return NextResponse.json({ sugerencias: [] });
+    if (puntosValidos.length === 0 && transcripcion === "") {
+      return NextResponse.json(vacio);
     }
 
-    const sugerencias = await enriquecerConTavily(puntosValidos, {
+    const evidencia = await evidenciaDePitch(puntosValidos, {
       transcripcion,
       tipoPitch,
       tipoNombre: idiomaRuta.textos.comun.tipoPitch[tipoPitch],
       idioma: idiomaRuta.idioma,
     });
-    return NextResponse.json({ sugerencias });
+    return NextResponse.json(evidencia);
   } catch (err) {
     console.error("[/api/enriquecer] fallo Tavily:", err);
     // El proveedor acá es Tavily, no el modelo de lenguaje.
     reportarFallo(err, { proveedor: "tavily" }, { proveedor: "tavily" });
     // No crítico: se responde 200 con lista vacía en vez de romper el dashboard.
-    return NextResponse.json({ sugerencias: [] });
+    return NextResponse.json(vacio);
   }
 }

@@ -6,7 +6,7 @@ import type {
 } from "@/types/historial";
 import type { ConteoMuletillas, DuracionMaxima, ResultadoAnalisis, TipoPitch } from "@/types/pitch";
 import { IDIOMA_POR_DEFECTO, esIdioma } from "./idiomas";
-import { idDePunto } from "./rubricas";
+import { esIdDePunto, idDePunto } from "./rubricas";
 import { COBERTURA_MAXIMA } from "./validar-analisis";
 
 // Historial local de sesiones (localStorage del navegador).
@@ -153,6 +153,20 @@ function normalizarMuletillas(valor: unknown): ConteoMuletillas | null {
   return salida;
 }
 
+function normalizarPuntosCerrados(valor: unknown, tipoPitch: TipoPitch): string[] | undefined {
+  if (!Array.isArray(valor)) return undefined;
+  const ids: string[] = [];
+  const vistos = new Set<string>();
+  for (const item of valor) {
+    if (typeof item !== "string") continue;
+    const id = idDePunto(tipoPitch, item);
+    if (!esIdDePunto(id, tipoPitch) || vistos.has(id)) continue;
+    vistos.add(id);
+    ids.push(id);
+  }
+  return ids.length > 0 ? ids : undefined;
+}
+
 function normalizarHallazgos(
   valor: unknown,
   tipoPitch: TipoPitch,
@@ -206,6 +220,9 @@ export function normalizarSesion(valor: unknown): SesionGuardada | null {
     const hallazgos = normalizarHallazgos(datos.hallazgos, datos.tipoPitch);
     if (hallazgos) sesion.hallazgos = hallazgos;
   }
+
+  const puntosCerrados = normalizarPuntosCerrados(datos.puntosCerrados, datos.tipoPitch);
+  if (puntosCerrados) sesion.puntosCerrados = puntosCerrados;
 
   return sesion;
 }
@@ -272,6 +289,7 @@ export function agregarSesion(entrada: SesionGuardada): void {
 /**
  * Ids de los puntos que quedaron sin cubrir en la sesión más reciente de este
  * tipo Y este idioma. Solo ids de rúbrica: nada de comentarios ni transcripción.
+ * Un id en `puntosCerrados` ya no se recuerda: la segunda toma lo cubrió.
  *
  * El idioma entra en el filtro porque los puntos no cubiertos se le recuerdan
  * al modelo en el prompt: mezclar idiomas haría que una práctica en inglés
@@ -282,7 +300,10 @@ export function puntosNoCumplidosPrevios(tipo: TipoPitch, idioma: Idioma): strin
     (sesion) => sesion.tipoPitch === tipo && sesion.idioma === idioma,
   );
   if (!previa) return [];
-  return previa.rubrica.filter((punto) => !punto.cumplido).map((punto) => punto.punto);
+  const cerrados = new Set(previa.puntosCerrados ?? []);
+  return previa.rubrica
+    .filter((punto) => !punto.cumplido && !cerrados.has(punto.punto))
+    .map((punto) => punto.punto);
 }
 
 /** Sesiones guardadas, de la más reciente a la más antigua. */
@@ -337,18 +358,53 @@ export function construirSesionGuardada(datos: {
   });
 }
 
+export interface CambioCobertura {
+  punto: string;
+  cambio: "cerrado" | "abierto";
+}
+
+function cubiertoEn(sesion: SesionGuardada, id: string): boolean {
+  const item = sesion.rubrica.find((punto) => punto.punto === id);
+  return item?.cumplido === true || (sesion.puntosCerrados ?? []).includes(id);
+}
+
+/**
+ * Puntos que cambiaron de cobertura entre la práctica anterior (mismo tipo e
+ * idioma) y esta. El orden sigue la rúbrica de la práctica actual.
+ */
+export function cambiosDeCobertura(
+  actual: SesionGuardada,
+  previa: SesionGuardada,
+): CambioCobertura[] {
+  const ids: string[] = [];
+  const vistos = new Set<string>();
+  for (const punto of [...actual.rubrica, ...previa.rubrica]) {
+    if (vistos.has(punto.punto)) continue;
+    vistos.add(punto.punto);
+    ids.push(punto.punto);
+  }
+  const cambios: CambioCobertura[] = [];
+  for (const id of ids) {
+    const antes = cubiertoEn(previa, id);
+    const ahora = cubiertoEn(actual, id);
+    if (!antes && ahora) cambios.push({ punto: id, cambio: "cerrado" });
+    else if (antes && !ahora) cambios.push({ punto: id, cambio: "abierto" });
+  }
+  return cambios;
+}
+
 /**
  * Actualiza la sesión identificada por `fecha`: la que se guardó al terminar
  * el análisis principal de ESE intento. No usa "la más reciente" del historial,
  * porque un pitch nuevo crea otra fecha.
  *
- * Solo acepta `ultraUsado` y `hallazgos`. Cualquier otro campo que llegue
- * dentro de `hallazgos` (pregunta, respuesta, comentario) se descarta al
- * normalizar.
+ * Acepta `ultraUsado`, `hallazgos` y `puntoCerrado` (un id de rúbrica que la
+ * segunda toma dejó cubierto). Pregunta, respuesta y comentario de hallazgos
+ * se descartan al normalizar.
  */
 export function actualizarSesion(
   fecha: string,
-  cambios: { ultraUsado?: boolean; hallazgos?: HallazgosHistorial },
+  cambios: { ultraUsado?: boolean; hallazgos?: HallazgosHistorial; puntoCerrado?: string },
 ): void {
   const storage = almacenamiento();
   if (!storage) return;
@@ -357,10 +413,14 @@ export function actualizarSesion(
   if (indice === -1) return;
   const actual = actuales[indice];
   if (!actual) return;
+  const puntosCerrados = cambios.puntoCerrado
+    ? [...(actual.puntosCerrados ?? []), cambios.puntoCerrado]
+    : actual.puntosCerrados;
   const fusionada = normalizarSesion({
     ...actual,
     ...(cambios.ultraUsado !== undefined ? { ultraUsado: cambios.ultraUsado } : {}),
     ...(cambios.hallazgos !== undefined ? { hallazgos: cambios.hallazgos } : {}),
+    ...(puntosCerrados ? { puntosCerrados } : {}),
   });
   if (!fusionada) return;
   const siguientes = actuales.slice();

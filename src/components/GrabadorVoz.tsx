@@ -17,6 +17,13 @@ interface GrabadorVozProps {
   /** Duración máxima del pitch en minutos (presets 1–7, docs/alcance.md §7). */
   duracionMaxima: DuracionMaxima;
   /**
+   * Tope en segundos. Si viene, reemplaza `duracionMaxima * 60`.
+   * La segunda toma lo usa en 45 segundos.
+   */
+  topeSegundos?: number;
+  /** Título visible. Si no viene, se usa el de la grabación principal. */
+  titulo?: string;
+  /**
    * "incrustado" cuando el grabador vive dentro de otro panel (SparringCoach):
    * se disuelve en ese panel en vez de hundir un panel sobre otro hundido
    * (Regla del Hundido, DESIGN.md).
@@ -73,6 +80,8 @@ function nombreArchivo(mime: string): string {
 
 export default function GrabadorVoz({
   duracionMaxima,
+  topeSegundos,
+  titulo,
   variante = "panel",
   onTranscripcionCompleta,
 }: GrabadorVozProps) {
@@ -310,16 +319,17 @@ export default function GrabadorVoz({
       return;
     }
 
-    setDuracionTotal(duracionMaxima * 60);
-    duracionTotalRef.current = duracionMaxima * 60;
-    setTiempoRestante(duracionMaxima * 60);
-    tiempoRestanteRef.current = duracionMaxima * 60;
+    const segundos = topeSegundos ?? duracionMaxima * 60;
+    setDuracionTotal(segundos);
+    duracionTotalRef.current = segundos;
+    setTiempoRestante(segundos);
+    tiempoRestanteRef.current = segundos;
     setEstado("grabando");
     pausadoRef.current = false;
     setPausado(false);
     setMensajeCoach(null);
     setMostrarRespaldo(false);
-  }, [duracionMaxima, soltarMicrófono, textos, transcribirBlob]);
+  }, [duracionMaxima, topeSegundos, soltarMicrófono, textos, transcribirBlob]);
 
   const enviarTextoRespaldo = useCallback(() => {
     const texto = textoRespaldo.trim();
@@ -405,7 +415,7 @@ export default function GrabadorVoz({
           />
         </div>
         <div>
-          <h2 className="pc-display text-2xl">{textos.grabador.titulo}</h2>
+          <h2 className="pc-display text-2xl">{titulo ?? textos.grabador.titulo}</h2>
           {estado === "grabando" && (
             <p
               className="text-sm"

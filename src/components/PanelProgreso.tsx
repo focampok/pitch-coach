@@ -3,11 +3,13 @@
 import { useSyncExternalStore } from "react";
 import {
   borrarHistorial,
+  cambiosDeCobertura,
   instantaneaServidorHistorial,
   leerInstantaneaHistorial,
   suscribirHistorial,
 } from "@/lib/historial-sesiones";
 import { etiquetaIdioma } from "@/lib/idiomas";
+import { etiquetaPunto } from "@/lib/rubricas";
 import type { SesionGuardada } from "@/types/historial";
 import { useIdioma } from "./ProveedorIdioma";
 
@@ -22,8 +24,11 @@ function formatearFecha(iso: string, etiqueta: string): string {
 
 /** Cobertura de la rúbrica de esa sesión: puntos cumplidos sobre el total. */
 function cobertura(sesion: SesionGuardada): { cumplidos: number; total: number } {
+  const cerrados = new Set(sesion.puntosCerrados ?? []);
   return {
-    cumplidos: sesion.rubrica.filter((punto) => punto.cumplido).length,
+    cumplidos: sesion.rubrica.filter(
+      (punto) => punto.cumplido || cerrados.has(punto.punto),
+    ).length,
     total: sesion.rubrica.length,
   };
 }
@@ -59,6 +64,11 @@ export function PanelProgreso() {
         <ul className="space-y-2">
           {sesiones.map((sesion, indice) => {
             const { cumplidos, total } = cobertura(sesion);
+            const previa = sesiones.slice(indice + 1).find(
+              (candidata) =>
+                candidata.tipoPitch === sesion.tipoPitch && candidata.idioma === sesion.idioma,
+            );
+            const cambios = previa ? cambiosDeCobertura(sesion, previa) : [];
 
             return (
               <li
@@ -81,6 +91,18 @@ export function PanelProgreso() {
                       )}`
                     : ""}
                 </p>
+                {cambios.length > 0 && (
+                  <p>
+                    {cambios
+                      .map((cambio) => {
+                        const nombre = etiquetaPunto(cambio.punto, idioma, sesion.tipoPitch);
+                        return cambio.cambio === "cerrado"
+                          ? textos.progreso.cerrado(nombre)
+                          : textos.progreso.abierto(nombre);
+                      })
+                      .join(" · ")}
+                  </p>
+                )}
               </li>
             );
           })}

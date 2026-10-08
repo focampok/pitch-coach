@@ -307,6 +307,34 @@ function diarioPunto(entrada: {
 // Contexto y orquestación (pasos 1–7)
 // -----------------------------------------------------------------------------
 
+/** Fuente ya filtrada: tiene URL y pasó `elegirCandidatos`. */
+export interface FuenteBusqueda {
+  title: string;
+  url: string;
+  score?: number;
+}
+
+/**
+ * Busca y devuelve como máximo `MAX_CANDIDATOS` fuentes.
+ * La query la arma el llamador; acá no se toca la transcripción.
+ */
+export async function buscarFuentes(
+  query: string,
+  opciones: OpcionesBusqueda,
+): Promise<FuenteBusqueda[]> {
+  const resultados = await buscarEnTavily(query, opciones);
+  return elegirCandidatos(resultados).flatMap((resultado) => {
+    if (typeof resultado.url !== "string" || resultado.url.trim() === "") return [];
+    return [
+      {
+        title: resultado.title?.trim() || resultado.url,
+        url: resultado.url,
+        score: resultado.score,
+      },
+    ];
+  });
+}
+
 /** Contexto del pitch que necesita el enriquecimiento. */
 export interface ContextoTavily {
   /** Transcripción ya validada por la ruta. NUNCA se envía a Tavily. */
@@ -315,6 +343,11 @@ export interface ContextoTavily {
   /** Nombre visible del tipo de pitch, en el idioma de la sesión. */
   tipoNombre: string;
   idioma: Idioma;
+  /**
+   * Entidades ya extraídas. Si vienen, no se vuelve a llamar al modelo.
+   * La orquestación de la sala y de las cifras dichas las comparte.
+   */
+  entidades?: readonly string[];
 }
 
 /**
@@ -332,10 +365,14 @@ export async function enriquecerConTavily(
 ): Promise<SugerenciaTavily[]> {
   const { transcripcion, tipoPitch, tipoNombre, idioma } = contexto;
 
-  // Se extrae UNA vez para todos los puntos (best-effort: [] si algo falla).
-  const entidades = transcripcion.trim()
-    ? await extraerEntidades({ transcripcion, tipoNombre, idioma })
-    : [];
+  // Se extrae UNA vez para todos los puntos (best-effort: [] si algo falla),
+  // salvo que el llamador ya las haya sacado para compartirlas con la sala
+  // y con la verificación de cifras dichas.
+  const entidades = contexto.entidades
+    ? [...contexto.entidades]
+    : transcripcion.trim()
+      ? await extraerEntidades({ transcripcion, tipoNombre, idioma })
+      : [];
 
   const sugerencias: SugerenciaTavily[] = [];
 

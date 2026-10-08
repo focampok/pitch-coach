@@ -364,6 +364,20 @@ describe("historial de sesiones", () => {
     expect(puntosNoCumplidosPrevios("capital", "es")).toEqual(["ask"]);
     expect(puntosNoCumplidosPrevios("capital", "en")).toEqual(["mercado"]);
     expect(puntosNoCumplidosPrevios("educacion", "es")).toEqual(["objetivo"]);
+  });
+
+  it("un punto cerrado en la segunda toma no vuelve a la continuidad", () => {
+    agregarSesion(
+      sesion("cerrado", {
+        rubrica: [
+          { punto: "problema", cumplido: true },
+          { punto: "mercado", cumplido: false },
+          { punto: "ask", cumplido: false },
+        ],
+        puntosCerrados: ["mercado"],
+      }),
+    );
+    expect(puntosNoCumplidosPrevios("capital", "es")).toEqual(["ask"]);
     expect(
       JSON.stringify(puntosNoCumplidosPrevios("capital", "es")),
     ).not.toContain("COMENTARIO");

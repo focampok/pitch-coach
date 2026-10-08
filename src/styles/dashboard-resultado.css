@@ -147,6 +147,7 @@
 .pc-rubrica h3,
 .pc-muletillas h3,
 .pc-transcripcion h3,
+.pc-linea h3,
 .pc-tavily h3 {
   margin: 0;
   font-family: var(--font-alike), Alike, serif;
@@ -395,3 +396,48 @@ mark.pc-muletilla {
   background: var(--sunken);
   border-radius: 12px;
 }
+
+.pc-linea h3 {
+  margin: 0;
+}
+
+.pc-linea p,
+.pc-linea-leyenda {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.pc-linea-pista {
+  position: relative;
+  height: 2.25rem;
+  margin-top: 0.6rem;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--sunken);
+}
+
+.pc-linea-tramo {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 0.4rem;
+  overflow: hidden;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: var(--signal-tint);
+  border-right: 1px solid var(--ground);
+}
+
+.pc-linea-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  padding: 0;
+  list-style: none;
+}
+

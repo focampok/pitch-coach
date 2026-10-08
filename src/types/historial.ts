@@ -11,6 +11,7 @@ import type { ConteoMuletillas, DuracionMaxima, TipoPitch } from "./pitch";
 // - pregunta de un turno de hallazgos
 // - veredicto_corto
 // - audio
+// - texto de la segunda toma
 //
 // Ultra no guarda score ni rúbrica propios: `ultraUsado` solo registra que
 // se corrió. El resultado de Ultra sigue en memoria de la pestaña.
@@ -62,4 +63,9 @@ export interface SesionGuardada {
   /** True si en esta sesión se completó Análisis Ultra. */
   ultraUsado: boolean;
   hallazgos?: HallazgosHistorial;
+  /**
+   * Ids de rúbrica que una segunda toma de 45 segundos dejó cubiertos.
+   * Sin el texto de esa toma. Ausente en sesiones anteriores a esa función.
+   */
+  puntosCerrados?: string[];
 }

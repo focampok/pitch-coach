@@ -31,6 +31,12 @@ export const es = {
       tecnologia: "Tecnología",
     },
     minutos: (cantidad: number) => `${cantidad} ${cantidad === 1 ? "minuto" : "minutos"}`,
+    sala: {
+      inversion: "Panel de inversión",
+      aula: "Aula",
+      comite: "Comité de innovación",
+      comprador: "Comprador técnico",
+    },
   },
 
   // --- Pantalla principal (src/app/page.tsx) -------------------------------
@@ -104,6 +110,8 @@ export const es = {
     rubrica: (cumplidos: number, total: number) => `Rúbrica ${cumplidos}/${total}`,
     ultra: "Ultra",
     hallazgos: (reforzados: number, hechas: number) => `Hallazgos ${reforzados}/${hechas}`,
+    cerrado: (nombre: string) => `${nombre} se cerró`,
+    abierto: (nombre: string) => `${nombre} se abrió`,
   },
 
   // --- Dashboard del análisis (src/components/DashboardResultado.tsx) -----
@@ -133,6 +141,21 @@ export const es = {
     tiempoUsado: (real: number, maximo: number) => `${real}s de ${maximo}s usados`,
     errorReanalisis: "Error al reanalizar el pitch.",
     errorReanalisisInesperado: "Error inesperado al reanalizar el pitch.",
+    salaTitulo: "La sala",
+    salaTexto: {
+      inversion: "En un panel de inversión, este punto se objeta así",
+      aula: "En un aula, este punto se pregunta así",
+      comite: "En un comité de innovación, este punto se objeta así",
+      comprador: "Ante un comprador técnico, este punto se objeta así",
+    },
+    cifrasTitulo: "Cifras que dijiste",
+    cifraConFuente: (cifra: string) => `Dijiste ${cifra}. Hay una fuente de ese orden.`,
+    cifraSinFuente: (cifra: string) => `Dijiste ${cifra}. No hallamos una fuente de ese orden.`,
+    lineaTiempo: "Dónde se fue el tiempo",
+    lineaVacia: "Esta toma no trae marcas de tiempo.",
+    lineaSinUbicacion: "No ubicamos puntos cubiertos sobre este audio.",
+    lineaCargando: "Ubicando los puntos en el audio…",
+    puntoCerradoToma: "Cerrado en la segunda toma",
   },
 
   // --- Resolver hallazgos (src/components/SparringCoach.tsx) ---------------
@@ -158,6 +181,17 @@ export const es = {
     errorGenerarPreguntaInesperado: "Error al generar la pregunta.",
     errorEvaluarRespuesta: "No se pudo evaluar la respuesta.",
     errorEvaluarRespuestaInesperado: "Error al evaluar la respuesta.",
+  },
+
+  segundaToma: {
+    titulo: "Segunda toma",
+    oferta: (punto: string) => `Cierra «${punto}» en 45 segundos.`,
+    evaluando: "Revisando la segunda toma…",
+    cubierto: "Este punto quedó cubierto.",
+    pendiente: "Este punto sigue pendiente.",
+    cifraCitada: "La cifra de la fuente aparece en lo que dijiste.",
+    cifraAusente:
+      "La cifra de la fuente no aparece en lo que dijiste. El punto se juzga igual.",
   },
 
   // --- Reproductor del veredicto (src/components/ReproductorVeredicto.tsx) -

@@ -17,10 +17,12 @@ import {
 } from "@/lib/muletillas";
 import { cabecerasJson } from "@/lib/idiomas";
 import { etiquetaPunto } from "@/lib/rubricas";
-import { construirGuion } from "@/lib/guion-transcripcion";
+import { construirGuion, tieneMarcasDeTiempo } from "@/lib/guion-transcripcion";
 import { useIdioma } from "./ProveedorIdioma";
 import { AnilloSenal } from "./AnilloSenal";
 import { ReproductorVeredicto } from "./ReproductorVeredicto";
+import { SegundaToma } from "./SegundaToma";
+import type { SalaId } from "@/lib/salas";
 
 interface SugerenciaTavily {
   punto: string;
@@ -35,6 +37,30 @@ interface SugerenciaTavily {
   url: string;
   /** Frase de 8–12 s lista para decir en voz alta. */
   frase: string;
+}
+
+interface ObjecionSalaVista {
+  punto: string;
+  sala: SalaId;
+  objecion: string;
+  cita: string;
+  titulo: string;
+  url: string;
+}
+
+interface CifraVista {
+  cifra: string;
+  estado: "con_fuente" | "sin_fuente";
+  cifraFuente?: string;
+  titulo?: string;
+  url?: string;
+  cita?: string;
+}
+
+interface TramoVista {
+  punto: string;
+  inicio: number;
+  fin: number;
 }
 
 interface DashboardResultadoProps {
@@ -57,6 +83,8 @@ interface DashboardResultadoProps {
   habilitarTavily?: boolean;
   /** Se llama una vez, cuando Análisis Ultra termina bien. */
   onUltraCompletado?: () => void;
+  /** Se llama cuando la segunda toma deja cubierto un punto. */
+  onPuntoCerrado?: (puntoId: string) => void;
 }
 
 function IconoAccion({ children }: { children: ReactNode }) {
@@ -90,28 +118,80 @@ function MarcaRubrica({ cumplido }: { cumplido: boolean }) {
   );
 }
 
+function formatoReloj(segundos: number): string {
+  const total = Math.max(0, Math.round(segundos));
+  const minutos = Math.floor(total / 60);
+  const resto = total % 60;
+  return `${minutos}:${String(resto).padStart(2, "0")}`;
+}
+
+function LineaTiempo({
+  tramos,
+  idioma,
+  tipoPitch,
+}: {
+  tramos: TramoVista[];
+  idioma: Idioma;
+  tipoPitch: TipoPitch;
+}) {
+  const fin = Math.max(...tramos.map((tramo) => tramo.fin), 1);
+  return (
+    <>
+      <div className="pc-linea-pista" role="list">
+        {tramos.map((tramo) => {
+          const izquierda = (tramo.inicio / fin) * 100;
+          const ancho = Math.max(4, ((tramo.fin - tramo.inicio) / fin) * 100);
+          return (
+            <div
+              key={`${tramo.punto}-${tramo.inicio}`}
+              className="pc-linea-tramo"
+              style={{ left: `${izquierda}%`, width: `${ancho}%` }}
+              role="listitem"
+            >
+              {etiquetaPunto(tramo.punto, idioma, tipoPitch)}
+            </div>
+          );
+        })}
+      </div>
+      <ul className="pc-linea-leyenda">
+        {tramos.map((tramo) => (
+          <li key={`${tramo.punto}-${tramo.inicio}-leyenda`}>
+            {`${formatoReloj(tramo.inicio)}–${formatoReloj(tramo.fin)} ${etiquetaPunto(tramo.punto, idioma, tipoPitch)}`}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function ItemRubrica({
   item,
   idioma,
   tipoPitch,
+  cerradoEnToma,
 }: {
   item: EvaluacionRubrica;
   idioma: Idioma;
   tipoPitch: TipoPitch;
+  cerradoEnToma?: boolean;
 }) {
   const { textos } = useIdioma();
+  const cubierto = item.cumplido || cerradoEnToma === true;
   return (
-    <li className={`pc-rubrica-item ${item.cumplido ? "cumplido" : ""}`}>
-      <MarcaRubrica cumplido={item.cumplido} />
+    <li className={`pc-rubrica-item ${cubierto ? "cumplido" : ""}`}>
+      <MarcaRubrica cumplido={cubierto} />
       <div>
         <p className="pc-rubrica-punto">
           {etiquetaPunto(item.punto, idioma, tipoPitch)}
           <span className="sr-only">
             {` — ${
-              item.cumplido ? textos.dashboard.puntoCumplido : textos.dashboard.puntoPendiente
+              cubierto ? textos.dashboard.puntoCumplido : textos.dashboard.puntoPendiente
             }`}
           </span>
         </p>
+        {cerradoEnToma && !item.cumplido && (
+          <p className="pc-rubrica-comentario">{textos.dashboard.puntoCerradoToma}</p>
+        )}
         {item.comentario && (
           <p className="pc-rubrica-comentario">{item.comentario}</p>
         )}
@@ -197,6 +277,7 @@ export function DashboardResultado({
   vozSesion = "random",
   onVozUsada,
   onUltraCompletado,
+  onPuntoCerrado,
 }: DashboardResultadoProps) {
   const { idioma, textos } = useIdioma();
   const transcripcionTituloId = useId();
@@ -204,6 +285,13 @@ export function DashboardResultado({
   const tituloRef = useRef<HTMLHeadingElement | null>(null);
   const patrones = muletillasPatterns ?? patronesMuletillas(idioma);
   const [sugerencias, setSugerencias] = useState<SugerenciaTavily[]>([]);
+  const [sala, setSala] = useState<ObjecionSalaVista | null>(null);
+  const [cifras, setCifras] = useState<CifraVista[]>([]);
+  const [tramos, setTramos] = useState<TramoVista[]>([]);
+  const [cargandoLinea, setCargandoLinea] = useState(
+    () => tieneMarcasDeTiempo(palabras) && resultado.rubrica.some((punto) => punto.cumplido),
+  );
+  const [cerrados, setCerrados] = useState<string[]>([]);
   const [analisisUltra, setAnalisisUltra] = useState<ResultadoAnalisis | null>(null);
   const [analizandoUltra, setAnalizandoUltra] = useState(false);
   const [errorUltra, setErrorUltra] = useState<string | null>(null);
@@ -216,7 +304,7 @@ export function DashboardResultado({
   // El estado inicial de carga ya conoce si se va a consultar Tavily, así el
   // efecto no necesita disparar un setState síncrono en su cuerpo.
   const [cargandoTavily, setCargandoTavily] = useState(
-    habilitarTavily && puntosSinCumplir.length > 0
+    habilitarTavily && transcripcion.trim() !== ""
   );
 
   const transcripcionResaltada = useMemo(
@@ -256,7 +344,7 @@ export function DashboardResultado({
   // Enriquecimiento con Tavily: se pide una sola vez, no bloquea el resto
   // del dashboard, y si falla o no está habilitada simplemente no muestra nada.
   useEffect(() => {
-    if (!habilitarTavily || puntosSinCumplir.length === 0) return;
+    if (!habilitarTavily || transcripcion.trim() === "") return;
     let cancelado = false;
 
     fetch("/api/enriquecer", {
@@ -274,12 +362,18 @@ export function DashboardResultado({
         })),
       }),
     })
-      .then((res) => (res.ok ? res.json() : { sugerencias: [] }))
-      .then((data) => {
-        if (!cancelado) setSugerencias(data.sugerencias ?? []);
+      .then((res) => (res.ok ? res.json() : { sugerencias: [], sala: null, cifras: [] }))
+      .then((data: { sugerencias?: SugerenciaTavily[]; sala?: ObjecionSalaVista | null; cifras?: CifraVista[] }) => {
+        if (cancelado) return;
+        setSugerencias(data.sugerencias ?? []);
+        setSala(data.sala ?? null);
+        setCifras(data.cifras ?? []);
       })
       .catch(() => {
-        if (!cancelado) setSugerencias([]);
+        if (cancelado) return;
+        setSugerencias([]);
+        setSala(null);
+        setCifras([]);
       })
       .finally(() => {
         if (!cancelado) setCargandoTavily(false);
@@ -290,6 +384,43 @@ export function DashboardResultado({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [habilitarTavily, tipoPitch]);
+
+  const puntosCumplidos = useMemo(
+    () => resultado.rubrica.filter((punto) => punto.cumplido).map((punto) => punto.punto),
+    [resultado.rubrica],
+  );
+
+  useEffect(() => {
+    if (!tieneMarcasDeTiempo(palabras) || puntosCumplidos.length === 0) return;
+    let cancelado = false;
+    setCargandoLinea(true);
+    fetch("/api/linea-tiempo", {
+      method: "POST",
+      headers: cabecerasJson(idioma),
+      body: JSON.stringify({
+        tipoPitch,
+        idioma,
+        transcripcion,
+        palabras,
+        puntosCumplidos,
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : { tramos: [] }))
+      .then((data: { tramos?: TramoVista[] }) => {
+        if (!cancelado) setTramos(data.tramos ?? []);
+      })
+      .catch(() => {
+        if (!cancelado) setTramos([]);
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoLinea(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+    // Una vez por resultado: el dashboard se remonta con la transcripción.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoPitch]);
 
   const abortUltra = useRef<AbortController | null>(null);
 
@@ -416,6 +547,23 @@ export function DashboardResultado({
         </p>
       </section>
 
+      <section className="pc-linea">
+        <h3>{textos.dashboard.lineaTiempo}</h3>
+        {cargandoLinea && (
+          <p role="status">{textos.dashboard.lineaCargando}</p>
+        )}
+        {!cargandoLinea && tramos.length === 0 && (
+          <p>
+            {tieneMarcasDeTiempo(palabras)
+              ? textos.dashboard.lineaSinUbicacion
+              : textos.dashboard.lineaVacia}
+          </p>
+        )}
+        {tramos.length > 0 && (
+          <LineaTiempo tramos={tramos} idioma={idioma} tipoPitch={tipoPitch} />
+        )}
+      </section>
+
       <div className="pc-resultado-cuerpo">
       <section className="pc-rubrica">
         <TituloRubrica titulo={textos.dashboard.rubrica} rubrica={resultado.rubrica} />
@@ -426,6 +574,7 @@ export function DashboardResultado({
               item={item}
               idioma={idioma}
               tipoPitch={tipoPitch}
+              cerradoEnToma={cerrados.includes(item.punto)}
             />
           ))}
         </ul>
@@ -462,6 +611,24 @@ export function DashboardResultado({
           {analizandoUltra ? textos.dashboard.reanalizando : textos.dashboard.analisisUltra}
         </button>
       </div>
+
+      {habilitarTavily && sala && (
+        <section className="pc-tavily">
+          <h3>{textos.dashboard.salaTitulo}</h3>
+          <p className="pc-tavily-punto">{textos.comun.sala[sala.sala]}</p>
+          <p className="pc-rubrica-comentario">{textos.dashboard.salaTexto[sala.sala]}</p>
+          <p className="pc-tavily-punto">
+            {etiquetaPunto(sala.punto, idioma, tipoPitch)}
+          </p>
+          <p>{sala.objecion}</p>
+          <p className="pc-tavily-cita">{`“${sala.cita}”`}</p>
+          <p className="pc-tavily-fuente">
+            <a href={sala.url} target="_blank" rel="noreferrer">
+              {sala.titulo || textos.dashboard.fuente}
+            </a>
+          </p>
+        </section>
+      )}
 
       {habilitarTavily && puntosSinCumplir.length > 0 && (
         <section className="pc-tavily">
@@ -512,6 +679,39 @@ export function DashboardResultado({
         </section>
       )}
 
+      {habilitarTavily && (cargandoTavily || cifras.length > 0) && (
+        <section className="pc-tavily">
+          <h3>{textos.dashboard.cifrasTitulo}</h3>
+          {cargandoTavily && cifras.length === 0 && (
+            <p className="pc-tavily-busqueda" role="status">
+              {textos.dashboard.buscando}
+            </p>
+          )}
+          <ul>
+            {cifras.map((cifra) => (
+              <li key={cifra.cifra}>
+                <p className="pc-tavily-cifra">{cifra.cifra}</p>
+                <p>
+                  {cifra.estado === "con_fuente"
+                    ? textos.dashboard.cifraConFuente(cifra.cifra)
+                    : textos.dashboard.cifraSinFuente(cifra.cifra)}
+                </p>
+                {cifra.estado === "con_fuente" && cifra.url && (
+                  <>
+                    {cifra.cita && <p className="pc-tavily-cita">{`“${cifra.cita}”`}</p>}
+                    <p className="pc-tavily-fuente">
+                      <a href={cifra.url} target="_blank" rel="noreferrer">
+                        {cifra.titulo || textos.dashboard.fuente}
+                      </a>
+                    </p>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="pc-muletillas">
         <h3>{textos.dashboard.muletillas(totalMuletillas)}</h3>
         {muletillasOrdenadas.length === 0 ? (
@@ -550,6 +750,28 @@ export function DashboardResultado({
       </section>
       </div>
       </div>
+
+      {(() => {
+        // Una sola segunda toma por práctica: el primer punto no cumplido.
+        const pendiente = puntosSinCumplir[0];
+        if (!pendiente || !duracionMaxima || cerrados.includes(pendiente.punto)) return null;
+        const cifra = sugerencias.find((sugerencia) => sugerencia.punto === pendiente.punto)?.cifra;
+        return (
+          <SegundaToma
+            tipoPitch={tipoPitch}
+            duracionMaxima={duracionMaxima}
+            puntoId={pendiente.punto}
+            puntoNombre={etiquetaPunto(pendiente.punto, idioma, tipoPitch)}
+            cifra={cifra}
+            onCerrado={(puntoId) => {
+              setCerrados((previos) =>
+                previos.includes(puntoId) ? previos : [...previos, puntoId],
+              );
+              onPuntoCerrado?.(puntoId);
+            }}
+          />
+        );
+      })()}
 
       {(errorUltra || analisisUltra !== null) && (
       <section className="pc-ultra-bloque" ref={ultraRef} tabIndex={-1}>
