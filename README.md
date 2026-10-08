@@ -77,17 +77,21 @@ Documentación del producto e implementación: [`docs/README.md`](docs/README.md
 
 - Análisis de la toma: `nvidia/nemotron-3-super-120b-a12b` (Super).
 - Análisis Ultra, solo si el usuario lo pide: `nvidia/Nemotron-3-Ultra-550b-a55b`.
-- Sparring, entidades, la query de búsqueda y la validación de la sugerencia:
-  `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (Nano).
+- Sparring, entidades, la query de búsqueda, la validación de la sugerencia,
+  la objeción de sala, el contraste de cifras dichas, la línea de tiempo y la
+  segunda toma: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (Nano).
 
 El modelo no pone el score. La rúbrica está en `src/lib/rubricas.ts`; el
 servidor lo deriva y cuenta las muletillas. Detalle:
 [`docs/guia-integracion-nebius.md`](docs/guia-integracion-nebius.md).
 
-**Tavily (solo si falta un punto).** Search y extract desde el servidor
-(`src/lib/tavily.ts`, `POST /api/enriquecer`). La transcripción no se envía.
-Como máximo dos puntos por práctica (`MAX_PUNTOS_ENRIQUECIDOS`). Si no hay
-cifra usable, no hay sugerencia. Detalle:
+**Tavily.** Search y extract desde el servidor (`src/lib/tavily.ts`,
+`POST /api/enriquecer`). La transcripción no se envía. Como máximo dos puntos
+por práctica reciben una cifra (`MAX_PUNTOS_ENRIQUECIDOS`). La misma llamada
+trae una objeción de la sala del tipo y contrasta una cifra que el pitch ya
+dijo. Si no hay cifra usable para un punto faltante, no hay sugerencia. Si la
+cifra dicha no tiene fuente del mismo orden, el dashboard lo dice y no castiga
+el punto. Detalle:
 [`docs/guia-integracion-tavily.md`](docs/guia-integracion-tavily.md).
 
 La app llama a Token Factory en runtime. Gemini sigue siendo contingencia

@@ -92,8 +92,10 @@ inglés, que evita marcar "like"/"so"/"right" por la palabra suelta); evaluació
 contra rúbrica vía el proveedor activo (Nebius por defecto, Gemini de
 contingencia), con JSON estructurado; score calculado en el servidor; TTS del
 veredicto con SpeechSynthesis como fallback obligatorio; dashboard; cifra citada
-con Tavily en puntos no cumplidos; Análisis Ultra; Resolver hallazgos; historial
-local de las últimas 20 prácticas.
+con Tavily en puntos no cumplidos; objeción de la sala pública del tipo; contraste
+de una cifra ya dicha; línea de tiempo de los puntos cubiertos; segunda toma de
+45 segundos; Análisis Ultra; Resolver hallazgos; historial local de las últimas
+20 prácticas, con el delta de cobertura.
 
 **Ruteo de modelos en Nebius Token Factory** (el hecho que el resultado debe
 poder mostrar como procedencia, y que el video y el README tienen que narrar):
@@ -102,12 +104,13 @@ poder mostrar como procedencia, y que el video y el README tienen que narrar):
 |---|---|---|
 | `estandar` | Nemotron 3 Super | El score del minuto, contra la rúbrica |
 | `ultra` | Nemotron 3 Ultra | Reanálisis a pedido, con traza de 4 a 8 pasos |
-| `rapido` | Nemotron 3 Nano | Sparring, entidades, reescritura de la consulta, validación y frase hablada de la cifra |
+| `rapido` | Nemotron 3 Nano | Sparring, entidades, reescritura de la consulta, validación y frase hablada de la cifra, objeción de sala, contraste de la cifra dicha, línea de tiempo y segunda toma |
 
 Gemini es contingencia manual e **ignora el nivel**. No es la historia de la
-entrega. Tavily solo corre si hay un punto sin cumplir: busca una estadística
-citable; **la transcripción nunca se envía a Tavily**. Si no hay key o falla, el
-resto del resultado sigue.
+entrega. Tavily corre en puntos no cumplidos (estadística y, en el primero, la
+objeción de la sala) y también contrasta una cifra que el pitch ya dijo.
+**La transcripción nunca se envía a Tavily.** Si no hay key o falla, el resto
+del resultado sigue.
 
 **Restricciones que el diseño debe respetar:**
 
@@ -210,10 +213,11 @@ corre en Token Factory y la demo vive en Railway.
 
 Lo que el track pide ver más allá de lo básico: **un flujo de varios pasos que
 encadena herramientas**, no una sola llamada a un modelo. Pitch Coach ya es esa
-cadena (voz → transcripción → rúbrica con Super → cifra citada con Tavily en el
-punto que faltó → traza con Ultra si se pide → sparring con Nano → veredicto
-hablado). El rediseño tiene que hacer esa cadena legible. Esconderla compite como
-"un LLM que da feedback".
+cadena (voz → transcripción → rúbrica con Super → cifra citada y objeción de
+sala con Tavily → contraste de una cifra dicha → traza con Ultra si se pide →
+sparring con Nano → segunda toma de un punto → veredicto hablado). El rediseño
+tiene que hacer esa cadena legible. Esconderla compite como "un LLM que da
+feedback".
 
 **Los jueces no están obligados a abrir la app.** Pueden puntuar solo con el
 texto, las imágenes y el video. Lo que se muestra en pantallas y en el video es

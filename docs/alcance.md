@@ -140,7 +140,11 @@ Ciclo completo:
 - [x] Sesión anónima, sin login.
 - [x] Análisis Ultra: reanálisis de la misma transcripción con razonamiento extendido (Nemotron Ultra).
 - [x] Resolver hallazgos: hasta 3 preguntas de seguimiento sobre puntos no cumplidos (orden de rúbrica), texto + escuchar a pedido, respuesta por voz o texto de respaldo.
-- [x] Historial local y panel "Tu progreso": las últimas 20 prácticas de este navegador (fecha, tipo, duración, score, claridad, rúbrica sin comentario, conteo de muletillas, si se usó Ultra y, si se completó, el resumen de hallazgos). No hay cuentas ni copia en servidor.
+- [x] Historial local y panel "Tu progreso": las últimas 20 prácticas de este navegador (fecha, tipo, duración, score, claridad, rúbrica sin comentario, conteo de muletillas, si se usó Ultra, si se completó el resumen de hallazgos, y el delta de cobertura contra la práctica anterior del mismo tipo e idioma). No hay cuentas ni copia en servidor.
+- [x] Sala pública: una objeción con fuente, sobre el primer punto no cumplido, según el tipo (panel de inversión, aula, comité de innovación, comprador técnico). Los ids de la rúbrica no cambian.
+- [x] Cifras dichas: si el pitch ya trae una cifra, Tavily busca una fuente del mismo orden. Si no hay, el dashboard dice que no se halló fuente. Eso no castiga el punto.
+- [x] Segunda toma: 45 segundos sobre un punto no cumplido. Si queda cubierto, el historial local guarda el id en `puntosCerrados`, sin el texto de la toma.
+- [x] Línea de tiempo: con marcas de Scribe, los puntos cubiertos se ubican sobre el audio.
 
 ## 10. Fuera de esta versión
 
@@ -164,7 +168,10 @@ Ciclo completo:
 - El indicador de estado refleja el momento real del flujo (grabando / transcribiendo / listo) y la transcripción aparece al terminar.
 - Si pide Análisis Ultra, ve un segundo resultado etiquetado (con traza de razonamiento), no un reemplazo del primero.
 - Si hay puntos sin cubrir, puede resolver hallazgos (máx. 3) y ve cuántos resolvió.
-- "Tu progreso" lista intentos de este navegador (score y cobertura) sin mostrar la transcripción ni los comentarios.
+- "Tu progreso" lista intentos de este navegador (score y cobertura) sin mostrar la transcripción ni los comentarios. Si hay una práctica anterior del mismo tipo e idioma, dice qué puntos se cerraron o se abrieron.
+- Si hay un punto sin cubrir, se puede grabar una segunda toma de 45 segundos. Si queda cubierto, la rúbrica de esa sesión lo marca.
+- Si el audio trae marcas de tiempo, se ve en qué tramo cayó cada punto cubierto.
+- Si Tavily encuentra una objeción de la sala o una fuente para una cifra dicha, se ve el enlace. Si no hay fuente para la cifra dicha, se dice eso y el punto no se castiga.
 
 ## 12. Servicios externos
 
@@ -173,7 +180,7 @@ Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 - **Nebius Token Factory** — análisis del pitch por defecto (Nemotron Super). Ultra usa Nemotron Ultra; sparring usa Nemotron Nano.
 - **Gemini** — respaldo manual de contingencia (`MODEL_PROVIDER=gemini`). Ignora el nivel (`estandar` / `ultra` / `rapido`).
 - **ElevenLabs** — TTS del veredicto y de las preguntas de sparring (SpeechSynthesis es fallback obligatorio) y **STT (Scribe)** de la grabación. El audio del usuario no se escribe a disco ni se adjunta a logs o a Sentry.
-- **Tavily** — enriquecimiento opcional: si un punto de rúbrica no se cumplió, busca una estadística y la sugiere en el dashboard. Si no hay key o falla, el resto de la UI no se rompe.
+- **Tavily** — enriquecimiento opcional. Si un punto de rúbrica no se cumplió, busca una estadística y, para el primero de esos puntos, una objeción de la sala pública de ese tipo. Si el pitch ya dijo una cifra, busca una fuente del mismo orden. La transcripción no se envía. Si no hay key o falla, el resto de la UI no se rompe.
 
 ## 13. Stack técnico
 

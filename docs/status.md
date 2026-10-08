@@ -1,6 +1,6 @@
 # Pitch Coach — Status del proyecto
 
-> **2026-10-02.** Qué está implementado, mapeado a `docs/alcance.md`.
+> **2026-10-08.** Qué está implementado, mapeado a `docs/alcance.md`.
 > Índice de documentación: `docs/README.md`. Snapshot **después** vs tag
 > `pre-nebius`: `docs/post-nebius.md` (este archivo es el detalle operativo).
 > El loop (voz → análisis → dashboard + veredicto a pedido) está cerrado.
@@ -53,6 +53,16 @@
   decir. El pipeline completo solo corre para los **2 primeros puntos de la
   rúbrica** del tipo de pitch, en su orden; los puntos fallidos que quedan fuera
   no generan ninguna llamada externa. Sin key, el dashboard no se rompe.
+  La misma llamada agrega **una objeción de sala** (el primer punto no cumplido;
+  la sala sale del tipo: inversión, aula, comité, comprador técnico) y el
+  **contraste de una cifra ya dicha** (con fuente del mismo orden, o el aviso
+  de que no se halló). La transcripción sigue sin ir a Tavily.
+- ✅ Línea de tiempo: si Scribe devolvió marcas, Nano ubica los puntos cubiertos
+  sobre el audio (`/api/linea-tiempo`).
+- ✅ Segunda toma: 45 segundos sobre un punto no cumplido (`/api/segunda-toma`).
+  Si queda cubierto, el historial guarda el id en `puntosCerrados`. "Tu progreso"
+  muestra qué puntos se cerraron o se abrieron respecto de la práctica anterior
+  del mismo tipo e idioma.
 - ✅ Sentry: errores de servidor y de cliente, con filtro de privacidad (§5).
   **Session Replay deshabilitado a propósito**; **la IP del cliente no se
   reporta** y **los breadcrumbs de consola no salen** (fuga real, cerrada).
