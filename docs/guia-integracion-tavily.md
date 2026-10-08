@@ -1,110 +1,112 @@
-# Guía de integración Tavily (extraída de Pitch Coach)
+# Tavily integration guide (extracted from Pitch Coach)
 
-Cómo reutilizar en otro proyecto la lógica de búsqueda web de Tavily de este repo: API key, llamadas REST a `/search` y `/extract`, armado de queries orientadas a cifra, **paso de validación obligatorio** para no mostrar una fuente que no trae el dato, y **degradación silenciosa** para que el enriquecimiento nunca rompa el flujo principal.
+How to reuse this repo's Tavily web-search logic in another project: API key, REST calls to `/search` and `/extract`, figure-oriented query building, a **mandatory validation step** so a source that does not carry the figure is never shown, and **silent degradation** so enrichment never breaks the main flow.
 
-No hace falta el SDK oficial de Tavily. Pitch Coach habla con la API REST de `api.tavily.com` usando `fetch` nativo, siempre en servidor.
+The official Tavily SDK is not required. Pitch Coach talks to the REST API at `api.tavily.com` with native `fetch`, always on the server.
 
 ---
 
-## 0. Alcance: qué es "lógica Tavily" aquí (y qué no)
+## 0. Scope: what "Tavily logic" means here (and what it does not)
 
-En Pitch Coach, Tavily no alimenta el análisis principal: es un **enriquecimiento opcional** (§12 del alcance). Cuando el análisis de IA detecta que un punto de la rúbrica no se cumplió *por falta de una cifra concreta*, se busca en la web una estadística/dato real que el usuario podría citar para reforzar ese punto, y se muestra como sugerencia con su fuente en el dashboard.
+In Pitch Coach, Tavily does not feed the main analysis: it is **optional enrichment** (scope §12). When the AI analysis finds that a rubric point was missed *for lack of a concrete figure*, it searches the web for a real statistic/figure the user could cite to reinforce that point, and shows it as a suggestion with its source on the dashboard.
 
-| Uso | En este repo | Motor | ¿Se extrae? |
+The same server call also asks for one public-room objection on the first missed point and checks one figure the speaker already said. The transcript is never sent to Tavily.
+
+| Use | In this repo | Engine | Extract it? |
 |---|---|---|---|
-| Búsqueda de datos reales para sugerencias | Sí | Tavily `POST /search` | **Sí, esta guía** |
-| Verificación de la cifra en la fuente | Sí | Tavily `POST /extract` | **Sí, esta guía** |
-| Análisis del pitch (lo que decide *qué* faltó) | Sí | Gemini | No (ver `guia-integracion-gemini.md`) |
-| Transcripción del discurso | Sí | MediaRecorder + ElevenLabs Scribe | No usa Tavily |
+| Search for real figures for suggestions | Yes | Tavily `POST /search` | **Yes, this guide** |
+| Check that the figure is in the source | Yes | Tavily `POST /extract` | **Yes, this guide** |
+| Pitch analysis (what decides *what* was missing) | Yes | Gemini | No (see `guia-integracion-gemini.md`) |
+| Speech transcription | Yes | MediaRecorder + ElevenLabs Scribe | Does not use Tavily |
 
-Punto importante: Tavily **no produce texto**, produce fuentes. La decisión de *qué* buscar la toma otra capa (en este repo, los puntos no cumplidos que devuelve Gemini). Si tu otro proyecto no tiene una capa que te diga "qué reforzar", la pieza que extraes se reduce al cliente HTTP de la sección 8.1.
+Important point: Tavily **does not produce text**; it produces sources. The decision of *what* to search is made by another layer (in this repo, the missed points that Gemini returns). If your other project has no layer that tells you "what to reinforce", the piece you extract shrinks to the HTTP client in section 8.1.
 
-Y hay un segundo punto, aprendido a golpes: **una fuente con score alto no es una cifra.** Que Tavily devuelva un resultado relevante no garantiza que ese resultado contenga un dato citable. Por eso la Fase B agrega Extract + validación antes de mostrar nada (ver §2.1).
+And there is a second point, learned the hard way: **a high-score source is not a figure.** Tavily returning a relevant result does not guarantee that the result contains a citable figure. That is why Phase B adds Extract + validation before anything is shown (see §2.1).
 
 ---
 
-## 1. Qué es reutilizable y qué no
+## 1. What is reusable and what is not
 
-| Pieza | Archivo en este repo | ¿Se copia tal cual? |
+| Piece | File in this repo | Copy as-is? |
 |---|---|---|
-| Cliente HTTP de Tavily (`buscarEnTavily`) | `src/lib/tavily.ts` | Sí, es el núcleo. Cambia el nombre si quieres. |
-| Lógica de enriquecimiento best-effort (paralelo + aislado) | `src/lib/tavily.ts` | Sí, es el patrón más valioso. Adapta `query` y el contrato a tu dominio. |
-| API route que oculta la key y degrada | `src/app/api/enriquecer/route.ts` | El patrón sí; valida el body con tu contrato. |
-| Fetch aislado desde el cliente | `src/components/DashboardResultado.tsx` | El patrón sí (efecto que no bloquea, tolera `[]`). |
-| Variable de entorno | `.env.example` | Sí (`TAVILY_API_KEY`). |
-| Puntos de rúbrica / qué se refuerza | tipos de `src/types/pitch.ts` | No. Es dominio de Pitch Coach. |
-| Texto de la query ("cifra reciente …") | `src/lib/query-tavily.ts` | El patrón sí; la redacción es de tu dominio. |
-| Extracción del contenido de la fuente | `src/lib/tavily-extract.ts` | Sí, es el núcleo portable de la verificación. |
-| Validación "¿trae cifra?" | `src/lib/validar-sugerencia.ts` | Sí; cambia el esquema a tu criterio de "dato útil". |
-| Frase hablada con la cifra | `src/lib/validar-sugerencia.ts` | El patrón sí; el TTS es el tuyo. |
+| Tavily HTTP client (`buscarEnTavily`) | `src/lib/tavily.ts` | Yes, it is the core. Rename it if you want. |
+| Best-effort enrichment logic (parallel + isolated) | `src/lib/tavily.ts` | Yes, it is the most valuable pattern. Adapt `query` and the contract to your domain. |
+| API route that hides the key and degrades | `src/app/api/enriquecer/route.ts` | The pattern yes; validate the body against your contract. |
+| Isolated fetch from the client | `src/components/DashboardResultado.tsx` | The pattern yes (an effect that does not block, and that tolerates `[]`). |
+| Environment variable | `.env.example` | Yes (`TAVILY_API_KEY`). |
+| Rubric points / what gets reinforced | types in `src/types/pitch.ts` | No. That is Pitch Coach domain. |
+| Query text ("recent figure …") | `src/lib/query-tavily.ts` | The pattern yes; the wording is your domain. |
+| Source-content extraction | `src/lib/tavily-extract.ts` | Yes, it is the portable core of the check. |
+| "Does it contain a figure?" validation | `src/lib/validar-sugerencia.ts` | Yes; change the schema to your idea of a "useful figure". |
+| Spoken sentence that includes the figure | `src/lib/validar-sugerencia.ts` | The pattern yes; the TTS is yours. |
 
-**Dependencias:** ninguna extra. `package.json` no incluye SDK de Tavily. Bastan `fetch`, TypeScript y variables de entorno.
+**Dependencies:** none extra. `package.json` does not include a Tavily SDK. `fetch`, TypeScript, and environment variables are enough.
 
 ---
 
-## 2. Principios que no debes romper
+## 2. Principles you should not break
 
-1. **La API key vive solo en el servidor.** Se lee de `process.env.TAVILY_API_KEY`. Nunca `NEXT_PUBLIC_TAVILY_API_KEY` ni hardcode en el cliente.
-2. **El navegador nunca llama a Tavily.** El frontend pega a tu API route; la route llama a Tavily con la key.
-3. **Tavily es best-effort: nunca rompe el flujo principal.** Esta es la diferencia filosófica con Gemini/ElevenLabs en este repo (que fallan en claro con **502**). Tavily es una sección *opcional* del dashboard, así que sin key, con fallo o con timeout, la route responde **200 con `sugerencias: []`** y la UI simplemente oculta la sección. No es un error de tu app: es un "no hay dato hoy".
-4. **Aísla cada búsqueda con su propio `try/catch`.** Se corren en paralelo con `Promise.all`, pero si una query falla no debe tumbar a las demás ni al response completo.
-5. **Pide poco y barato.** `search_depth: "basic"`, `max_results: 6` e `include_answer: false`. No necesitas la respuesta redactada del LLM de Tavily ni un crawl profundo: quieres 1–6 fuentes reales para enlazar.
-6. **No expongas el texto crudo.** Tavily devuelve `content` (ya truncado) y `raw_content` (la página entera, solo si la pides). En este repo el `content` extraído se acota y **jamás** se manda al cliente: el cliente solo ve la cifra validada, la cita recortada y el enlace.
-7. **El Extract no basta: valida antes de mostrar.** Sobre la fuente elegida se corre `POST /extract` y luego una llamada al modelo con un esquema restringido que exige una cifra concreta **citada textualmente** y **relevante al tema buscado** (se le pasan las entidades del pitch como contexto de comparación). Si no hay cifra verosímil, o la cifra es de otro sector, la sugerencia se descarta. Es el filtro que evita mostrar "cómo calcular el mercado" cuando el usuario pedía el mercado, y también "qué es la capitalización de mercado" cuando el usuario pedía el tamaño del mercado de un salón de té.
-8. **El log de diagnóstico no lleva PII.** Se registra la query final y si la validación aprobó (y por qué no), nunca la transcripción ni el contenido extraído.
+1. **The API key lives only on the server.** It is read from `process.env.TAVILY_API_KEY`. Never `NEXT_PUBLIC_TAVILY_API_KEY`, and never a hardcode in the client.
+2. **The browser never calls Tavily.** The frontend posts to your API route; the route calls Tavily with the key.
+3. **Tavily is best-effort: it never breaks the main flow.** This is the philosophical difference from Gemini/ElevenLabs in this repo (those fail in the open with a **502**). Tavily is an *optional* dashboard section, so with no key, on failure, or on timeout, the route responds **200 with `sugerencias: []`** and the UI simply hides the section. That is not an error in your app: it is "no figure today".
+4. **Isolate each search with its own `try/catch`.** They run in parallel with `Promise.all`, but if one query fails it must not take down the others or the whole response.
+5. **Ask for little, and cheap.** `search_depth: "basic"`, `max_results: 6`, and `include_answer: false`. You do not need Tavily's LLM-written answer or a deep crawl: you want 1–6 real sources to link.
+6. **Do not expose the raw text.** Tavily returns `content` (already truncated) and `raw_content` (the whole page, only if you ask for it). In this repo the extracted `content` is capped and is **never** sent to the client: the client only sees the validated figure, the trimmed quote, and the link.
+7. **Extract is not enough: validate before you show.** On the chosen source, `POST /extract` runs and then a model call with a constrained schema that requires a concrete figure **quoted verbatim** and **relevant to the topic searched** (the pitch entities are passed as comparison context). If there is no plausible figure, or the figure is from another sector, the suggestion is discarded. That filter is what avoids showing "how to calculate the market" when the user asked for the market, and also "what market capitalization is" when the user asked for the market size of a tea salon.
+8. **The diagnostic log carries no PII.** It records the final query and whether validation passed (and why not), never the transcript and never the extracted content. **The transcript is never sent to Tavily.**
 
-En Next.js App Router, `.env.local` alimenta el servidor. En Railway (u otro host), replica la misma key en el panel de variables.
+In the Next.js App Router, `.env.local` feeds the server. On Railway (or another host), copy the same key into the variables panel.
 
-### 2.1 Por qué existe la validación (evidencia real, no hipótesis)
+### 2.1 Why the validation exists (real evidence, not a hypothesis)
 
-Antes de la Fase B, la sugerencia era "primer resultado de la búsqueda + `content` recortado". En pruebas manuales con **3 pitches reales**, **todos** los resultados mostrados fueron inútiles. No son hipótesis: es lo que se le mostró a una persona real.
+Before Phase B, the suggestion was "first search result + trimmed `content`". In manual tests with **3 real pitches**, **every** result shown was useless. These are not hypotheses: this is what a real person was shown.
 
-1. **"Tracción" de un salón de té mexicano** → un blog en **inglés** sobre integración de ERP (Microsoft/Odoo). Irrelevante, y en otro idioma **a pesar de `language: "es"`** (por eso la Fase B usa además `filter_by_language`).
-2. **"Mercado"** → un artículo de **FasterCapital** sobre la **metodología genérica** "cómo calcular el tamaño de mercado". Cero cifras: explicaba *cómo*, no *cuánto*.
-3. **"Mercado" de un pitch de una cortadora de papel de regalo "Little ELF"** → una pregunta de **Quora** sobre "cómo calcular TAM/SAM/SOM". Cero cifras.
-4. Mismo pitch, **"Tracción"** → una **noticia financiera real de "e.l.f. Beauty"** (cosméticos, ticker ELF). Colisión de nombres entre el producto "ELF" y una marca ajena: dato real, tema equivocado.
-5. Un **cuarto pitch** no devolvió sugerencia para 3 puntos fallidos, **sin visibilidad de por qué** (de ahí el log de diagnóstico de §6).
-6. **"Mercado" de un salón de té mexicano** → un artículo genérico de **"qué es la capitalización de mercado bursátil"**, con el rango **"$2-10 mil millones"** (la definición de "empresa mid-cap"). Ya había Extract y validación de cifra: el número y la cita existían, pero **no tenían nada que ver con el sector**. El hueco era que la validación aprobaba *cualquier* cifra, sin comprobar que fuera del tema buscado.
+1. **"Traction" for a Mexican tea salon** → a blog in **English** about ERP integration (Microsoft/Odoo). Irrelevant, and in another language **despite `language: "es"`** (which is why Phase B also uses `filter_by_language`).
+2. **"Market"** → a **FasterCapital** article on the **generic methodology** "how to calculate market size". Zero figures: it explained *how*, not *how much*.
+3. **"Market" for a pitch about a gift-wrap paper cutter called "Little ELF"** → a **Quora** question on "how to calculate TAM/SAM/SOM". Zero figures.
+4. Same pitch, **"Traction"** → a **real financial news item about "e.l.f. Beauty"** (cosmetics, ticker ELF). A name collision between the product "ELF" and an unrelated brand: a real figure, the wrong topic.
+5. A **fourth pitch** returned no suggestion for 3 missed points, **with no visibility into why** (hence the diagnostic log in §6).
+6. **"Market" for a Mexican tea salon** → a generic article on **"what stock-market capitalization is"**, with the range **"$2-10 mil millones"** (sample wording on that page for a mid-cap company). Extract and figure validation were already in place: the number and the quote existed, but they **had nothing to do with the sector**. The gap was that validation approved *any* figure, without checking that it belonged to the topic searched.
 
-**Ninguno** de los resultados que vio el usuario contenía una cifra citable con fuente y fecha. La lección: no alcanza con buscar mejor; hay que **verificar el contenido de la fuente antes de mostrarla**. Cada pieza de la Fase B responde a uno de estos casos:
+**None** of the results the user saw contained a citable figure with a source and a date. The lesson: searching better is not enough; you have to **verify the source's content before showing it**. Each piece of Phase B answers one of these cases:
 
-| Caso | Respuesta de la Fase B |
+| Case | Phase B response |
 |---|---|
-| Idioma equivocado (1) | `language` + `filter_by_language: true` en la búsqueda |
-| Metodología sin cifra (2, 3) | `exclude_domains` + validación obligatoria (sin cifra → se descarta) |
-| Colisión de nombres (4) | entidad ambigua nunca viaja sola; la validación exige coherencia del dato |
-| Silencio inexplicable (5) | log de diagnóstico con la query final y el veredicto de validación |
-| Cifra real de otro sector (6) | la validación exige el campo `relevante`: la cifra debe corresponder a las entidades del pitch, no solo existir |
+| Wrong language (1) | `language` + `filter_by_language: true` on the search |
+| Methodology with no figure (2, 3) | `exclude_domains` + mandatory validation (no figure → discard) |
+| Name collision (4) | an ambiguous entity never travels alone; validation requires the figure to cohere |
+| Unexplained silence (5) | diagnostic log with the final query and the validation verdict |
+| A real figure from another sector (6) | validation requires the `relevante` field: the figure must match the pitch entities, not merely exist |
 
-**Decisión de alcance:** la validación se hace con el modelo (nivel `rapido`), no con heurísticas de regex. Un regex "¿hay un número?" acepta "TAM = SAM + SOM" y rechaza "USD 320 millones"; el modelo, con el esquema restringido, distingue mejor. Es una llamada extra por punto, y por eso el rate limit de la ruta bajó (ver §5).
+**Scope decision:** validation is done with the model (`rapido` tier), not with regex heuristics. A regex for "is there a number?" accepts "TAM = SAM + SOM" and rejects the sample figure string "USD 320 millones"; the model, with the constrained schema, tells them apart better. It is an extra call per point, which is why the route's rate limit went down (see §5).
 
 ---
 
-## 3. Variables de entorno
+## 3. Environment variables
 
-Copia esto a `.env.example` del otro proyecto (sin valores reales) y a `.env.local` / al host de deploy (con valor):
+Copy this into the other project's `.env.example` (no real values) and into `.env.local` / the deploy host (with the value):
 
 ```bash
-# Clave de Tavily (búsqueda web). Solo server-side. Nunca prefijo NEXT_PUBLIC_.
-# Sin ella, la feature de sugerencias simplemente no aparece (degradación silenciosa).
+# Tavily key (web search). Server-side only. Never a NEXT_PUBLIC_ prefix.
+# Without it, the suggestions feature simply does not appear (silent degradation).
 TAVILY_API_KEY=
 ```
 
-La API key se crea en el [dashboard de Tavily](https://app.tavily.com/) → *API Keys*. Es un string `tvly-...`.
+The API key is created in the [Tavily dashboard](https://app.tavily.com/) → *API Keys*. It is a `tvly-...` string.
 
 ---
 
-## 4. Contrato HTTP con Tavily
+## 4. HTTP contract with Tavily
 
 ```
 POST https://api.tavily.com/search
 Content-Type: application/json
-Authorization: Bearer {TAVILY_API_KEY}     ← forma que documenta Tavily hoy
+Authorization: Bearer {TAVILY_API_KEY}     ← the form Tavily documents today
 ```
 
-> **⚠️ Autenticación — trampa conocida.** El código original de este repo envía `api_key` **en el body** (`{ api_key: "tvly-…", query, … }`), variante que fue la oficial durante años y que en cuentas como la de este proyecto aún responde 200. Pero la documentación actual de Tavily solo describe el header `Authorization: Bearer` y dice explícitamente que la key no va en el body. Si al portar ves un **401**, cambia un solo header de `{ "api_key": key }` en el body a `Authorization: Bearer {key}` — el resto del contrato no cambia. El código genérico de la sección 8 ya usa Bearer.
+> **Authentication — known trap.** This repo's original code sends `api_key` **in the body** (`{ api_key: "tvly-…", query, … }`), a variant that was official for years and that still returns 200 on accounts like this project's. Current Tavily documentation only describes the `Authorization: Bearer` header and says explicitly that the key does not go in the body. If you see a **401** while porting, change a single header from `{ "api_key": key }` in the body to `Authorization: Bearer {key}` — the rest of the contract does not change. The generic code in section 8 already uses Bearer.
 
-Cuerpo (el de este proyecto):
+Body (the one in this project). The `query` string is a Spanish search query, left as the request sends it:
 
 ```json
 {
@@ -120,30 +122,30 @@ Cuerpo (el de este proyecto):
 }
 ```
 
-- `query` — lo que buscas. Solo este campo es obligatorio. Aquí lo redacta el modelo (nivel `rapido`) a partir de las entidades + el punto, **sin el comentario negativo** del análisis (ver §2.1).
-- `search_depth` — `basic` (1 crédito, suficiente para sugerencias) vs `advanced` (2 créditos). No lo subas sin motivo.
-- `max_results` — en este repo `6`; el default de la API es 10 y el tope 20. Se piden varios para poder **elegir** el mejor (ver "Cómo se elige el resultado", más abajo).
-- `include_answer` — `false` en este repo. Si lo pones en `true`, Tavily redacta una respuesta (con LLM, más caro). Aquí no se usa porque queremos **fuentes enlazables**, no texto generado.
-- `language` — idioma de la sesión (`es` / `en`).
-- `filter_by_language` — **este es el filtro duro de idioma.** `language` solo **sesga** el ranking; `filter_by_language: true` **filtra** de verdad (puede devolver cero resultados). Sin él, un pitch en español recibe fuentes en inglés (caso 1 de §2.1).
-- `topic` — `finance` si el tipo de pitch es `capital`, `general` en el resto.
-- `time_range: "year"` — recencia de la cifra: se busca un dato del último año, no un clásico de 2015.
-- `exclude_domains` — **exclusión dura** (máx. 150 dominios) de los sitios que dieron metodología sin cifras en las pruebas manuales (`fastercapital.com`, `quora.com`, además de agregadores tipo `reddit.com`, `medium.com`, etc.) **y de los proxies de traducción automática** (`translate.goog` de Google, `microsofttranslator.com`, `translator.microsoft.com`, `bing.com`). Los proxies son una puerta trasera al problema de idioma que ya cerró `filter_by_language`: sirven la misma página en otro idioma con el dominio envuelto, así que un filtro por dominio del contenido real no los ve. Se define en `DOMINIOS_EXCLUIDOS` (`src/lib/tavily.ts`).
+- `query` — what you search for. This is the only required field. Here the model writes it (`rapido` tier) from the entities + the point, **without the negative comment** from the analysis (see §2.1).
+- `search_depth` — `basic` (1 credit, enough for suggestions) vs `advanced` (2 credits). Do not raise it without a reason.
+- `max_results` — `6` in this repo; the API default is 10 and the cap is 20. Several are requested so the best one can be **chosen** (see "How the result is chosen", below).
+- `include_answer` — `false` in this repo. If you set it to `true`, Tavily writes an answer (with an LLM, more expensive). It is unused here because we want **linkable sources**, not generated text.
+- `language` — the session language (`es` / `en`).
+- `filter_by_language` — **this is the hard language filter.** `language` only **biases** the ranking; `filter_by_language: true` actually **filters** (it can return zero results). Without it, a pitch in Spanish receives sources in English (case 1 in §2.1).
+- `topic` — `finance` if the pitch type is `capital`, `general` otherwise.
+- `time_range: "year"` — recency of the figure: the search looks for a figure from the last year, not a classic from 2015.
+- `exclude_domains` — a **hard exclusion** (max 150 domains) of the sites that returned methodology with no figures in the manual tests (`fastercapital.com`, `quora.com`, plus aggregators such as `reddit.com`, `medium.com`, and so on) **and of automatic-translation proxies** (`translate.goog` from Google, `microsofttranslator.com`, `translator.microsoft.com`, `bing.com`). Proxies are a back door to the language problem that `filter_by_language` already closed: they serve the same page in another language with the domain wrapped, so a filter on the real content's domain does not see them. Defined in `DOMINIOS_EXCLUIDOS` (`src/lib/tavily.ts`).
 
-Parámetros útiles al portar:
+Parameters that are useful when porting:
 
-| Parámetro | Qué hace | ¿Cuándo usarlo? |
+| Parameter | What it does | When to use it |
 |---|---|---|
-| `language` + `filter_by_language` | `language` sesga, `filter_by_language` filtra | Casi siempre juntos si tu público es monolingüe |
-| `country` | **Solo sesga** hacia un país; no filtra | Como preferencia suave, nunca como garantía |
-| `topic: "news"` | Restringe a noticias recientes | Si buscas cifras/actualidad |
-| `time_range` | Recencia (`day` / `week` / `month` / `year`) | Estadísticas que cambian rápido |
-| `include_domains` / `exclude_domains` | Permite (blanda, salvo que pongas `filter_by_language`-like duro) / bloquea (dura) | Evitar fuentes conocidas por no traer cifras |
-| `include_raw_content: true` | Trae el texto completo de la página | Casi nunca: para eso está `/extract`, que además deja pedir `query` y `chunks_per_source` |
+| `language` + `filter_by_language` | `language` biases, `filter_by_language` filters | Almost always together if your audience is monolingual |
+| `country` | **Only biases** toward a country; it does not filter | As a soft preference, never as a guarantee |
+| `topic: "news"` | Restricts to recent news | If you are looking for figures / current events |
+| `time_range` | Recency (`day` / `week` / `month` / `year`) | Statistics that change quickly |
+| `include_domains` / `exclude_domains` | Allows (soft, unless you set a hard filter like `filter_by_language`) / blocks (hard) | Avoid sources already known to carry no figures |
+| `include_raw_content: true` | Brings the full page text | Almost never: `/extract` exists for that, and it also lets you ask for `query` and `chunks_per_source` |
 
-### 4.1 Extract: verificar el contenido de la fuente
+### 4.1 Extract: verify the source's content
 
-`POST https://api.tavily.com/extract` (mismo header `Authorization: Bearer`) recibe las URLs y devuelve el texto de la página:
+`POST https://api.tavily.com/extract` (same `Authorization: Bearer` header) receives the URLs and returns the page text. The `query` below is a Spanish search query, left as the request sends it:
 
 ```json
 {
@@ -155,22 +157,22 @@ Parámetros útiles al portar:
 }
 ```
 
-- `query` (opcional pero recomendado) — reordena los fragmentos devueltos según su relevancia con lo que buscas, así el dato aparece arriba.
-- `chunks_per_source` — cuántos fragmentos por URL (1–5).
-- `format: "markdown"` — el texto llega con encabezados y listas, más fácil de citar.
-- `extract_depth` — `basic` (1 crédito) vs `advanced` (2, para páginas difíciles). Aquí `basic`.
-- `timeout` — segundos que Tavily espera por la página (aquí `10`), además del `AbortSignal.timeout(12 s)` del cliente. Doble defensa para que una página lenta no cuelgue el análisis.
+- `query` (optional but recommended) — reorders the returned chunks by relevance to what you are looking for, so the figure shows up at the top.
+- `chunks_per_source` — how many chunks per URL (1–5).
+- `format: "markdown"` — the text arrives with headings and lists, easier to quote.
+- `extract_depth` — `basic` (1 credit) vs `advanced` (2, for difficult pages). Here, `basic`.
+- `timeout` — seconds Tavily waits for the page (here `10`), on top of the client's `AbortSignal.timeout(12 s)`. Two layers of defense so a slow page does not hang the analysis.
 
-Ojo con la respuesta, que tiene **dos** trampas:
+Watch the response: it has **two** traps:
 
-- `raw_content` es el texto real de la página. En este repo se lee `results[0].raw_content`, se recorta a `MAX_CONTENIDO_EXTRAIDO` (6000 caracteres) y se pasa al validador: **nunca llega al cliente**.
-- **Un 200 no significa que extrajo.** Cada entrada de `failed_results` es una URL que no se pudo extraer. Hay que revisar **los dos** arreglos, no solo el status HTTP.
+- `raw_content` is the real page text. In this repo `results[0].raw_content` is read, trimmed to `MAX_CONTENIDO_EXTRAIDO` (6000 characters), and passed to the validator: **it never reaches the client**.
+- **A 200 does not mean it extracted.** Each entry in `failed_results` is a URL that could not be extracted. Check **both** arrays, not only the HTTP status.
 
-**Cómo se elige el resultado.** Antes se tomaba `results[0]` a ciegas. Ahora `elegirCandidatos` (en `src/lib/tavily.ts`) filtra por `estaExcluido(url)` (dominios de `DOMINIOS_EXCLUIDOS`), descarta los que no traen URL, exige un `score` mínimo (`SCORE_MINIMO`) y ordena por score descendente; luego se prueban **hasta `MAX_CANDIDATOS`** por punto (si el elegido no pasa la validación, se intenta el siguiente). Criterio simple, documentado y testeado: no es "el primero que devolvió Tavily", es "el primero con score suficiente y dominio no excluido".
+**How the result is chosen.** It used to take `results[0]` blindly. Now `elegirCandidatos` (in `src/lib/tavily.ts`) filters by `estaExcluido(url)` (domains in `DOMINIOS_EXCLUIDOS`), drops those with no URL, requires a minimum `score` (`SCORE_MINIMO`), and sorts by score descending; then **up to `MAX_CANDIDATOS`** are tried per point (if the chosen one fails validation, the next one is tried). A simple rule, documented and tested: it is not "the first one Tavily returned"; it is "the first one with a high enough score and a domain that is not excluded".
 
-> **Nota de costos.** Extract **no** reemplaza al `content` de Search: lo profundiza. Search da un extracto corto que puede no incluir la cifra; Extract trae la sección donde vive el dato. Por eso van los dos, y por eso el rate limit de la ruta es más bajo (§5).
+> **Cost note.** Extract does **not** replace Search's `content`: it goes deeper. Search gives a short excerpt that may not include the figure; Extract brings the section where the figure lives. That is why both run, and why the route's rate limit is lower (§5).
 
-### Cómo se ve la respuesta
+### What the response looks like
 
 ```jsonc
 {
@@ -179,128 +181,132 @@ Ojo con la respuesta, que tiene **dos** trampas:
     {
       "title": "…",
       "url": "https://…",
-      "content": "…",          // extracto truncado de la página
-      "score": 0.982           // relevancia 0–1
+      "content": "…",          // truncated excerpt of the page
+      "score": 0.982           // relevance 0–1
     }
   ]
-  // "answer" solo aparece si pediste include_answer: true
+  // "answer" appears only if you asked for include_answer: true
 }
 ```
 
-El código lee `data.results`, los filtra por dominio excluido, los ordena por `score` y **no** se queda con `results[0]` a ciegas: prueba hasta `MAX_CANDIDATOS` por punto y solo usa el que pasa la validación. Además, el `content` de Search es solo un extracto: la cifra suele estar más abajo, en la página completa — para eso se corre `/extract` sobre la URL elegida (§4.1).
+The code reads `data.results`, filters them by excluded domain, sorts them by `score`, and does **not** keep `results[0]` blindly: it tries up to `MAX_CANDIDATOS` per point and uses only the one that passes validation. Also, Search's `content` is only an excerpt: the figure is usually further down, on the full page — that is what `/extract` on the chosen URL is for (§4.1).
 
-### Códigos de error típicos de Tavily
+### Typical Tavily error codes
 
-| HTTP | Significado |
+| HTTP | Meaning |
 |---|---|
-| 400 | Body mal formado o parámetro inválido |
-| 401 | Key inválida o faltante (revisa el callout de auth arriba) |
-| 429 | Rate limit / cuota del plan |
-| 5xx | Caída del servicio |
+| 400 | Malformed body or invalid parameter |
+| 401 | Invalid or missing key (see the auth callout above) |
+| 429 | Plan rate limit / quota |
+| 5xx | Service outage |
 
-**Esto importa:** como Tavily es best-effort, en este repo **ningún** status se propaga al usuario. Cualquier fallo se registra con `console.warn`/`console.error` y el cliente recibe `sugerencias: []`. El síntoma de key rota es silencioso para el usuario (la sección no aparece) y solo visible en los logs del servidor.
+**This matters:** because Tavily is best-effort, in this repo **no** status is propagated to the user. Any failure is recorded with `console.warn`/`console.error` and the client receives `sugerencias: []`. The symptom of a broken key is silent for the user (the section does not appear) and visible only in the server logs.
 
 ---
 
-## 5. La API route (Next.js App Router)
+## 5. The API route (Next.js App Router)
 
-El frontend **nunca importa** el cliente de Tavily. Hace `POST` a la route; la route lee la key y llama a Tavily. `runtime = "nodejs"` (necesario para `process.env` y fetch server-side).
+The frontend **never imports** the Tavily client. It `POST`s to the route; the route reads the key and calls Tavily. `runtime = "nodejs"` (needed for `process.env` and server-side fetch).
 
-Contrato de la route (el de este repo):
+Route contract (the one in this repo):
 
 ```
 POST /api/enriquecer
 body: { tema: string, puntosSinCumplir: { punto: string, comentario?: string }[] }
-      (solo los 2 primeros puntos, en el ORDEN DE LA RÚBRICA, corren el pipeline completo)
+      (only the first 2 points, in RUBRIC ORDER, run the full pipeline)
 → 200 { sugerencias: [{ punto, query, cifra, cita, fecha, titulo, url, frase }] }
-→ 400 { error }   solo si el body no es JSON válido
-→ 429 { error }   rate limit por IP (5 req / 10 min, en memoria) + Retry-After
+→ 400 { error }   only if the body is not valid JSON
+→ 429 { error }   per-IP rate limit (5 req / 10 min, in memory) + Retry-After
 ```
 
-Único caso en que esta ruta no es best-effort: el **429**, que se decide antes de llamar a Tavily y protege tu cuota. En memoria, así que el límite efectivo se multiplica por el número de instancias.
+The same `POST /api/enriquecer` call also asks for one public-room objection on the first missed point and checks one figure the speaker already said. The transcript is never sent to Tavily.
 
-El techo de esta ruta es **la mitad del global** (5 contra 10 por ventana de 10 min). No es arbitrario: cada invocación dispara una **cadena completa por punto fallido** —1 query al modelo (`rapido`), 1 búsqueda de Tavily (1 crédito), hasta 2 `extract` (1 crédito cada uno) y 1 validación (`rapido`)— más 1 extracción de entidades y 1 frase (`rapido`) si algo pasó. Ese 5 no se multiplica por todos los puntos: el pipeline completo se corta en los **2 primeros puntos de la rúbrica** del tipo (`MAX_PUNTOS_ENRIQUECIDOS`), elegidos en el orden en que aparecen; los puntos fallidos restantes **no generan ninguna llamada externa**. El techo real por invocación es 1 + 2 × 6 = **~13 llamadas externas**, no ~31. Por eso el techo global de 10 no sirve: el peor caso por IP y ventana vaciaría el free tier de Tavily (~1000 créditos/mes) en horas. Si llevás esta feature a otro repo, ajustá el número a tu presupuesto, pero no le dejes el techo global sin mirar el costo por invocación.
+The only case where this route is not best-effort: the **429**, which is decided before calling Tavily and protects your quota. It is in memory, so the effective limit multiplies by the number of instances.
 
-Detalles que vale copiar (aquí es donde se nota la filosofía "opcional"):
+This route's ceiling is **half the global one** (5 against 10 per 10-minute window). That is not arbitrary: each invocation fires a **full chain per missed point** — 1 model query (`rapido`), 1 Tavily search (1 credit), up to 2 `extract` calls (1 credit each), and 1 validation (`rapido`) — plus 1 entity extraction and 1 sentence (`rapido`) if something passed. That 5 is not multiplied by every point: the full pipeline stops at the **first 2 rubric points** of the type (`MAX_PUNTOS_ENRIQUECIDOS`), chosen in the order they appear; the remaining missed points **generate no external call**. The real ceiling per invocation is 1 + 2 × 6 = **~13 external calls**, not ~31. That is why the global ceiling of 10 is not enough: the worst case per IP and window would empty Tavily's free tier (~1000 credits/month) in hours. If you take this feature to another repo, adjust the number to your budget, but do not leave it on the global ceiling without looking at the cost per invocation.
 
-- **400 solo para JSON inválido.** La validación de negocio no es 400: si falta `tema` o no hay `puntosSinCumplir`, responde **200 con `[]`** porque simplemente no hay nada que enriquecer.
-- **Sin key → 200 con `[]`**, no 502. Tavily no está en el loop crítico; su ausencia no es un fallo de tu app.
-- **Cualquier fallo interno → 200 con `[]`** + `console.error`. El dashboard nunca se rompe por esto.
-- El body del request se mapea 1:1 a lo que espera `enriquecerConTavily` (o la versión genérica de la sección 8).
+Details worth copying (this is where the "optional" philosophy shows):
 
----
-
-## 6. Uso desde el cliente (para ubicar el patrón)
-
-La parte de UI es la menos portable (es del dashboard de Pitch Coach), pero el patrón de fetch vale la pena:
-
-- Se dispara en un `useEffect` de una sola vez, **sin bloquear** el render del resto del dashboard.
-- Tiene un flag `cancelado` para no hacer `setState` después de desmontar.
-- La respuesta se trata con `res.ok ? res.json() : { sugerencias: [] }` — nunca asume que la route devolvió algo.
-- Render condicional: `sugerencias.length === 0` muestra "Sin sugerencias verificadas por ahora." y no la sección; cada sugerencia se renderiza como `punto` + `cifra` + `fecha` + `cita` + enlace "Fuente" (`target="_blank" rel="noreferrer"`), y un botón **"Escuchar el dato"** que manda la `frase` por la misma API de TTS de la sesión (`ReproductorVeredicto`, sin autoplay).
+- **400 only for invalid JSON.** Business validation is not a 400: if `tema` is missing or there are no `puntosSinCumplir`, it responds **200 with `[]`** because there is simply nothing to enrich.
+- **No key → 200 with `[]`**, not 502. Tavily is not in the critical loop; its absence is not a failure of your app.
+- **Any internal failure → 200 with `[]`** + `console.error`. The dashboard never breaks because of this.
+- The request body maps 1:1 onto what `enriquecerConTavily` expects (or the generic version in section 8).
 
 ---
 
-## 7. Cómo portarlo a otro proyecto (pasos)
+## 6. Use from the client (where to find the pattern)
 
-### Paso 1 — Variables
+The UI part is the least portable (it belongs to the Pitch Coach dashboard), but the fetch pattern is worth keeping:
 
-Crea `.env.local` (gitignored) y `.env.example` (commiteable) con la key de la sección 3. Obtén la key en el [dashboard de Tavily](https://app.tavily.com/).
+- It fires in a one-shot `useEffect`, **without blocking** the render of the rest of the dashboard.
+- It has a `cancelado` flag so it does not `setState` after unmount.
+- The response is handled with `res.ok ? res.json() : { sugerencias: [] }` — it never assumes the route returned something.
+- Conditional render: `sugerencias.length === 0` shows "No verified suggestions for now." and not the section; each suggestion renders as `punto` + `cifra` + `fecha` + `cita` + a "Source" link (`target="_blank" rel="noreferrer"`), and a **"Listen to the figure"** button that sends the `frase` through the session's same TTS API (`ReproductorVeredicto`, no autoplay).
 
-### Paso 2 — Cliente genérico
+---
 
-Copia el bloque de la sección 8.1. Cambia el tipo `SugerenciaFuente`, el texto con el que armas la `query` y qué campo usas de "clave" (aquí era un punto de rúbrica; en tu producto puede ser una sección faltante, un claim sin respaldo, etc.). No toques: lectura de env, headers, manejo de `!res.ok`, ni el patrón **Extract → validación → frase** (es lo que evita mostrar fuentes sin el dato).
+## 7. How to port it to another project (steps)
 
-### Paso 2 bis — Verificación (Extract + validación)
+### Step 1 — Variables
 
-Copia el bloque de la sección 8.1 bis. Cambia el esquema de validación a tu criterio de "dato útil" (aquí: cifra concreta citada textualmente). Si no vas a usar modelo para validar, al menos exige una verificación determinista antes de mostrar la fuente: el error más caro es presentar como "dato" una página que solo explica metodología.
+Create `.env.local` (gitignored) and `.env.example` (committable) with the key from section 3. Get the key in the [Tavily dashboard](https://app.tavily.com/).
 
-### Paso 3 — API route
+### Step 2 — Generic client
 
-Copia el bloque de la sección 8.2. Cambia el nombre de los campos del body si tu contrato usa otros. Mantén la filosofía: **esta ruta nunca debe 502** si Tavily falla; responde `[]`.
+Copy the block from section 8.1. Change the `SugerenciaFuente` type, the text you use to build the `query`, and which field you use as the "key" (here it was a rubric point; in your product it might be a missing section, an unsupported claim, and so on). Leave these alone: env reading, headers, `!res.ok` handling, and the **Extract → validation → sentence** pattern (that is what avoids showing sources that lack the figure).
 
-### Paso 4 — Cliente
+### Step 2 bis — Verification (Extract + validation)
 
-Haz el `fetch` desde un efecto/acción que no bloquee tu render y que tolere `[]` en la respuesta (o un `catch` que lo trate igual).
+Copy the block from section 8.1 bis. Change the validation schema to your idea of a "useful figure" (here: a concrete figure quoted verbatim). If you are not going to use a model to validate, at least require a deterministic check before showing the source: the most expensive mistake is presenting as a "figure" a page that only explains methodology.
 
-### Paso 5 — Probarlo sin la UI
+### Step 3 — API route
+
+Copy the block from section 8.2. Change the body field names if your contract uses others. Keep the philosophy: **this route must never 502** if Tavily fails; it responds `[]`.
+
+### Step 4 — Client
+
+Do the `fetch` from an effect/action that does not block your render and that tolerates `[]` in the response (or a `catch` that treats it the same way).
+
+### Step 5 — Test it without the UI
+
+The request bodies below are unchanged. Each `query` is a Spanish search query, not pitch speech.
 
 ```bash
-# desde el servidor (o curl directo con la key puesta en el entorno)
+# from the server (or curl directly with the key set in the environment)
 curl -sS -X POST "https://api.tavily.com/search" \
   -H "Authorization: Bearer $TAVILY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"query":"cifra reciente mercado LATAM 2026","search_depth":"basic","max_results":6,"language":"es","filter_by_language":true,"time_range":"year"}'
 
-# y el extract sobre la URL elegida
+# and extract on the chosen URL
 curl -sS -X POST "https://api.tavily.com/extract" \
   -H "Authorization: Bearer $TAVILY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"urls":["https://fuente.example/informe"],"query":"cifra reciente mercado LATAM","chunks_per_source":3,"format":"markdown"}'
 ```
 
-Si ves un `results` con `url` y `content`, el contrato está bien. Luego prueba `$TAVILY_API_KEY=` vacío (o un valor inválido) y confirma que tu route responde `{ "sugerencias": [] }` y que tu UI no crashea.
+If you see a `results` array with `url` and `content`, the contract is right. Then try with `$TAVILY_API_KEY=` empty (or an invalid value) and confirm that your route responds `{ "sugerencias": [] }` and that your UI does not crash.
 
 ---
 
-## 8. Código genérico para copiar
+## 8. Generic code to copy
 
-### 8.1 Cliente server (`src/lib/tavily.ts`, adaptado)
+### 8.1 Server client (`src/lib/tavily.ts`, adapted)
 
-Usa `Authorization: Bearer` (ver callout de la sección 4). `buscarEnTavily` es el núcleo 100 % portable; `sugerirFuentes` es el patrón "paralelo + aislado" con la query de tu dominio y **valida antes de mostrar**.
+Uses `Authorization: Bearer` (see the callout in section 4). `buscarEnTavily` is the 100% portable core; `sugerirFuentes` is the "parallel + isolated" pattern with your domain's query and **validates before showing**.
 
 ```ts
 export interface SugerenciaFuente {
-  /** Qué querías reforzar (tu "clave": punto, sección, claim…). */
+  /** What you wanted to reinforce (your "key": point, section, claim…). */
   clave: string;
   query: string;
-  /** La cifra concreta, citada textualmente de la fuente. */
+  /** The concrete figure, quoted verbatim from the source. */
   cifra: string;
   cita: string;
   fecha: string;
   titulo: string;
   url: string;
-  /** Frase lista para decir en voz alta, con la cifra y la fuente. */
+  /** Sentence ready to say aloud, with the figure and the source. */
   frase: string;
 }
 
@@ -311,12 +317,12 @@ interface TavilyResult {
   score: number;
 }
 
-/** Dominios que en la práctica dan metodología sin cifras. */
+/** Domains that in practice return methodology with no figures. */
 const DOMINIOS_EXCLUIDOS = ["fastercapital.com", "quora.com", "reddit.com"];
 
-/** Busca en Tavily y devuelve los resultados ya ordenados por relevancia.
- *  Lanza si no hay key o si la API responde mal — el caller decide si
- *  eso importa (en este patrón: no, es best-effort). */
+/** Searches Tavily and returns the results already ordered by relevance.
+ *  Throws if there is no key or the API responds badly — the caller decides
+ *  whether that matters (in this pattern: no, it is best-effort). */
 export async function buscarEnTavily(
   query: string,
   opts: { maxResults?: number; idioma?: "es" | "en" } = {}
@@ -338,7 +344,7 @@ export async function buscarEnTavily(
       max_results: opts.maxResults ?? 6,
       include_answer: false,
       language: opts.idioma ?? "es",
-      // El filtro duro de idioma: `language` solo sesga el ranking.
+      // Hard language filter: `language` only biases the ranking.
       filter_by_language: true,
       time_range: "year",
       exclude_domains: DOMINIOS_EXCLUIDOS,
@@ -356,9 +362,9 @@ export async function buscarEnTavily(
   return data.results ?? [];
 }
 
-/** Trae el contenido de la fuente elegida, priorizando los fragmentos
- *  relevantes a lo que buscas. `/search` solo da un extracto; el dato
- *  suele estar más abajo. */
+/** Fetches the chosen source's content, prioritizing the chunks
+ *  relevant to what you are looking for. `/search` only returns an excerpt;
+ *  the figure is usually further down. */
 export async function extraerContenido(
   url: string,
   query: string
@@ -386,8 +392,8 @@ export async function extraerContenido(
   return data.results?.[0]?.raw_content ?? null;
 }
 
-/** Criterio de selección: descarta dominios excluidos, exige score mínimo
- *  y ordena por score. No es `results[0]` a ciegas. */
+/** Selection rule: drop excluded domains, require a minimum score,
+ *  and sort by score. It is not a blind `results[0]`. */
 export function elegirCandidatos(
   resultados: readonly TavilyResult[],
   scoreMinimo = 0.35,
@@ -402,10 +408,10 @@ export function elegirCandidatos(
   return ordenados.filter((r) => r.score >= scoreMinimo).slice(0, max);
 }
 
-/** Para cada "brecha" (algo que a tu análisis le faltó respaldar), arma una
- *  query, elige una fuente, verifica su contenido y solo entonces sugiere.
- *  Best-effort: si algo falla para una brecha, esa brecha no trae
- *  sugerencia — no tumba el resto. */
+/** For each "gap" (something your analysis failed to back up), build a
+ *  query, pick a source, verify its content, and only then suggest.
+ *  Best-effort: if something fails for one gap, that gap brings no
+ *  suggestion — it does not take down the rest. */
 export async function sugerirFuentes(
   brechas: { clave: string; detalle?: string }[],
   tema: string
@@ -414,7 +420,7 @@ export async function sugerirFuentes(
 
   await Promise.all(
     brechas.map(async ({ clave }) => {
-      // Sin el comentario negativo del análisis: pide el dato, no la carencia.
+      // Without the analysis's negative comment: ask for the figure, not the gap.
       const query = `cifra reciente ${tema} ${clave}`.trim();
       try {
         const candidatos = elegirCandidatos(await buscarEnTavily(query));
@@ -423,10 +429,10 @@ export async function sugerirFuentes(
           const contenido = await extraerContenido(candidato.url, query);
           if (!contenido) continue;
 
-          // Validación obligatoria: ¿trae una cifra citable Y relevante al
-          // tema? El tema y la clave van como contexto de comparación; una
-          // cifra real de otro sector debe rechazarse.
-          const validacion = await validarConModelo(contenido, [tema, clave]); // nivel "rapido"
+          // Mandatory check: does it contain a citable figure AND one relevant
+          // to the topic? The topic and the key are comparison context; a
+          // real figure from another sector must be rejected.
+          const validacion = await validarConModelo(contenido, [tema, clave]); // "rapido" tier
           if (!validacion.util) continue;
 
           sugerencias.push({
@@ -437,7 +443,7 @@ export async function sugerirFuentes(
             fecha: validacion.anio,
             titulo: candidato.title,
             url: candidato.url,
-            frase: await generarFrase({ clave, ...validacion }), // nivel "rapido"
+            frase: await generarFrase({ clave, ...validacion }), // "rapido" tier
           });
           break;
         }
@@ -451,16 +457,16 @@ export async function sugerirFuentes(
 }
 ```
 
-`validarConModelo` es una llamada al modelo con un **esquema restringido** (`additionalProperties: false`) que devuelve `{ util, relevante, cifra, cita, anio }`: `util` solo es `true` si `cifra` y `cita` vienen no vacías **y** `relevante` es `true` (el modelo confirma que la cifra corresponde a las entidades del pitch). `relevante` es obligatorio: si falta, se asume `false`. Si el modelo falla, se trata como `util: false` (degradación, no excepción). `generarFrase` produce la frase hablada; si el modelo falla, hay una **frase determinista** de respaldo armada con la cifra y la fuente. El detalle de los esquemas está en `src/lib/validar-sugerencia.ts`.
+`validarConModelo` is a model call with a **constrained schema** (`additionalProperties: false`) that returns `{ util, relevante, cifra, cita, anio }`: `util` is `true` only if `cifra` and `cita` come back non-empty **and** `relevante` is `true` (the model confirms that the figure matches the pitch entities). `relevante` is required: if it is missing, it is treated as `false`. If the model fails, it is treated as `util: false` (degradation, not an exception). `generarFrase` produces the spoken sentence; if the model fails, there is a **deterministic fallback sentence** built from the figure and the source. The schema detail is in `src/lib/validar-sugerencia.ts`.
 
-Si prefieres conservar la forma original del repo (key en el body), cambia únicamente los headers:
+If you prefer to keep the repo's original shape (key in the body), change only the headers:
 
 ```ts
 headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ api_key: apiKey, query, /* …resto igual… */ }),
+body: JSON.stringify({ api_key: apiKey, query, /* …rest unchanged… */ }),
 ```
 
-### 8.2 API route genérica (Next.js App Router)
+### 8.2 Generic API route (Next.js App Router)
 
 ```ts
 import { NextRequest, NextResponse } from "next/server";
@@ -472,8 +478,8 @@ export const runtime = "nodejs";
  * POST /api/enriquecer
  * body: { tema: string, brechas: { clave: string, detalle?: string }[] }
  *
- * Feature opcional, best-effort: nunca debe romper la UI de quien la consume.
- * Sin TAVILY_API_KEY, sin tema, sin brechas o si Tavily falla → 200 { sugerencias: [] }.
+ * Optional, best-effort feature: it must never break the UI of whoever consumes it.
+ * Without TAVILY_API_KEY, without a topic, without gaps, or if Tavily fails → 200 { sugerencias: [] }.
  */
 export async function POST(req: NextRequest) {
   let body: {
@@ -495,7 +501,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!process.env.TAVILY_API_KEY) {
-    // Degradación silenciosa: Tavily es opcional.
+    // Silent degradation: Tavily is optional.
     return NextResponse.json({ sugerencias: [] });
   }
 
@@ -504,16 +510,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sugerencias });
   } catch (err) {
     console.error("[/api/enriquecer] fallo Tavily:", err);
-    // No crítico: 200 con lista vacía en vez de romper al consumidor.
+    // Not critical: 200 with an empty list instead of breaking the consumer.
     return NextResponse.json({ sugerencias: [] });
   }
 }
 ```
 
-### 8.3 Fetch desde el cliente (patrón, no componente)
+### 8.3 Fetch from the client (pattern, not a component)
 
 ```ts
-// Tolerante: cualquier fallo se trata como "sin sugerencias".
+// Tolerant: any failure is treated as "no suggestions".
 const res = await fetch("/api/enriquecer", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -527,97 +533,101 @@ const sugerencias = res.ok ? data.sugerencias ?? [] : [];
 
 ---
 
-## 9. Flujo en Pitch Coach (para ubicar el código)
+## 9. Flow in Pitch Coach (where to find the code)
 
 ```
 DashboardResultado.tsx
-  useEffect (una sola vez, no bloquea el render, flag cancelado)
+  useEffect (once, does not block render, cancelado flag)
   POST /api/enriquecer { tema: tipoPitch, puntosSinCumplir }
-        │  si 200 → data.sugerencias ?? []   si !ok → []
+        │  if 200 → data.sugerencias ?? []   if !ok → []
         ▼
 route.ts (/api/enriquecer)
-  JSON inválido → 400
-  sin tema / sin puntos → 200 { sugerencias: [] }
-  sin TAVILY_API_KEY → 200 { sugerencias: [] }   ← opcional, no 502
+  invalid JSON → 400
+  no topic / no points → 200 { sugerencias: [] }
+  no TAVILY_API_KEY → 200 { sugerencias: [] }   ← optional, not 502
   enriquecerConTavily(...)  → 200 { sugerencias }
         │
         ▼
-tavily.ts  (TAVILY_API_KEY solo aquí)
-  1) entidades-tavily.ts: extrae ≤3 entidades cortas (nivel "rapido")
-  2) elegirPuntosAEnriquecer: solo los 2 primeros puntos de la rúbrica
-     del tipo, en su orden (el resto no genera llamadas)
-  3) por cada punto elegido (en paralelo, cada uno con su try/catch):
-       query-tavily.ts   → query orientada a cifra (nivel "rapido"),
-                           SIN el comentario negativo; entidad ambigua
-                           nunca viaja sola; fallback determinista
+tavily.ts  (TAVILY_API_KEY only here)
+  1) entidades-tavily.ts: extracts ≤3 short entities ("rapido" tier)
+  2) elegirPuntosAEnriquecer: only the first 2 rubric points
+     of the type, in their order (the rest generate no calls)
+  3) for each chosen point (in parallel, each with its own try/catch):
+       query-tavily.ts   → figure-oriented query ("rapido" tier),
+                           WITHOUT the negative comment; an ambiguous entity
+                           never travels alone; deterministic fallback
        buscarEnTavily    → /search (language + filter_by_language,
                            exclude_domains, topic, time_range=year)
-       elegirCandidatos  → filtra/ordena por score (no results[0] ciego)
-       tavily-extract.ts → /extract sobre el candidato
-       validar-sugerencia.ts → validación obligatoria (nivel "rapido")
-                           ¿trae cifra citable Y relevante al tema?
-                           (recibe las entidades del pitch como contexto)
-                           si no → descarta
-       generarFraseHablada   → frase 8–12 s (nivel "rapido")
-       diarioPunto       → console.info: query final + aprobado/motivo
-                           (NUNCA transcripción ni contenido extraído)
+       elegirCandidatos  → filters/sorts by score (not a blind results[0])
+       tavily-extract.ts → /extract on the candidate
+       validar-sugerencia.ts → mandatory validation ("rapido" tier)
+                           does it contain a citable figure AND one relevant to the topic?
+                           (receives the pitch entities as context)
+                           if not → discard
+       generarFraseHablada   → 8–12 s sentence ("rapido" tier)
+       diarioPunto       → console.info: final query + passed/reason
+                           (NEVER the transcript or the extracted content)
         │
         ▼
-DashboardResultado → sección "Datos que podrían reforzar tu pitch"
-  render: punto + cifra + fecha + cita + <a href={url}>Fuente</a>
-          + "Escuchar el dato" (misma voz TTS de la sesión)
+DashboardResultado → section "Figures that could reinforce your pitch"
+  render: punto + cifra + fecha + cita + <a href={url}>Source</a>
+          + "Listen to the figure" (the session's same TTS voice)
 ```
 
-Lo que **no** pasa por Tavily en este proyecto: la detección de *qué* falta (Gemini, ver `guia-integracion-gemini.md`) y las muletillas (regex local). Tavily solo entra al final para buscar un respaldo citable. Si tu producto tiene una capa de análisis que te dice qué reforzar, este patrón encaja igual: llama a tu análisis primero y pásale a la ruta solo las "brechas" detectadas.
+The same server call also asks for one public-room objection on the first missed point and checks one figure the speaker already said. The transcript is never sent to Tavily.
+
+What does **not** go through Tavily in this project: detecting *what* is missing (Gemini, see `guia-integracion-gemini.md`) and filler words (local regex). Tavily only comes in at the end to look for a citable backing. If your product has an analysis layer that tells you what to reinforce, this pattern fits the same way: call your analysis first and pass the route only the detected "gaps".
 
 ---
 
-## 10. Checklist al llevarlo a otro repo
+## 10. Checklist for taking it to another repo
 
-- [ ] `.env.local` con `TAVILY_API_KEY` (no commiteado).
-- [ ] `.env.example` con `TAVILY_API_KEY=` vacía y comentario de que es server-side.
-- [ ] Cliente de Tavily importado **solo** desde API routes / server actions / server components.
-- [ ] Auth verificada: si envías key en el body y te da 401, cambia a `Authorization: Bearer` (un solo header).
-- [ ] Route con `runtime = "nodejs"`.
-- [ ] Sin key / fallo de Tavily → `200 { sugerencias: [] }`, nunca 502 ni crash.
-- [ ] Cada búsqueda aislada en su `try/catch` (una caída no tira el lote).
-- [ ] `search_depth: "basic"` y `max_results` suficiente para poder elegir (¿6 sirve?).
-- [ ] `include_answer: false` a menos que quieras la respuesta redactada del LLM.
-- [ ] `language` + `filter_by_language` juntos si necesitas el idioma de verdad (con `language` solo, llegan fuentes en otro idioma).
-- [ ] `exclude_domains` con los dominios que ya te dieron metodología sin cifras.
-- [ ] Elección del resultado por score/dominio, no `results[0]` ciego.
-- [ ] `POST /extract` sobre la fuente elegida y **validación obligatoria** antes de mostrar (sin cifra citada **o con una cifra ajena al tema** → se descarta; pásale las entidades del pitch como contexto).
-- [ ] La validación confirma además la **relevancia** (la cifra pertenece al tema/sector, no solo "hay un número").
-- [ ] El `content` extraído **no** se manda al cliente; solo la cifra, la cita recortada y el enlace.
-- [ ] Frase hablada reproducible con tu TTS de sesión (o un fallback determinista).
-- [ ] Log de diagnóstico (query + veredicto) sin transcripción ni contenido extraído.
-- [ ] Cliente tolera `[]` y no bloquea el render principal.
-- [ ] Nada con prefijo `NEXT_PUBLIC_` para la key.
+- [ ] `.env.local` with `TAVILY_API_KEY` (not committed).
+- [ ] `.env.example` with `TAVILY_API_KEY=` empty and a comment that it is server-side.
+- [ ] Tavily client imported **only** from API routes / server actions / server components.
+- [ ] Auth checked: if you send the key in the body and get a 401, switch to `Authorization: Bearer` (a single header).
+- [ ] Route with `runtime = "nodejs"`.
+- [ ] No key / Tavily failure → `200 { sugerencias: [] }`, never a 502 or a crash.
+- [ ] Each search isolated in its own `try/catch` (one failure does not drop the batch).
+- [ ] `search_depth: "basic"` and a `max_results` high enough to choose (does 6 work?).
+- [ ] `include_answer: false` unless you want the LLM-written answer.
+- [ ] `language` + `filter_by_language` together if you need the language for real (with `language` alone, sources arrive in another language).
+- [ ] `exclude_domains` with the domains that already gave you methodology and no figures.
+- [ ] Result chosen by score/domain, not a blind `results[0]`.
+- [ ] `POST /extract` on the chosen source and **mandatory validation** before showing (no quoted figure **or a figure unrelated to the topic** → discard; pass the pitch entities as context).
+- [ ] Validation also confirms **relevance** (the figure belongs to the topic/sector, not merely "there is a number").
+- [ ] Extracted `content` is **not** sent to the client; only the figure, the trimmed quote, and the link.
+- [ ] A spoken sentence that can be replayed with your session TTS (or a deterministic fallback).
+- [ ] Diagnostic log (query + verdict) with no transcript and no extracted content. The transcript is never sent to Tavily.
+- [ ] The client tolerates `[]` and does not block the main render.
+- [ ] Nothing with a `NEXT_PUBLIC_` prefix for the key.
 
 ---
 
-## 11. Referencia rápida
+## 11. Quick reference
 
-| Concepto | Valor en este repo |
+| Concept | Value in this repo |
 |---|---|
-| SDK | Ninguno (`fetch` + REST) |
+| SDK | None (`fetch` + REST) |
 | Base URL | `https://api.tavily.com` |
-| Métodos | `POST /search` y `POST /extract` |
-| Auth | Repo: key en el body. **Hoy**: `Authorization: Bearer` |
+| Methods | `POST /search` and `POST /extract` |
+| Auth | Repo: key in the body. **Today**: `Authorization: Bearer` |
 | `search_depth` | `basic` |
 | `max_results` | `6` |
 | `include_answer` | `false` |
-| Idioma | `language` (sesión) + `filter_by_language: true` |
-| Todos los resultados | `elegirCandidatos`: dominio no excluido + `score ≥ SCORE_MINIMO`, ordenados, hasta `MAX_CANDIDATOS` |
-| `exclude_domains` | `DOMINIOS_EXCLUIDOS` (FasterCapital, Quora, Reddit, agregadores…, proxies de traducción como `translate.goog`) |
-| Extract | `/extract` con `query` + `chunks_per_source: 3`, `format: "markdown"` |
-| Validación | obligatoria, nivel `rapido`, esquema restringido `{ util, relevante, cifra, cita, anio }`; sin cifra citada **o sin relevancia confirmada** → descarta |
-| Frase hablada | nivel `rapido`, 8–12 s, con fallback determinista |
-| Forma de la sugerencia | `{ punto, query, cifra, cita, fecha, titulo, url, frase }` |
-| Diagnóstico | `console.info` con query + veredicto; nunca transcripción ni contenido |
-| Techo de puntos | `MAX_PUNTOS_ENRIQUECIDOS` = 2 (orden de rúbrica); el resto no llama |
-| Aislamiento | `Promise.all` + `try/catch` por punto |
-| Sin key / fallo | `200 { sugerencias: [] }` (degradación silenciosa) |
-| Solo JSON inválido | `400` |
+| Language | `language` (session) + `filter_by_language: true` |
+| All results | `elegirCandidatos`: domain not excluded + `score ≥ SCORE_MINIMO`, sorted, up to `MAX_CANDIDATOS` |
+| `exclude_domains` | `DOMINIOS_EXCLUIDOS` (FasterCapital, Quora, Reddit, aggregators…, translation proxies such as `translate.goog`) |
+| Extract | `/extract` with `query` + `chunks_per_source: 3`, `format: "markdown"` |
+| Validation | mandatory, `rapido` tier, constrained schema `{ util, relevante, cifra, cita, anio }`; no quoted figure **or no confirmed relevance** → discard |
+| Spoken sentence | `rapido` tier, 8–12 s, with a deterministic fallback |
+| Suggestion shape | `{ punto, query, cifra, cita, fecha, titulo, url, frase }` |
+| Diagnostics | `console.info` with query + verdict; never the transcript or the content |
+| Point ceiling | `MAX_PUNTOS_ENRIQUECIDOS` = 2 (rubric order); the rest make no call |
+| Isolation | `Promise.all` + `try/catch` per point |
+| No key / failure | `200 { sugerencias: [] }` (silent degradation) |
+| Invalid JSON only | `400` |
+| Privacy | The transcript is never sent to Tavily |
+| Same call | One public-room objection on the first missed point, and one check of a figure the speaker already said |
 
-Fuente de verdad del cliente: [`src/lib/tavily.ts`](../src/lib/tavily.ts), [`src/lib/query-tavily.ts`](../src/lib/query-tavily.ts), [`src/lib/tavily-extract.ts`](../src/lib/tavily-extract.ts), [`src/lib/validar-sugerencia.ts`](../src/lib/validar-sugerencia.ts) y [`src/app/api/enriquecer/route.ts`](../src/app/api/enriquecer/route.ts).
+Source of truth for the client: [`src/lib/tavily.ts`](../src/lib/tavily.ts), [`src/lib/query-tavily.ts`](../src/lib/query-tavily.ts), [`src/lib/tavily-extract.ts`](../src/lib/tavily-extract.ts), [`src/lib/validar-sugerencia.ts`](../src/lib/validar-sugerencia.ts), and [`src/app/api/enriquecer/route.ts`](../src/app/api/enriquecer/route.ts).

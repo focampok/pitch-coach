@@ -1,69 +1,69 @@
-# Guía de integración ElevenLabs (extraída de Pitch Coach)
+# ElevenLabs integration guide (extracted from Pitch Coach)
 
-Cómo reutilizar en otro proyecto la lógica de voz (TTS) de este repo: API key, llamada REST a `text-to-speech`, selección de voz (hombre/mujer/random), la API route que oculta la key y el **fallback obligatorio a SpeechSynthesis** para que el usuario nunca se quede sin audio.
+How to reuse this repo's voice (TTS) logic in another project: API key, REST call to `text-to-speech`, voice selection (male/female/random), the API route that hides the key, and the **mandatory SpeechSynthesis fallback** so the user is never left without audio.
 
-No hace falta el SDK oficial de ElevenLabs. Pitch Coach habla con la API REST de `api.elevenlabs.io` usando `fetch` nativo, tanto en servidor como en navegador.
+The official ElevenLabs SDK is not required. Pitch Coach talks to the REST API at `api.elevenlabs.io` with native `fetch`, both on the server and in the browser.
 
 ---
 
-## 0. Alcance: qué es "lógica de voz" aquí (y qué no)
+## 0. Scope: what "voice logic" means here (and what it does not)
 
-| Tipo de voz | En este repo | Motor | ¿Se extrae? |
+| Voice type | In this repo | Engine | Extract it? |
 |---|---|---|---|
-| TTS — leer el veredicto en voz alta | Sí | ElevenLabs + fallback SpeechSynthesis | **Sí, esta guía** |
-| STT — transcribir el discurso del usuario | Sí | MediaRecorder + ElevenLabs Scribe (`/api/transcribir`) | **Sí** (`transcribirAudio` en `elevenlabs.ts`) |
+| TTS — read the verdict aloud | Yes | ElevenLabs + SpeechSynthesis fallback | **Yes, this guide** |
+| STT — transcribe the user's speech | Yes | MediaRecorder + ElevenLabs Scribe (`/api/transcribir`) | **Yes** (`transcribirAudio` in `elevenlabs.ts`) |
 
 ---
 
-## 1. Qué es reutilizable y qué no
+## 1. What is reusable and what is not
 
-| Pieza | Archivo en este repo | ¿Se copia tal cual? |
+| Piece | File in this repo | Copy as-is? |
 |---|---|---|
-| Cliente server-side de ElevenLabs (fetch + selección de voz) | `src/lib/elevenlabs.ts` | Sí, es el núcleo. Cambia el nombre si quieres. |
-| API route que oculta la key | `src/app/api/tts/route.ts` | El patrón sí; valida `texto` con tu contrato. |
-| Componente cliente que reproduce y degrada | `src/components/ReproductorVeredicto.tsx` | El patrón sí; cambia el texto prop por el tuyo. |
-| Variables de entorno | `.env.example` | Sí (las keys `ELEVENLABS_*`). |
-| Voz hablada / qué texto se lee | `src/lib/prompts.ts` (veredicto_corto), `src/types/pitch.ts` | No. Es dominio de Pitch Coach. |
+| Server-side ElevenLabs client (fetch + voice selection) | `src/lib/elevenlabs.ts` | Yes, it is the core. Rename it if you want. |
+| API route that hides the key | `src/app/api/tts/route.ts` | The pattern yes; validate `texto` against your contract. |
+| Client component that plays and degrades | `src/components/ReproductorVeredicto.tsx` | The pattern yes; swap the text prop for yours. |
+| Environment variables | `.env.example` | Yes (the `ELEVENLABS_*` keys). |
+| Spoken voice / which text is read | `src/lib/prompts.ts` (`veredicto_corto`), `src/types/pitch.ts` | No. That is Pitch Coach domain. |
 
-**Dependencias:** ninguna extra. `package.json` no incluye SDK de ElevenLabs. Bastan `fetch`, TypeScript y variables de entorno. SpeechSynthesis (TTS fallback) y MediaRecorder (captura) son del navegador.
-
----
-
-## 2. Principios que no debes romper
-
-1. **La API key vive solo en el servidor.** Se lee de `process.env.ELEVENLABS_API_KEY`. Nunca `NEXT_PUBLIC_ELEVENLABS_API_KEY` ni hardcode en el cliente.
-2. **El navegador nunca llama a ElevenLabs.** El frontend pega a tu API route; la route llama a ElevenLabs con la key.
-3. **SpeechSynthesis es un fallback obligatorio, nunca se quita.** La premisa de producto es: el usuario siempre escucha el texto, sin importar si ElevenLabs cae, tarda, o el navegador no reproduce el mp3. Si tu caso no exige "siempre suena", al menos decide explícitamente qué pasa sin key.
-4. **Fallar rápido, no lento.** Hay un timeout de 6 s tanto en la route como en el fetch del cliente. Un TTS que tarda más que eso se abandona y se degrada en vez de dejar al usuario esperando un spinner.
-5. **Voice IDs por entorno, no hardcode.** `ELEVENLABS_VOICE_ID_MALE` / `ELEVENLABS_VOICE_ID_FEMALE`. La voz es configuración de deploy, no código.
-
-En Next.js App Router, `.env.local` alimenta el servidor. En Railway (u otro host), replica las mismas keys en el panel de variables.
+**Dependencies:** none extra. `package.json` does not include an ElevenLabs SDK. `fetch`, TypeScript, and environment variables are enough. SpeechSynthesis (TTS fallback) and MediaRecorder (capture) belong to the browser.
 
 ---
 
-## 3. Variables de entorno
+## 2. Principles you should not break
 
-Copia esto a `.env.example` del otro proyecto (sin valores reales) y a `.env.local` / al host de deploy (con valores):
+1. **The API key lives only on the server.** It is read from `process.env.ELEVENLABS_API_KEY`. Never `NEXT_PUBLIC_ELEVENLABS_API_KEY`, and never a hardcode in the client.
+2. **The browser never calls ElevenLabs.** The frontend posts to your API route; the route calls ElevenLabs with the key.
+3. **SpeechSynthesis is a mandatory fallback; it is never removed.** The product premise is: the user always hears the text, whether ElevenLabs is down, slow, or the browser will not play the mp3. If your case does not require "it always plays", at least decide explicitly what happens without a key.
+4. **Fail fast, not slow.** There is a 6 s timeout both in the route and in the client's fetch. A TTS call that takes longer than that is abandoned and the client degrades, instead of leaving the user on a spinner.
+5. **Voice IDs come from the environment, not from hardcode.** `ELEVENLABS_VOICE_ID_MALE` / `ELEVENLABS_VOICE_ID_FEMALE`. The voice is deploy configuration, not code.
+
+In the Next.js App Router, `.env.local` feeds the server. On Railway (or another host), copy the same keys into the variables panel.
+
+---
+
+## 3. Environment variables
+
+Copy this into the other project's `.env.example` (no real values) and into `.env.local` / the deploy host (with values):
 
 ```bash
-# Clave de ElevenLabs (TTS). Solo server-side. Nunca prefijo NEXT_PUBLIC_.
+# ElevenLabs key (TTS). Server-side only. Never a NEXT_PUBLIC_ prefix.
 ELEVENLABS_API_KEY=
 
-# Voice IDs (ElevenLabs → VoiceLab → tu voz → Voice ID, 32 chars hex).
-# Solo server-side. Si faltan, la route falla y el cliente degrada a SpeechSynthesis.
+# Voice IDs (ElevenLabs → VoiceLab → your voice → Voice ID, 32 hex chars).
+# Server-side only. If they are missing, the route fails and the client degrades to SpeechSynthesis.
 ELEVENLABS_VOICE_ID_MALE=
 ELEVENLABS_VOICE_ID_FEMALE=
 ```
 
-Cómo se obtienen los Voice IDs: en el [dashboard de ElevenLabs](https://elevenlabs.io/voice-lab) cada voz de tu biblioteca muestra su Voice ID. También puedes listarlas por API (`GET /v1/voices`) con tu key. Son strings estables de ~32 caracteres hex.
+How to get the Voice IDs: in the [ElevenLabs dashboard](https://elevenlabs.io/voice-lab) each voice in your library shows its Voice ID. You can also list them through the API (`GET /v1/voices`) with your key. They are stable strings of about 32 hex characters.
 
-La API key se crea en [elevenlabs.io → Settings → API Keys](https://elevenlabs.io/app/settings/api-keys).
+The API key is created at [elevenlabs.io → Settings → API Keys](https://elevenlabs.io/app/settings/api-keys).
 
 ---
 
-## 4. Contrato HTTP con ElevenLabs
+## 4. HTTP contract with ElevenLabs
 
-Endpoint no-streaming (devuelve el audio completo como mp3):
+Non-streaming endpoint (returns the full audio as mp3):
 
 ```
 POST https://api.elevenlabs.io/v1/text-to-speech/{voiceId}
@@ -72,7 +72,7 @@ xi-api-key: {ELEVENLABS_API_KEY}
 Accept: audio/mpeg
 ```
 
-Cuerpo (el de este proyecto):
+Body (the one in this project):
 
 ```json
 {
@@ -85,44 +85,46 @@ Cuerpo (el de este proyecto):
 }
 ```
 
-- `xi-api-key` es el header de auth (no `Authorization: Bearer`).
-- `model_id`: este repo fija `eleven_multilingual_v2` (soporta español). ElevenLabs va moviendo cuál es el modelo multilingual recomendado; es **un solo string en el body**, así que verifica en la doc actual cuál conviene antes de fijarlo en el otro proyecto.
-- `voice_settings`:
-  - `stability` (0–1): 0.5 equilibra consistencia vs. variación. Sube hacia 1 si notas que la voz "respira" demasiado o pierde el tono.
-  - `similarity_boost` (0–1): 0.75 es fidelidad a la voz original. Si suena robótica, bájalo.
-- Respuesta 200: **`audio/mpeg` binario** (todo el archivo). Para streaming (primer byte rápido) existe `ws://` / `POST .../text-to-speech/{voiceId}/stream`, pero aquí se usa el no-streaming y alcanza.
+The `text` value in that body is an unchanged placeholder for the text to read. The rest of the body is the request this project sends.
 
-### Cómo se lee el audio en el servidor
+- `xi-api-key` is the auth header (not `Authorization: Bearer`).
+- `model_id`: this repo pins `eleven_multilingual_v2` (it supports Spanish). ElevenLabs keeps moving which multilingual model it recommends; it is **a single string in the body**, so check the current docs for which one fits before you pin it in the other project.
+- `voice_settings`:
+  - `stability` (0–1): 0.5 balances consistency against variation. Raise it toward 1 if the voice "breathes" too much or loses its tone.
+  - `similarity_boost` (0–1): 0.75 is fidelity to the original voice. If it sounds robotic, lower it.
+- A 200 response is **binary `audio/mpeg`** (the whole file). For streaming (a fast first byte) there is `ws://` / `POST .../text-to-speech/{voiceId}/stream`, but this guide uses the non-streaming endpoint and that is enough.
+
+### How the server reads the audio
 
 ```ts
-const audio = await response.arrayBuffer(); // ArrayBuffer mp3, listo para devolver
+const audio = await response.arrayBuffer(); // mp3 ArrayBuffer, ready to return
 ```
 
-### Códigos de error típicos de ElevenLabs
+### Typical ElevenLabs error codes
 
-| HTTP | Significado |
+| HTTP | Meaning |
 |---|---|
-| 401 | Key inválida o sin crédito |
-| 422 | `voice_id` inexistente o no válido para tu cuenta |
-| 429 | Rate limit / cuota |
-| 5xx | Caída del servicio |
+| 401 | Invalid key or no credit |
+| 422 | `voice_id` missing or not valid for your account |
+| 429 | Rate limit / quota |
+| 5xx | Service outage |
 
-**Esto importa:** en este repo **todo** status no-2xx se lanza como `Error` y la route responde **502**. Un 401/422 por config mala no "cuelga": falla rápido y el cliente degrada a SpeechSynthesis. El síntoma de config rota es silencioso para el usuario (oye la voz nativa) y solo visible en el `console.error` de la route. Si en tu proyecto quieres distinguir "config mal" de "servicio caído", revisa el `err.status` antes de mapearlo.
+**This matters:** in this repo **every** non-2xx status is thrown as an `Error` and the route responds **502**. A 401/422 from a bad config does not hang: it fails fast and the client degrades to SpeechSynthesis. The symptom of a broken config is silent for the user (they hear the native voice) and visible only in the route's `console.error`. If in your project you want to tell "bad config" from "service down", check `err.status` before you map it.
 
 ---
 
-## 5. Selección de voz: male / female / random
+## 5. Voice selection: male / female / random
 
-El cliente expone un tipo de voz y lo resuelve **en el servidor**:
+The client exposes a voice type and resolves it **on the server**:
 
 ```ts
 type VoiceGender = "male" | "female" | "random";
 ```
 
-- `"male"` / `"female"` → usa el Voice ID correspondiente.
-- `"random"` → `Math.random() < 0.5` elige hombre o mujer **en cada llamada**. En Pitch Coach la idea es variar la voz del coach entre sesiones/intentos sin que el usuario la configure.
+- `"male"` / `"female"` → uses the matching Voice ID.
+- `"random"` → `Math.random() < 0.5` picks male or female **on each call**. In Pitch Coach the idea is to vary the coach's voice across sessions/attempts without the user configuring it.
 
-La voz resuelta se devuelve al servidor (para el header de respuesta) y a la UI (para poder mostrar quién habla, si quieres):
+The resolved voice is returned to the server (for the response header) and to the UI (so you can show who is speaking, if you want):
 
 ```ts
 resolveVoiceId(gender) // → { voiceId: string, gender: "male" | "female" }
@@ -130,76 +132,78 @@ resolveVoiceId(gender) // → { voiceId: string, gender: "male" | "female" }
 
 ---
 
-## 6. La API route (Next.js App Router)
+## 6. The API route (Next.js App Router)
 
-El frontend **nunca importa** el cliente de ElevenLabs. Hace `POST` a la route; la route lee la key y llama a ElevenLabs. `runtime = "nodejs"` (necesario para `process.env` y fetch server-side).
+The frontend **never imports** the ElevenLabs client. It `POST`s to the route; the route reads the key and calls ElevenLabs. `runtime = "nodejs"` (needed for `process.env` and server-side fetch).
 
-Contrato de la route (el de este repo):
+Route contract (the one in this repo):
 
 ```
 POST /api/tts
 body: { texto: string, voz?: "male" | "female" | "random" }
 → 200 audio/mpeg  + header X-Voice-Gender
-→ 400 { error }   body inválido o falta "texto"
-→ 413 { error }   texto por encima del límite (8000 caracteres)
-→ 429 { error }   rate limit por IP (10 req / 10 min, en memoria) + Retry-After
-→ 502 { error }   ElevenLabs falló / sin key / timeout
+→ 400 { error }   invalid body or missing "texto"
+→ 413 { error }   text over the limit (8000 characters)
+→ 429 { error }   per-IP rate limit (10 req / 10 min, in memory) + Retry-After
+→ 502 { error }   ElevenLabs failed / no key / timeout
 ```
 
-Detalles que vale copiar:
+Details worth copying:
 
-- **Timeout defensivo de 6 s con `AbortController`** en la route, para no dejar colgado un request si ElevenLabs tarda. La señal se pasa al `fetch` interno.
-- **Límites de entrada antes de llamar al proveedor**: rechaza cuerpos por encima del tope (413) y aplica un rate limit por IP en memoria (429 + `Retry-After`). Al ser en memoria, el límite efectivo se multiplica por el número de instancias.
-- Los headers de respuesta 200: `Content-Type: audio/mpeg`, `X-Voice-Gender` (qué voz habló, útil si la UI quiere mostrarlo) y `Cache-Control: no-store` (audio generado por request).
-- Cualquier fallo interno → **502 JSON**, nunca 200 vacío. El `console.error` registra el motivo.
-- Si la key o los Voice IDs no están, el cliente lanza un `Error` con mensaje claro en español → la route lo convierte en 502 → el cliente degrada.
+- **A defensive 6 s timeout with `AbortController`** in the route, so a request is not left hanging if ElevenLabs is slow. The signal is passed to the inner `fetch`.
+- **Input limits before calling the provider**: reject bodies over the cap (413) and apply an in-memory per-IP rate limit (429 + `Retry-After`). Because it is in memory, the effective limit multiplies by the number of instances.
+- The 200 response headers: `Content-Type: audio/mpeg`, `X-Voice-Gender` (which voice spoke, useful if the UI wants to show it), and `Cache-Control: no-store` (audio generated per request).
+- Any internal failure → **502 JSON**, never an empty 200. `console.error` records the reason.
+- If the key or the Voice IDs are missing, the client throws an `Error` with a clear message in Spanish → the route turns it into a 502 → the client degrades.
 
 ---
 
-## 7. El componente cliente y el fallback obligatorio
+## 7. The client component and the mandatory fallback
 
-Es la pieza más delicada. Orden de intento:
+This is the most delicate piece. Attempt order:
 
-1. **ElevenLabs**: `POST /api/tts` → si es 200, `res.blob()` → `URL.createObjectURL` → `<audio>` → `play()`.
-2. **Si algo falla** (red, timeout, rate limit, el navegador no puede reproducir el mp3) → **SpeechSynthesis** con el mismo texto. El usuario nunca nota una interrupción del loop.
+1. **ElevenLabs**: `POST /api/tts` → if it is 200, `res.blob()` → `URL.createObjectURL` → `<audio>` → `play()`.
+2. **If anything fails** (network, timeout, rate limit, the browser cannot play the mp3) → **SpeechSynthesis** with the same text. The user never notices a break in the loop.
 
-Detalles del fallback nativo que conviene mantener:
+Native-fallback details worth keeping:
 
-- `window.speechSynthesis.cancel()` antes de hablar (por si quedó algo pendiente).
-- `utterance.lang = "es-419"` — español LATAM. Cambia al locale de tu audiencia.
+- `window.speechSynthesis.cancel()` before speaking (in case something was still pending).
+- `utterance.lang = "es-419"` — LATAM Spanish. Change it to your audience's locale.
 - `utterance.rate = 1`.
-- Limpieza en unmount: `audio.pause()` + `speechSynthesis.cancel()` (si no, el navegador sigue hablando después de desmontar el componente).
-- `URL.revokeObjectURL(url)` al terminar o fallar la reproducción (evita fugas de memoria en sesiones largas).
-- **Guard contra doble disparo** (`yaIntentadoRef`): evita reproducir dos veces por StrictMode/re-renders con el mismo texto, y se reinicia si cambia el texto (p. ej. un nuevo intento en la misma sesión).
-- Web Speech API es una feature del navegador: se chequea con `"speechSynthesis" in window` antes de usarla.
-- En iOS, SpeechSynthesis a veces exige gesto de usuario; como aquí se dispara desde un click, es suficiente.
+- Cleanup on unmount: `audio.pause()` + `speechSynthesis.cancel()` (otherwise the browser keeps speaking after the component unmounts).
+- `URL.revokeObjectURL(url)` when playback ends or fails (avoids memory leaks in long sessions).
+- **Guard against a double fire** (`yaIntentadoRef`): avoids playing twice because of StrictMode/re-renders with the same text, and resets if the text changes (for example a new attempt in the same session).
+- The Web Speech API is a browser feature: check `"speechSynthesis" in window` before using it.
+- On iOS, SpeechSynthesis sometimes requires a user gesture; because it is fired from a click here, that is enough.
 
-Estado interno del componente: `inactivo | cargando | hablando | error`, más la fuente en uso (`elevenlabs` vs `speechSynthesis`) para mostrar labels distintos ("Hablando (ElevenLabs)" vs "Hablando").
+Internal component state: `inactivo | cargando | hablando | error`, plus the source in use (`elevenlabs` vs `speechSynthesis`) so the labels can differ ("Speaking (ElevenLabs)" vs "Speaking").
 
 ---
 
-## 8. Cómo portarlo a otro proyecto (pasos)
+## 8. How to port it to another project (steps)
 
-### Paso 1 — Variables
+### Step 1 — Variables
 
-Crea `.env.local` (gitignored) y `.env.example` (commiteable) con las keys de la sección 3. Obtén key y Voice IDs en el dashboard de ElevenLabs.
+Create `.env.local` (gitignored) and `.env.example` (committable) with the keys from section 3. Get the key and the Voice IDs in the ElevenLabs dashboard.
 
-### Paso 2 — Cliente server genérico
+### Step 2 — Generic server client
 
-Copia el bloque de la sección 9.1 y renombra lo que quieras (`textToSpeech`, el tipo `Voz`, etc.). No toques: lectura de env, resolución de voz, headers, error con status, `arrayBuffer`.
+Copy the block from section 9.1 and rename what you want (`textToSpeech`, the `Voz` type, and so on). Leave these alone: env reading, voice resolution, headers, the error with status, `arrayBuffer`.
 
-### Paso 3 — API route
+### Step 3 — API route
 
-Copia el bloque de la sección 9.2. Cambia el nombre del campo de texto si tu contrato usa otro (`body.texto` aquí) y los mensajes de error.
+Copy the block from section 9.2. Change the text field name if your contract uses another (`body.texto` here) and the error messages.
 
-### Paso 4 — Componente de audio
+### Step 4 — Audio component
 
-Copia el bloque de la sección 9.3 (o directamente `ReproductorVeredicto.tsx` y cambia `veredicto` por tu prop). Ajústale el `lang` del fallback a tu audiencia.
+Copy the block from section 9.3 (or `ReproductorVeredicto.tsx` directly and change `veredicto` to your prop). Adjust the fallback `lang` to your audience.
 
-### Paso 5 — Probarlo sin la UI
+### Step 5 — Test it without the UI
+
+The request body below is unchanged. `"Hola, prueba de voz"` is sample speech in Spanish, not a pitch transcript.
 
 ```bash
-# desde el servidor (o curl a tu route con la key puesta en .env)
+# from the server (or curl your route with the key set in .env)
 curl -sS -X POST "https://api.elevenlabs.io/v1/text-to-speech/$ELEVENLABS_VOICE_ID_MALE" \
   -H "xi-api-key: $ELEVENLABS_API_KEY" \
   -H "Content-Type: application/json" \
@@ -208,13 +212,13 @@ curl -sS -X POST "https://api.elevenlabs.io/v1/text-to-speech/$ELEVENLABS_VOICE_
   --output prueba.mp3
 ```
 
-Si `prueba.mp3` pesa > 0 bytes y suena, el contrato está bien. Luego prueba `$ELEVENLABS_API_KEY=` vacío (o quita el Voice ID) y confirma que tu app degrada a SpeechSynthesis en vez de crashear.
+If `prueba.mp3` is larger than 0 bytes and it plays, the contract is right. Then try with `$ELEVENLABS_API_KEY=` empty (or remove the Voice ID) and confirm that your app degrades to SpeechSynthesis instead of crashing.
 
 ---
 
-## 9. Código genérico para copiar
+## 9. Generic code to copy
 
-### 9.1 Cliente server (`src/lib/elevenlabs.ts`)
+### 9.1 Server client (`src/lib/elevenlabs.ts`)
 
 ```ts
 export type VoiceGender = "male" | "female" | "random";
@@ -222,8 +226,8 @@ export type VoiceGender = "male" | "female" | "random";
 const ELEVENLABS_TTS_URL = (voiceId: string) =>
   `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
 
-/** Resuelve el voice_id según la preferencia. "random" elige entre las dos
- *  voces en cada llamada. Lanza si faltan los Voice IDs en el entorno. */
+/** Resolves the voice_id from the preference. "random" picks between the two
+ *  voices on each call. Throws if the Voice IDs are missing from the environment. */
 export function resolveVoiceId(gender: VoiceGender = "random"): {
   voiceId: string;
   gender: "male" | "female";
@@ -245,8 +249,8 @@ export function resolveVoiceId(gender: VoiceGender = "random"): {
   return { voiceId: resolved === "male" ? male : female, gender: resolved };
 }
 
-/** Llama a ElevenLabs y devuelve el audio como ArrayBuffer (mp3).
- *  Lanza si falla o si no hay API key — el caller decide el fallback. */
+/** Calls ElevenLabs and returns the audio as an ArrayBuffer (mp3).
+ *  Throws on failure or if there is no API key — the caller decides the fallback. */
 export async function textToSpeech(
   texto: string,
   gender: VoiceGender = "random",
@@ -312,8 +316,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Falta 'texto'" }, { status: 400 });
   }
 
-  // Timeout defensivo: si ElevenLabs tarda, fallar rápido y dejar que
-  // el cliente use su fallback.
+  // Defensive timeout: if ElevenLabs is slow, fail fast and let
+  // the client use its fallback.
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6000);
 
@@ -342,7 +346,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-### 9.3 Componente cliente (`AudioTexto.tsx`)
+### 9.3 Client component (`AudioTexto.tsx`)
 
 ```tsx
 "use client";
@@ -353,19 +357,19 @@ type Estado = "inactivo" | "cargando" | "hablando" | "error";
 type Fuente = "elevenlabs" | "speechSynthesis" | null;
 
 interface AudioTextoProps {
-  /** Texto a leer en voz alta. */
+  /** Text to read aloud. */
   texto: string;
-  /** Si se reproduce automáticamente al montar. Por defecto no: el usuario elige. */
+  /** Whether it plays automatically on mount. Default is no: the user chooses. */
   autoPlay?: boolean;
-  /** Se llama cuando termina de hablar (por cualquier fuente). */
+  /** Called when speaking ends (from either source). */
   onFinish?: () => void;
   className?: string;
 }
 
-/** Reproduce `texto` por voz.
- *  1. ElevenLabs vía /api/tts (voz elegida al azar).
- *  2. Si falla, tarda o el navegador no reproduce el audio:
- *     SpeechSynthesis nativa — fallback obligatorio, nunca se quita. */
+/** Plays `texto` by voice.
+ *  1. ElevenLabs via /api/tts (voice chosen at random).
+ *  2. If it fails, is slow, or the browser will not play the audio:
+ *     native SpeechSynthesis — mandatory fallback, never removed. */
 export function AudioTexto({
   texto,
   autoPlay = false,
@@ -383,9 +387,9 @@ export function AudioTexto({
         setEstado("error");
         return;
       }
-      window.speechSynthesis.cancel(); // por si quedó algo pendiente
+      window.speechSynthesis.cancel(); // in case something was still pending
       const utterance = new SpeechSynthesisUtterance(texto);
-      utterance.lang = "es-419"; // ← locale de tu audiencia
+      utterance.lang = "es-419"; // ← your audience's locale
       utterance.rate = 1;
       utterance.onstart = () => {
         setFuente("speechSynthesis");
@@ -444,8 +448,8 @@ export function AudioTexto({
 
         await audio.play();
       } catch (err) {
-        // Cualquier falla en ElevenLabs (red, rate limit, timeout,
-        // reproducción) cae aquí — nunca se deja al usuario sin audio.
+        // Any ElevenLabs failure (network, rate limit, timeout,
+        // playback) lands here — the user is never left without audio.
         console.warn("[AudioTexto] ElevenLabs falló, usando fallback:", err);
         hablarConSpeechSynthesis(texto);
       }
@@ -455,7 +459,7 @@ export function AudioTexto({
 
   useEffect(() => {
     if (!texto || !autoPlay) return;
-    // Evita doble disparo en StrictMode / re-renders con el mismo texto.
+    // Avoids a double fire in StrictMode / re-renders with the same text.
     if (yaIntentadoRef.current) return;
     yaIntentadoRef.current = true;
     reproducir(texto);
@@ -468,7 +472,7 @@ export function AudioTexto({
     };
   }, [texto, autoPlay, reproducir]);
 
-  // Si cambia el texto (nuevo intento en la misma sesión), permite reintentar.
+  // If the text changes (a new attempt in the same session), allow another try.
   useEffect(() => {
     yaIntentadoRef.current = false;
   }, [texto]);
@@ -496,68 +500,68 @@ export function AudioTexto({
 
 ---
 
-## 10. Flujo en Pitch Coach (para ubicar el código)
+## 10. Flow in Pitch Coach (where to find the code)
 
 ```
 DashboardResultado.tsx
   <ReproductorVeredicto veredicto={resultado.veredicto_corto} autoPlay={false} />
         │  click / autoPlay
         ▼
-ReproductorVeredicto.tsx            ← dominio: "veredicto", patrón genérico
+ReproductorVeredicto.tsx            ← domain: "veredicto", generic pattern
   POST /api/tts { texto, voz: "random" }
         │
         ▼
 route.ts (/api/tts)
-  valida body (400)
-  timeout defensivo 6 s (AbortController)
-  textToSpeech(...)                 ← el núcleo reusable
+  validate body (400)
+  defensive timeout 6 s (AbortController)
+  textToSpeech(...)                 ← the reusable core
   200 audio/mpeg + X-Voice-Gender  |  502 { error }
         │
         ▼
 elevenlabs.ts
-  ELEVENLABS_API_KEY  (solo aquí)
-  resolveVoiceId("random") → hombre o mujer
+  ELEVENLABS_API_KEY  (only here)
+  resolveVoiceId("random") → male or female
   POST text-to-speech/{voiceId} (eleven_multilingual_v2)
   arrayBuffer → mp3
         │
-        ▼  (si 502 / timeout / no reproduce)
-ReproductorVeredicto → SpeechSynthesis (es-419), mismo texto
+        ▼  (on 502 / timeout / will not play)
+ReproductorVeredicto → SpeechSynthesis (es-419), same text
 ```
 
-El análisis con IA no pasa por ElevenLabs. El STT sí: `POST /api/transcribir` reenvía el Blob a `POST https://api.elevenlabs.io/v1/speech-to-text` (`scribe_v2`, hint `es`). El audio no se escribe a disco ni se adjunta a logs o a Sentry. Si tu producto también necesita TTS de feedback generado por un LLM, el patrón de esta guía aplica: llama a tu endpoint de análisis primero y pásale al componente el texto corto que quieras leer.
+AI analysis does not go through ElevenLabs. STT does: `POST /api/transcribir` forwards the Blob to `POST https://api.elevenlabs.io/v1/speech-to-text` (`scribe_v2`, hint `es`). The audio is not written to disk and is not attached to logs or to Sentry. If your product also needs TTS for feedback generated by an LLM, the pattern in this guide applies: call your analysis endpoint first and pass the component the short text you want read aloud.
 
 ---
 
-## 11. Checklist al llevarlo a otro repo
+## 11. Checklist for taking it to another repo
 
-- [ ] `.env.local` con `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID_MALE`, `ELEVENLABS_VOICE_ID_FEMALE` (no commiteado).
-- [ ] `.env.example` con esas keys vacías y comentario de que son server-side.
-- [ ] Cliente de ElevenLabs importado **solo** desde API routes / server actions / server components.
-- [ ] Route con `runtime = "nodejs"` y timeout 6 s.
-- [ ] Sin key / sin Voice IDs → 502 claro, no 200 vacío.
-- [ ] Componente cliente con fallback SpeechSynthesis funcionando (prueba quitando la key).
-- [ ] `model_id` verificado contra la doc actual de ElevenLabs para tu idioma.
-- [ ] `lang` del fallback SpeechSynthesis alineado con tu audiencia (p. ej. `es-419`).
-- [ ] Limpieza en unmount (pause + cancel + revokeObjectURL).
-- [ ] Nada con prefijo `NEXT_PUBLIC_` para keys ni Voice IDs.
+- [ ] `.env.local` with `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID_MALE`, `ELEVENLABS_VOICE_ID_FEMALE` (not committed).
+- [ ] `.env.example` with those keys empty and a comment that they are server-side.
+- [ ] ElevenLabs client imported **only** from API routes / server actions / server components.
+- [ ] Route with `runtime = "nodejs"` and a 6 s timeout.
+- [ ] No key / no Voice IDs → a clear 502, not an empty 200.
+- [ ] Client component with a working SpeechSynthesis fallback (test by removing the key).
+- [ ] `model_id` checked against the current ElevenLabs docs for your language.
+- [ ] SpeechSynthesis fallback `lang` aligned with your audience (for example `es-419`).
+- [ ] Cleanup on unmount (pause + cancel + revokeObjectURL).
+- [ ] Nothing with a `NEXT_PUBLIC_` prefix for keys or Voice IDs.
 
 ---
 
-## 12. Referencia rápida
+## 12. Quick reference
 
-| Concepto | Valor en este repo |
+| Concept | Value in this repo |
 |---|---|
-| SDK | Ninguno (`fetch` + REST) |
+| SDK | None (`fetch` + REST) |
 | Base URL | `https://api.elevenlabs.io/v1` |
-| Método | `POST /text-to-speech/{voiceId}` (no-streaming) |
-| Auth | Header `xi-api-key` (env server-side) |
-| Model | `eleven_multilingual_v2` (verificar vigencia) |
+| Method | `POST /text-to-speech/{voiceId}` (non-streaming) |
+| Auth | Header `xi-api-key` (server-side env) |
+| Model | `eleven_multilingual_v2` (check that it is still current) |
 | Voice settings | `stability: 0.5`, `similarity_boost: 0.75` |
-| Selección de voz | `"male"` / `"female"` / `"random"` (random = 50/50) |
-| Respuesta | `audio/mpeg` (ArrayBuffer) |
-| Header útil | `X-Voice-Gender` (qué voz habló) |
-| Timeout | 6 s (route y fetch del cliente) |
-| Fallback | SpeechSynthesis `es-419`, siempre activo |
-| Errores al usuario | `400` body malo · `502` fallo de ElevenLabs |
+| Voice selection | `"male"` / `"female"` / `"random"` (random = 50/50) |
+| Response | `audio/mpeg` (ArrayBuffer) |
+| Useful header | `X-Voice-Gender` (which voice spoke) |
+| Timeout | 6 s (route and client fetch) |
+| Fallback | SpeechSynthesis `es-419`, always on |
+| Errors to the user | `400` bad body · `502` ElevenLabs failure |
 
-Fuente de verdad del cliente: [`src/lib/elevenlabs.ts`](../src/lib/elevenlabs.ts), [`src/app/api/tts/route.ts`](../src/app/api/tts/route.ts) y [`src/components/ReproductorVeredicto.tsx`](../src/components/ReproductorVeredicto.tsx).
+Source of truth for the client: [`src/lib/elevenlabs.ts`](../src/lib/elevenlabs.ts), [`src/app/api/tts/route.ts`](../src/app/api/tts/route.ts), and [`src/components/ReproductorVeredicto.tsx`](../src/components/ReproductorVeredicto.tsx).

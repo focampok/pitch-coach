@@ -1,113 +1,112 @@
 # Pitch Coach
 
-## 1. Problema
+## 1. Problem
 
-Practicar un pitch normalmente se hace frente a un espejo, grabándose en el celular, o frente a otras personas — sin retroalimentación estructurada, sin medir muletillas, sin verificar si realmente se cubrieron los puntos clave según el tipo de pitch (capital, educación, innovación, tecnología).
+Practicing a pitch is usually done in front of a mirror, by recording on a phone, or in front of other people — with no structured feedback, no measurement of filler words, and no check of whether the key points were actually covered for the pitch type (capital, educacion, innovacion, tecnologia).
 
-El feedback existente es subjetivo, tardío o inexistente. No hay una forma rápida de practicar en voz alta y recibir una evaluación objetiva e inmediata.
+Existing feedback is subjective, late, or absent. There is no fast way to practice out loud and receive an objective, immediate evaluation.
 
-## 2. Concepto
+## 2. Concept
 
-**Pitch Coach** es una herramienta de práctica de pitch. El usuario habla en voz alta frente al micrófono, el sistema transcribe, analiza el contenido contra una rúbrica según el tipo elegido, detecta muletillas y muestra un dashboard con el detalle. El usuario puede escuchar un veredicto corto cuando quiera. La interfaz muestra un **indicador de estado del coach** en texto mientras se graba y se transcribe (ver §5.1).
+**Pitch Coach** is a pitch-practice tool. The user speaks out loud into the microphone, the system transcribes, analyzes the content against a rubric for the chosen type, detects filler words, and shows a dashboard with the detail. The user can listen to a short verdict whenever they want. The interface shows a **coach status indicator** in text while recording and transcribing, and the signal ring `AnilloSenal` reacts to the audio (see §5.1).
 
-La idea central:
+The central idea:
 
-> Practica en voz alta. Recibe feedback concreto — escrito primero, hablado si lo pides — como si un coach te estuviera escuchando.
+> Practice out loud. Get concrete feedback — written first, spoken if you ask for it — as if a coach were listening.
 
-## 3. Usuario objetivo
+## 3. Target user
 
-Builders, emprendedores, estudiantes y profesionales que necesitan preparar un pitch — de capital, educativo, de innovación o técnico — y quieren practicar con retroalimentación objetiva antes de presentar frente a una audiencia real. Mercado: **LATAM**, con interfaz y feedback en **español e inglés** (§15).
+Builders, founders, students, and professionals who need to prepare a pitch — capital, education, innovation, or technical — and want to practice with objective feedback before presenting to a real audience. Market: **LATAM**, with interface and feedback in **Spanish and English** (§15).
 
-## 4. Experiencia principal (loop del usuario)
+## 4. Main experience (user loop)
 
-1. El usuario elige el **tipo de pitch** (capital / educación / innovación / tecnología) y la **duración máxima**, mediante presets de 1 a 7 minutos.
-2. Presiona grabar y **pitchea en voz alta**. La grabación se **corta automáticamente** al alcanzar la duración máxima.
-3. El sistema **graba el audio** (MediaRecorder) y, al detener, **lo transcribe** en el servidor (ElevenLabs Scribe). Mientras graba, la interfaz muestra el indicador `Escuchando…`; las muletillas se cuentan sobre la transcripción final — ver §5.1.
-4. El sistema analiza la transcripción:
-   - Detecta **muletillas** (conteo por palabra/frase).
-   - Evalúa el contenido contra la **rúbrica del tipo elegido**.
-   - Genera un **score** y un **veredicto breve**.
-5. El **dashboard muestra el detalle** en texto: transcripción con muletillas resaltadas, puntos de rúbrica, score y tiempo usado. Si el pitch se grabó (no se escribió a mano), se puede **descargar un guion** en texto plano con marcas de tiempo por frase (`[mm:ss.cc]`).
-6. El usuario **puede escuchar al coach**: el `veredicto_corto` se convierte a voz (ElevenLabs, con fallback a SpeechSynthesis). No se reproduce solo al terminar el análisis.
-7. Si quiere más rigor, puede pedir **Análisis Ultra**: se reanaliza la misma transcripción con Nemotron Ultra (razonamiento activo). El resultado se muestra además del estándar, etiquetado, con una **traza** (log de 4–8 pasos: qué buscó, qué halló o faltó).
-8. Si quedó al menos un punto de rúbrica sin cubrir, puede **resolver hallazgos**: hasta 3 preguntas de seguimiento (una por punto no cumplido, en orden de rúbrica). Cada pregunta aparece en texto; el usuario puede escucharla (misma voz de la sesión) si quiere. Tras cada respuesta recibe feedback; al final ve cuántos hallazgos resolvió.
+1. The user chooses the **pitch type** (capital / educacion / innovacion / tecnologia) and the **maximum duration**, from presets of 1 to 7 minutes.
+2. They press record and **pitch out loud**. The recording **stops automatically** when it reaches the maximum duration.
+3. The system **records the audio** (MediaRecorder) and, on stop, **transcribes it** on the server (ElevenLabs Scribe). While recording, the interface shows the indicator `Listening…` in English (the session dictionary supplies the string); filler words are counted on the final transcript — see §5.1.
+4. The system analyzes the transcript:
+   - Detects **filler words** (count by word/phrase).
+   - Evaluates the content against the **rubric of the chosen type**.
+   - Generates a **score** and a **short verdict**. The model does not set the score.
+5. The **dashboard shows the detail** in text: transcript with filler words highlighted, rubric points, score, and time used. If the pitch was recorded (not typed by hand), a **script can be downloaded** as plain text with a time mark per sentence (`[mm:ss.cc]`).
+6. The user **can listen to the coach**: `veredicto_corto` is turned into speech (ElevenLabs, with fallback to SpeechSynthesis). It does not play by itself when analysis finishes.
+7. If they want more rigor, they can ask for **Ultra analysis**: the same transcript is re-analyzed with Nemotron Ultra (reasoning on). The result is shown in addition to the standard one, labeled, with a **trace** (a log of 4–8 steps: what it looked for, what it found or missed).
+8. If at least one rubric point was left uncovered, they can **resolve findings**: up to 3 follow-up questions (one per missed point, in rubric order). Each question appears in text; the user can listen to it (the same voice as the session) if they want. After each answer they receive feedback; at the end they see how many findings they resolved.
 
-## 5. Modelo híbrido (voz + visual)
+## 5. Hybrid model (voice + visual)
 
-Se **practica en voz** y el resultado se ve y se puede oír:
+Practice is **in voice**, and the result is seen and can be heard:
 
-- **Canal visual:** durante la grabación, indicador de estado + cronómetro. Al terminar, transcripción, dashboard con rúbrica, score y muletillas. Es el canal principal del resultado.
-- **Canal auditivo (a pedido):** el usuario pulsa "Escuchar veredicto". Si ElevenLabs falla, SpeechSynthesis cubre; si ambos fallan, el dashboard sigue ahí.
+- **Visual channel:** during recording, status indicator + signal ring + timer. When it finishes, transcript, dashboard with rubric, score, and filler words. This is the main channel of the result.
+- **Auditory channel (on request):** the user presses "Listen to the verdict". If ElevenLabs fails, SpeechSynthesis covers it; if both fail, the dashboard is still there.
 
-Nunca se depende de un solo canal.
+The product never depends on a single channel.
 
-### 5.1 Indicador de estado del coach (temporal)
+### 5.1 Coach status indicator
 
-El **avatar reactivo fue eliminado**. El flujo actual es grabar → transcribir → analizar, así que no hay resultados intermedios sobre los que reaccionar: el avatar solo tenía dos estados reales (`escuchando` y `asintiendo`). En su lugar hay un **indicador de texto simple**, sin animación ni diseño visual nuevo:
+The **reactive avatar was removed**. The current flow is record → transcribe → analyze, so there are no intermediate results to react to: the avatar only had two real states (`escuchando` and `asintiendo`). In its place, the live measurement is the signal ring `AnilloSenal` (rest, live, settled), and a **short text status** still reports the moment. There is no reaction engine and no live STT.
 
-| Estado | Texto | Cuándo |
+| State | Text | When |
 |---|---|---|
-| Grabando | `Escuchando…` | mientras se graba el pitch |
-| Transcribiendo | `Transcribiendo…` | mientras el servidor transcribe (Scribe) |
-| Finalizado | una de las **3 frases de `MENSAJES_ASINTIENDO`** | al llegar la transcripción (o el texto de respaldo) |
+| Recording | `Listening…` (session dictionary) | while the pitch is being recorded |
+| Transcribing | `Transcribing…` (session dictionary) | while the server transcribes (Scribe) |
+| Finished | one of the **3 `MENSAJES_ASINTIENDO` phrases** | when the transcript (or the fallback text) arrives |
 
-Los textos salen del diccionario de la sesión (`es` / `en`); la frase final se elige al azar entre tres. Aplica igual al flujo principal de pitch y a **"Resolver hallazgos"**, que reusa el mismo grabador.
+The strings come from the session dictionary (`es` / `en`); the final phrase is chosen at random from three. The same applies to the main pitch flow and to **"Resolve findings"**, which reuses the same recorder.
 
-**Es un estado temporal.** El reemplazo visual —un indicador en vivo que reacciona al audio— está planificado para la fase de **UX/UI**. La dirección ya registrada en [`docs/referencias-ui/`](referencias-ui/README.md) es explícita: **no** un orbe/esfera brillante, sino un motivo de datos (barras, anillo geométrico o línea de señal) con un solo matiz. No hay motor de reacciones ni estados reservados: el STT en vivo (Scribe Realtime) sigue fuera de alcance y no tiene fecha de calendario.
+The ring is the live signal: 72px while recording, with no number, and 148px on the result, where the same arc is the score. It is one hue, not an orb. Live STT (Scribe Realtime) stays out of scope and has no calendar date. Direction: [`docs/referencias-ui/`](referencias-ui/README.md).
 
-#### Reglas
+#### Rules
 
-- **Sin animación nueva** por ahora: el lenguaje visual del coach lo define la fase de UX/UI.
-- **El resultado sigue siendo el dashboard**, más el canal auditivo a pedido (TTS). El indicador no es un canal de feedback.
-- **El humor va en el copy, no en el dibujo** (ej. "ese 'o sea' sonó fuerte — van 12").
+- **The result is still the dashboard**, plus the auditory channel on request (TTS). The indicator is not a feedback channel.
+- **Humor lives in the copy, not in the drawing** (for example, "that 'you know' landed hard — that's 12").
 
-## 6. Rúbricas por tipo de pitch
+## 6. Rubrics by pitch type
 
-Cada tipo tiene 5 puntos fijos que la IA busca en la transcripción. Van **hardcodeadas**; no hay rúbricas custom en esta versión.
+Each type has 5 fixed points the model looks for in the transcript. They are **hardcoded**; there are no custom rubrics in this version. The four types weigh the same.
 
-Cada punto tiene un **id estable** —es lo que viaja por la API y lo que se guarda en el historial— y su nombre y descripción "qué buscar" traducidos a cada idioma. Traducir un punto no invalida los datos ya guardados. Los ids por tipo están en §15; los nombres de abajo son los del español.
+Each point has a **stable id** — that is what travels through the API and what is stored in history — and a name and a "what to look for" description translated into each language. Translating a point does not invalidate data already stored. The ids per type are in §15; the names below are the English ones.
 
 ### Capital
-1. Problema claro
-2. Tamaño del mercado / oportunidad
-3. Solución / diferenciador
-4. Tracción o evidencia (datos, usuarios, ingresos)
-5. El "ask" (cuánto capital se busca y para qué)
+1. Clear problem
+2. Market size / opportunity
+3. Solution / differentiator
+4. Traction or evidence (data, users, revenue)
+5. The "ask" (how much capital is sought and what for)
 
-### Educación
-1. Objetivo de aprendizaje claro
-2. Estructura pedagógica (inicio, desarrollo, cierre)
-3. Ejemplo o caso concreto que ilustra el concepto
-4. Conexión con el conocimiento previo de la audiencia
-5. Llamado a la acción o siguiente paso para el aprendiz
+### Education
+1. Clear learning goal
+2. Pedagogical structure (opening, development, close)
+3. Concrete example or case that illustrates the concept
+4. Connection to the audience's prior knowledge
+5. Call to action or next step for the learner
 
-### Innovación
-1. Problema u oportunidad identificada
-2. Qué hace diferente/innovador a la propuesta
-3. Evidencia de validación (aunque sea temprana)
-4. Impacto esperado
-5. Próximos pasos o visión a futuro
+### Innovation
+1. Identified problem or opportunity
+2. What makes the proposal different or innovative
+3. Evidence of validation (even if early)
+4. Expected impact
+5. Next steps or vision of the future
 
-### Tecnología
-1. Problema técnico que resuelve
-2. Cómo funciona (sin perderse en jerga excesiva)
-3. Diferenciador técnico real (qué lo hace difícil de replicar)
-4. Estado actual (funcional, en desarrollo, escalabilidad)
-5. Uso de recursos o stack relevante mencionado con claridad
+### Technology
+1. Technical problem it solves
+2. How it works (without getting lost in excessive jargon)
+3. Real technical differentiator (what makes it hard to replicate)
+4. Current status (working, in development, scalability)
+5. Relevant resources or stack, mentioned clearly
 
-## 7. Duración máxima del pitch
+## 7. Maximum pitch duration
 
-Presets fijos: **1, 2, 3, 4, 5, 6 o 7 minutos**. No hay valor libre.
+Fixed presets: **1, 2, 3, 4, 5, 6, or 7 minutes**. There is no free value.
 
-- La grabación **se corta automáticamente** al llegar al límite.
-- El tiempo real vs. el máximo **entra como contexto del LLM** (¿se acabó el tiempo antes del ask? ¿sobraron minutos?).
-- El dashboard muestra el tiempo usado vs. el máximo.
+- The recording **stops automatically** when it reaches the limit.
+- Real time versus the maximum **enters as LLM context** (did time run out before the ask? were there minutes left?).
+- The dashboard shows time used versus the maximum.
 
-## 8. Detección de muletillas
+## 8. Filler-word detection
 
-No requiere IA: regex / keyword count sobre la transcripción.
+It does not require AI: regex / keyword count on the transcript.
 
-Lista base:
+Base list (Spanish patterns):
 
 - "eeee" / "ehh"
 - "o sea"
@@ -118,96 +117,97 @@ Lista base:
 - "digamos"
 - "en ese sentido"
 
-La implementación en español tiene **21 patrones** (oratoria LATAM) y umbral ≥3 para "pues" y "bueno". La misma lista (`PATRONES_MULETILLAS`) sirve para el conteo y para el resaltado. "eeee / ehh" solo cuenta si Scribe escribe el relleno.
+The Spanish implementation has **21 patterns** (LATAM public speaking) and a threshold of ≥3 for "pues" and "bueno". The same list (`PATRONES_MULETILLAS`) is used for the count and for the highlight. "eeee / ehh" counts only if Scribe writes the filler.
 
-En inglés, `patronesMuletillas("en")`: "um", "uh", "you know", "I mean", "actually", "basically", "kind of" / "sort of", más "well", "like", "so" y "right?" con contexto. "like", "so" y "right" no se marcan por la palabra suelta (tienen uso legítimo: "I like", "and so on", "the right market", "right now"). Se marcan al inicio de cláusula, entre comas, repetidas, o —"right"— como coletilla ("right?"). "um" / "uh" tienen la misma limitación que "eeee": dependen de que Scribe las transcriba. "you know" puede coincidir con "do you know"; es un falso positivo conocido, del mismo tipo que "este" en español. El análisis y el resaltado usan el idioma de la sesión.
+In English, `patronesMuletillas("en")`: "um", "uh", "you know", "I mean", "actually", "basically", "kind of" / "sort of", plus "well", "like", "so", and "right?" with context. "like", "so", and "right" are not marked from the bare word (they have legitimate uses: "I like", "and so on", "the right market", "right now"). They are marked at the start of a clause, between commas, when repeated, or — "right" — as a tag ("right?"). "um" / "uh" have the same limitation as "eeee": they depend on Scribe transcribing them. "you know" can match "do you know"; that is a known false positive, the same kind as "este" in Spanish. Analysis and highlighting use the session language.
 
-## 9. Alcance actual
+## 9. Current scope
 
-Ciclo completo:
+Full cycle:
 
-**tipo de pitch + duración máxima → grabación (corte automático) → transcripción → análisis (muletillas + rúbrica + tiempo) → dashboard + veredicto a pedido → [opcional] Análisis Ultra y/o resolver hallazgos**
+**pitch type + maximum duration → recording (automatic stop) → transcription → analysis (filler words + rubric + time) → dashboard + verdict on request → [optional] Ultra analysis and/or resolve findings**
 
-- [x] Selector de tipo de pitch (4 opciones fijas).
-- [x] Selector de duración máxima (presets de 1 a 7 minutos).
-- [x] Grabación con corte automático.
-- [x] Transcripción (MediaRecorder + ElevenLabs Scribe, con texto de respaldo si no hay micrófono).
-- [x] Detección de muletillas por conteo.
-- [x] Evaluación contra rúbrica vía el proveedor activo (Nebius por defecto; Gemini de contingencia). JSON estructurado.
-- [x] Veredicto en voz (ElevenLabs, fallback SpeechSynthesis), a pedido.
-- [x] Dashboard: transcripción, muletillas resaltadas, rúbrica, score.
-- [x] Indicador de estado del coach en texto (`Escuchando…` / `Transcribiendo…` / 3 frases al terminar), §5.1. El reemplazo visual (indicador en vivo, no un orbe) queda para la fase de UX/UI.
-- [x] Sesión anónima, sin login.
-- [x] Análisis Ultra: reanálisis de la misma transcripción con razonamiento extendido (Nemotron Ultra).
-- [x] Resolver hallazgos: hasta 3 preguntas de seguimiento sobre puntos no cumplidos (orden de rúbrica), texto + escuchar a pedido, respuesta por voz o texto de respaldo.
-- [x] Historial local y panel "Tu progreso": las últimas 20 prácticas de este navegador (fecha, tipo, duración, score, claridad, rúbrica sin comentario, conteo de muletillas, si se usó Ultra, si se completó el resumen de hallazgos, y el delta de cobertura contra la práctica anterior del mismo tipo e idioma). No hay cuentas ni copia en servidor.
-- [x] Sala pública: una objeción con fuente, sobre el primer punto no cumplido, según el tipo (panel de inversión, aula, comité de innovación, comprador técnico). Los ids de la rúbrica no cambian.
-- [x] Cifras dichas: si el pitch ya trae una cifra, Tavily busca una fuente del mismo orden. Si no hay, el dashboard dice que no se halló fuente. Eso no castiga el punto.
-- [x] Segunda toma: 45 segundos sobre un punto no cumplido. Si queda cubierto, el historial local guarda el id en `puntosCerrados`, sin el texto de la toma.
-- [x] Línea de tiempo: con marcas de Scribe, los puntos cubiertos se ubican sobre el audio.
+- [x] Pitch-type selector (4 fixed options, equal weight: capital, educacion, innovacion, tecnologia).
+- [x] Maximum-duration selector (presets from 1 to 7 minutes).
+- [x] Recording with automatic stop.
+- [x] Transcription (MediaRecorder + ElevenLabs Scribe, with fallback text if there is no microphone).
+- [x] Filler-word detection by count.
+- [x] Evaluation against the rubric through the active provider (Nebius by default; Gemini as contingency). Structured JSON. The model does not set the score.
+- [x] Spoken verdict (ElevenLabs, SpeechSynthesis fallback), on request.
+- [x] Dashboard: transcript, highlighted filler words, rubric, score.
+- [x] Coach status: session-language text (`Listening…` / `Transcribing…` / 3 phrases when it finishes) and the signal ring `AnilloSenal`, §5.1. Live STT stays out of scope.
+- [x] Anonymous session, no login, no accounts.
+- [x] Ultra analysis: re-analysis of the same transcript with extended reasoning (Nemotron Ultra), opt-in, with a 4–8 step trace.
+- [x] Resolve findings: up to 3 follow-up questions on missed points (rubric order), text + listen on request, answer by voice or fallback text. Nano.
+- [x] Local history and the "Your progress" panel: the last 20 practices of this browser (date, type, duration, score, clarity, rubric without the comment, filler-word count, whether Ultra was used, whether the findings summary was completed, and the coverage delta against the previous practice of the same type and language). No transcript is stored. There are no accounts and no server copy.
+- [x] Public room: one sourced objection, on the first missed point, according to the type (investment panel, classroom, innovation committee, technical buyer). Rubric ids do not change.
+- [x] Spoken figures: if the pitch already states a figure, Tavily looks for a source of the same order. If none is found, the dashboard says so. That does not penalize the point.
+- [x] Second take: `POST /api/segunda-toma`, 45 seconds on one missed point. If it is covered, local history stores the id in `puntosCerrados` and does not store the retake text. The next practice of the same type and language does not remind that closed point.
+- [x] Timeline: `POST /api/linea-tiempo`. With Scribe word timestamps, Nano places covered rubric points on the audio.
 
-## 10. Fuera de esta versión
+## 10. Out of this version
 
-- Sistema de usuarios, login o perfiles.
-- Persistencia en servidor y sincronización entre navegadores o dispositivos. El historial que sí existe es local (`localStorage` de este navegador) y no guarda transcripción, comentarios, traza de Ultra, preguntas, respuestas ni audio.
-- Comparar dos intentos en la misma sesión.
-- Edición o creación de rúbricas custom.
-- Idiomas nuevos más allá de español e inglés (§15).
-- Animación del coach más allá del indicador de texto (el indicador en vivo): la define la fase de UX/UI, con la dirección anti-orbe de `docs/referencias-ui/`.
-- Análisis de video, lenguaje corporal o expresión facial.
-- Animación del coach más elaborada ("talking head", 3D).
-- Backend separado — todo corre en Next.js con API routes.
+- User system, login, or profiles.
+- Server persistence and sync across browsers or devices. The history that does exist is local (`localStorage` of this browser) and does not store the transcript, comments, the Ultra trace, questions, answers, or audio.
+- Comparing two attempts in the same session.
+- Editing or creating custom rubrics.
+- New languages beyond Spanish and English (§15).
+- Live STT (Scribe Realtime). No calendar date.
+- A more elaborate coach animation ("talking head", 3D).
+- Video analysis, body language, or facial expression.
+- A separate backend — everything runs in Next.js with API routes.
+- Docker for local development. The `Dockerfile` is for the Railway deploy only.
 
-## 11. Qué debe ser evidente al usarlo
+## 11. What must be evident when using it
 
-- El usuario pitcheó en voz alta (no un texto pre-cargado).
-- La transcripción corresponde a lo dicho.
-- Las muletillas son específicas, no genéricas.
-- La rúbrica marca puntos concretos cubiertos y faltantes.
-- El dashboard y el veredicto hablado (si se escucha) coinciden.
-- El indicador de estado refleja el momento real del flujo (grabando / transcribiendo / listo) y la transcripción aparece al terminar.
-- Si pide Análisis Ultra, ve un segundo resultado etiquetado (con traza de razonamiento), no un reemplazo del primero.
-- Si hay puntos sin cubrir, puede resolver hallazgos (máx. 3) y ve cuántos resolvió.
-- "Tu progreso" lista intentos de este navegador (score y cobertura) sin mostrar la transcripción ni los comentarios. Si hay una práctica anterior del mismo tipo e idioma, dice qué puntos se cerraron o se abrieron.
-- Si hay un punto sin cubrir, se puede grabar una segunda toma de 45 segundos. Si queda cubierto, la rúbrica de esa sesión lo marca.
-- Si el audio trae marcas de tiempo, se ve en qué tramo cayó cada punto cubierto.
-- Si Tavily encuentra una objeción de la sala o una fuente para una cifra dicha, se ve el enlace. Si no hay fuente para la cifra dicha, se dice eso y el punto no se castiga.
+- The user pitched out loud (not a preloaded text).
+- The transcript matches what was said.
+- The filler words are specific, not generic.
+- The rubric marks concrete points covered and missing.
+- The dashboard and the spoken verdict (if it is heard) match.
+- The status indicator reflects the real moment of the flow (recording / transcribing / ready) and the transcript appears when it finishes.
+- If they ask for Ultra analysis, they see a second labeled result (with a reasoning trace), not a replacement of the first.
+- If there are uncovered points, they can resolve findings (max 3) and see how many they resolved.
+- "Your progress" lists attempts from this browser (score and coverage) without showing the transcript or the comments. If there is a previous practice of the same type and language, it says which points closed or opened.
+- If there is an uncovered point, a 45-second second take can be recorded. If it ends covered, that session's rubric marks it.
+- If the audio has time marks, it is visible which stretch each covered point fell on.
+- If Tavily finds a room objection or a source for a spoken figure, the link is visible. If there is no source for the spoken figure, that is said and the point is not penalized.
 
-## 12. Servicios externos
+## 12. External services
 
-Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
+All keys live server-side (API routes). None are exposed to the client.
 
-- **Nebius Token Factory** — análisis del pitch por defecto (Nemotron Super). Ultra usa Nemotron Ultra; sparring usa Nemotron Nano.
-- **Gemini** — respaldo manual de contingencia (`MODEL_PROVIDER=gemini`). Ignora el nivel (`estandar` / `ultra` / `rapido`).
-- **ElevenLabs** — TTS del veredicto y de las preguntas de sparring (SpeechSynthesis es fallback obligatorio) y **STT (Scribe)** de la grabación. El audio del usuario no se escribe a disco ni se adjunta a logs o a Sentry.
-- **Tavily** — enriquecimiento opcional. Si un punto de rúbrica no se cumplió, busca una estadística y, para el primero de esos puntos, una objeción de la sala pública de ese tipo. Si el pitch ya dijo una cifra, busca una fuente del mismo orden. La transcripción no se envía. Si no hay key o falla, el resto de la UI no se rompe.
+- **Nebius Token Factory** — default pitch analysis (Nemotron Super analyzes every take). Ultra uses Nemotron Ultra; Nano handles sparring, short entities, search-query writing, citation checks, the public-room objection, the check on one figure the speaker already said, the timeline of covered points, and the 45-second retake.
+- **Gemini** — manual contingency fallback (`MODEL_PROVIDER=gemini`). Ignores the level (`estandar` / `ultra` / `rapido`).
+- **ElevenLabs** — TTS of the verdict and of the sparring questions (SpeechSynthesis is a mandatory fallback) and **STT (Scribe)** of the recording. The user's audio is not written to disk and is not attached to logs or to Sentry.
+- **Tavily** — optional enrichment, `POST /api/enriquecer`. The transcript is never sent. At most two missed rubric points get a cited figure (`MAX_PUNTOS_ENRIQUECIDOS`). The same call also fetches one public-room objection for the first missed point and checks one figure the speaker already said. The room follows the type: investment panel, classroom, innovation committee, technical buyer. Rubric ids do not change. If no source of the same order is found, the dashboard says so and does not penalize the point. If there is no key or Tavily fails, the rest of the UI continues.
 
-## 13. Stack técnico
+## 13. Technical stack
 
-### Frontend + backend (proyecto único)
-- **Next.js** (React) con **API routes**. Las keys no salen del servidor.
+### Frontend + backend (single project)
+- **Next.js** (React) with **API routes**. Keys do not leave the server.
 - **Tailwind CSS**.
 
-### Voz → texto (STT)
-- **MediaRecorder** en el cliente (Chrome, Firefox, Safari, Brave, móvil) y **ElevenLabs Scribe** (`POST /v1/speech-to-text`, `scribe_v2`) en `/api/transcribir`.
-- Flujo de esta fase: grabar → detener → transcribir → mostrar el texto completo. Sin palabra por palabra en vivo.
-- Scribe se pide con `timestamps_granularity=word`. El análisis sigue usando solo el texto plano; las marcas `words[].start/end` (segundos) se conservan en el cliente para el **guion descargable** (una línea por oración o pausa ≥ 0.6 s). El texto de respaldo no tiene marcas: el botón no aparece.
-- Scribe acepta `audio/webm` (Chrome/Firefox) y `audio/mp4` (Safari) sin transcodificar.
-- Si `getUserMedia` no existe o el permiso se niega, hay un **campo de texto de respaldo** (pitch principal y Resolver hallazgos).
-- El audio se procesa **en memoria** y se descarta al obtener el texto: no se escribe a disco ni se adjunta a logs, breadcrumbs o Sentry.
+### Voice → text (STT)
+- **MediaRecorder** on the client (Chrome, Firefox, Safari, Brave, mobile) and **ElevenLabs Scribe** (`POST /v1/speech-to-text`, `scribe_v2`) at `/api/transcribir`.
+- Flow of this phase: record → stop → transcribe → show the full text. No live word by word.
+- Scribe is requested with `timestamps_granularity=word`. Analysis still uses only the plain text; the `words[].start/end` marks (seconds) are kept on the client for the **downloadable script** (one line per sentence or pause ≥ 0.6 s). Fallback text has no marks: the button does not appear.
+- Scribe accepts `audio/webm` (Chrome/Firefox) and `audio/mp4` (Safari) without transcoding.
+- If `getUserMedia` does not exist or permission is denied, there is a **fallback text field** (main pitch and Resolve findings).
+- Audio is processed **in memory** and discarded once the text is obtained: it is not written to disk and is not attached to logs, breadcrumbs, or Sentry.
 
-### Análisis (LLM)
-- **Nebius Token Factory** por defecto (Nemotron Super / Ultra / Nano según el
-  nivel). Gemini sigue disponible como contingencia.
-- El prompt recibe transcripción + tipo + rúbrica + tiempo real vs. máximo, y el
-  **idioma** de la petición: las instrucciones y la salida van en ese idioma
-  (§15). La transcripción se marca como **dato no confiable** entre delimitadores,
-  que no se traducen.
-- El modelo devuelve **solo** esta porción, en **JSON estructurado**:
+### Analysis (LLM)
+- **Nebius Token Factory** by default (Nemotron Super / Ultra / Nano according to
+  the level). Gemini remains available as contingency.
+- The prompt receives transcript + type + rubric + real time versus maximum, and
+  the request **idioma**: the instructions and the output are in that language
+  (§15). The transcript is marked as **untrusted data** between delimiters,
+  which are not translated.
+- The model returns **only** this portion, as **structured JSON**:
 
 ```json
 {
-  "veredicto_corto": "Buen manejo del problema, pero te faltó mencionar el ask de capital.",
+  "veredicto_corto": "Clear handling of the problem, but you never stated the capital ask.",
   "claridad": 15,
   "rubrica": [
     { "cumplido": true, "comentario": "..." },
@@ -216,139 +216,144 @@ Todas las keys viven server-side (API routes). Ninguna se expone al cliente.
 }
 ```
 
-En Análisis Ultra el modelo añade `"traza": ["paso 1", "..."]` (4 a 8 pasos de
-razonamiento). El análisis estándar no la pide.
+In Ultra analysis the model adds `"traza": ["step 1", "..."]` (4 to 8 reasoning
+steps). Standard analysis does not ask for it.
 
-- El modelo **no** calcula el score, **no** nombra los puntos y **no** cuenta
-  muletillas. El servidor asigna el **id** de cada punto desde la rúbrica por
-  índice, calcula el score (`clamp(round(cumplidos / total * 80) + clamp(claridad, 0, 20), 0, 100)`)
-  y cuenta las muletillas con `src/lib/muletillas.ts`.
+- The model **does not** calculate the score, **does not** name the points, and
+  **does not** count filler words. The server assigns each point's **id** from
+  the rubric by index, calculates the score
+  (`clamp(round(cumplidos / total * 80) + clamp(claridad, 0, 20), 0, 100)`),
+  and counts filler words with `src/lib/muletillas.ts`.
 
-### Resolver hallazgos (interno: sparring)
-- Si hay puntos con `cumplido: false`, se ofrecen hasta 3 preguntas (los
-  primeros en el orden de la rúbrica).
-- Cada pregunta se genera y cada respuesta se evalúa con el nivel `rapido`
-  (Nano). El modelo de evaluación devuelve solo `{ cumplido, comentario }`.
-- La pregunta se muestra en texto. El usuario puede pulsar "Escuchar pregunta"
-  (misma voz de ElevenLabs de la sesión); no se reproduce sola.
-- El usuario responde por voz (mismo grabador) o con el texto de respaldo si no hay micrófono.
+### Resolve findings (internal: sparring)
+- If there are points with `cumplido: false`, up to 3 questions are offered (the
+  first ones in rubric order).
+- Each question is generated and each answer is evaluated at level `rapido`
+  (Nano). The evaluation model returns only `{ cumplido, comentario }`.
+- The question is shown in text. The user can press "Listen to the question"
+  (the same ElevenLabs voice as the session); it does not play by itself.
+- The user answers by voice (the same recorder) or with the fallback text if there is no microphone.
 
-### Texto → voz (TTS)
-- **ElevenLabs** como primera opción (voz natural). La voz se reutiliza en el
-  sparring de la misma sesión: el género queda fijo y el idioma elige el par
-  de Voice IDs (§15).
-- **SpeechSynthesis** nativa como fallback: si ElevenLabs falla o tarda, el loop no se corta.
+### Text → voice (TTS)
+- **ElevenLabs** as the first option (natural voice). The voice is reused in
+  sparring of the same session: gender stays fixed and the language chooses the
+  Voice ID pair (§15).
+- Native **SpeechSynthesis** as fallback: if ElevenLabs fails or is slow, the loop does not stop.
 
-### Muletillas
-- Regex / keyword matching. No requiere LLM.
+### Filler words
+- Regex / keyword matching. Does not require an LLM.
 
-### Indicador del coach
-- Texto plano en el idioma de la sesión (`Escuchando…` / `Transcribiendo…` / frase de asintiendo). Sin SVG, sin animación. §5.1.
+### Coach indicator
+- Signal ring `AnilloSenal` plus plain text in the session language (`Listening…` / `Transcribing…` / an assenting phrase). §5.1.
 
 ### Deploy
-- Un solo servicio Next.js (p. ej. Railway). HTTPS hace falta para el micrófono fuera de localhost.
+- A single Next.js service (for example Railway). HTTPS is required for the microphone outside localhost. The `Dockerfile` is for that deploy only. Local development does not use Docker.
 
-## 14. Entorno de desarrollo
+## 14. Development environment
 
-- Ejecución nativa (`npm run dev`). El `Dockerfile` es solo para el deploy, no para desarrollar.
-- Las keys van en `.env.local` (no se commitea). `.env.example` documenta los nombres, sin valores.
+- Native execution (`npm run dev`). The `Dockerfile` is only for deploy, not for development. No Docker for local development.
+- Keys go in `.env.local` (not committed). `.env.example` documents the names, without values.
 
-## 15. Modo bilingüe (es / en)
+## 15. Bilingual mode (es / en)
 
-El producto funciona en **español e inglés**. Un único valor `idioma` (`'es' | 'en'`)
-gobierna lo que se lee y lo que se escucha: interfaz, rúbricas, prompts,
-mensajes de error, el par de voces de ElevenLabs, el hint de Scribe, las
-muletillas y las tres frases de asintiendo.
+The product works in **Spanish and English**. A single `idioma` value (`'es' | 'en'`)
+governs what is read and what is heard: interface, rubrics, prompts, error
+messages, the ElevenLabs voice pair, the Scribe hint, filler words, and the
+three assenting phrases.
 
-### Registro de idiomas
+UI strings stay in both languages. This document describes the contract; it does
+not replace `diccionario-es.ts` or `diccionario-en.ts`.
 
-`src/lib/idiomas.ts` es la fuente de verdad de qué idiomas existen: código,
-nombre, etiqueta BCP-47 (`es-419` / `en-US`) y `codigoStt` (el hint
-`language_code` de Scribe, ISO 639-1). Los Voice IDs no viven en el registro:
-son variables de entorno (`ELEVENLABS_VOICE_ID_MALE` / `_FEMALE` en español,
-`ELEVENLABS_VOICE_ID_EN_MALE` / `_EN_FEMALE` en inglés). Las muletillas viven
-en `src/lib/muletillas.ts`. Agregar un idioma nuevo debe ser **agregar datos**
-(registro, diccionario, par de voces, patrones), no tocar componentes.
+### Language registry
 
-Los textos viven en diccionarios tipados (`src/lib/diccionario-es.ts`,
-`src/lib/diccionario-en.ts`, y el selector en `src/lib/diccionarios.ts`). El
-inglés está tipado contra `typeof es`, así que una clave faltante o de más falla
-el build; un test verifica lo mismo en runtime, incluida la aridad de las
-funciones de plural.
+`src/lib/idiomas.ts` is the source of truth for which languages exist: code,
+name, BCP-47 tag (`es-419` / `en-US`), and `codigoStt` (Scribe's
+`language_code` hint, ISO 639-1). Voice IDs do not live in the registry:
+they are environment variables (`ELEVENLABS_VOICE_ID_MALE` / `_FEMALE` in Spanish,
+`ELEVENLABS_VOICE_ID_EN_MALE` / `_EN_FEMALE` in English). Filler words live
+in `src/lib/muletillas.ts`. Adding a new language must be **adding data**
+(registry, dictionary, voice pair, patterns), not touching components.
 
-### Cómo se elige el idioma
+The strings live in typed dictionaries (`src/lib/diccionario-es.ts`,
+`src/lib/diccionario-en.ts`, and the selector in `src/lib/diccionarios.ts`).
+English is typed against `typeof es`, so a missing or extra key fails the
+build; a test checks the same thing at runtime, including the arity of the
+plural functions.
 
-1. El guardado en `localStorage` (`pitch-coach:idioma`), si lo hay.
-2. Si no, `navigator.languages[0]`: `es*` → español, cualquier otra cosa → inglés.
-3. Si no hay ninguna señal, español (también es el valor del servidor).
+### How the language is chosen
 
-La home es **estática** (se prerenderiza en build), así que el servidor no puede
-leer `localStorage` ni `navigator`. Por eso un script en el `<head>` fija
-`<html lang>` **antes del primer paint**, y el árbol de React arranca con el
-mismo idioma por defecto que el servidor —sin advertencia de hidratación— para
-corregirse en un *layout effect*, que React ejecuta antes de que el navegador
-pinte. El resultado: primer frame ya en el idioma correcto, y la home sigue
-sirviéndose estática.
+1. The value saved in `localStorage` (`pitch-coach:idioma`), if there is one.
+2. If not, `navigator.languages[0]`: `es*` → Spanish, anything else → English.
+3. If there is no signal at all, Spanish (also the server's value).
 
-### Ids estables de los puntos de rúbrica
+The home page is **static** (prerendered at build), so the server cannot read
+`localStorage` or `navigator`. A script in the `<head>` therefore sets
+`<html lang>` **before the first paint**, and the React tree starts with the
+same default language as the server — with no hydration warning — and corrects
+itself in a *layout effect*, which React runs before the browser paints. The
+result: the first frame is already in the right language, and the home page
+keeps being served static.
 
-Los ids son un **contrato**: viajan por la API y quedan guardados en el historial
-de cada usuario, así que renombrar uno rompe datos ya persistidos (hay un test que
-fija la lista para que el cambio sea deliberado). Son únicos **dentro de cada
-tipo**, no entre tipos.
+### Stable rubric-point ids
 
-| Tipo | Ids (en orden) |
+The ids are a **contract**: they travel through the API and stay stored in each
+user's history, so renaming one breaks data already persisted (a test pins the
+list so the change is deliberate). They are unique **within each type**, not
+across types. Five per type.
+
+| Type | Ids (in order) |
 |---|---|
 | Capital | `problema`, `mercado`, `solucion`, `traccion`, `ask` |
-| Educación | `objetivo`, `estructura`, `ejemplo`, `conocimiento-previo`, `llamado-accion` |
-| Innovación | `problema-oportunidad`, `diferenciador`, `validacion`, `impacto`, `proximos-pasos` |
-| Tecnología | `problema-tecnico`, `funcionamiento`, `diferenciador-tecnico`, `estado`, `stack` |
+| Education | `objetivo`, `estructura`, `ejemplo`, `conocimiento-previo`, `llamado-accion` |
+| Innovation | `problema-oportunidad`, `diferenciador`, `validacion`, `impacto`, `proximos-pasos` |
+| Technology | `problema-tecnico`, `funcionamiento`, `diferenciador-tecnico`, `estado`, `stack` |
 
-El modelo nunca ve un id: el servidor asigna el id por índice y el prompt solo
-lleva los nombres visibles del idioma elegido.
+The model never sees an id: the server assigns the id by index and the prompt
+only carries the visible names of the chosen language.
 
-### Historial y continuidad
+### History and continuity
 
-Cada sesión guarda el **id** de cada punto y el **idioma** en que se practicó.
-Las entradas anteriores al modo bilingüe (nombre en español, sin `idioma`) se
-leen sin romper: el nombre se mapea a su id y el idioma se asume español, que es
-el único que existía. Un valor que no corresponde a ningún punto se conserva tal
-cual y se muestra así.
+Each session stores the **id** of each point and the **idioma** it was practiced
+in. Entries from before bilingual mode (Spanish name, no `idioma`) are read
+without breaking: the name is mapped to its id and the language is assumed to
+be Spanish, which is the only one that existed. A value that matches no point
+is kept as-is and shown that way.
 
-La continuidad —qué puntos quedaron sin cubrir en el intento anterior— solo mira
-sesiones del **mismo tipo de pitch y del mismo idioma**, para que una práctica en
-inglés no condicione una en español.
+Continuity — which points were left uncovered on the previous attempt — only
+looks at sessions of the **same pitch type and the same language**, so a
+practice in English does not condition one in Spanish. An id in `puntosCerrados`
+is not reminded: the second take covered it, and the retake text is not stored.
 
-### Contrato de las API
+### API contract
 
-Todas las rutas reciben `idioma` (`'es' | 'en'`); ausente vale `'es'` y cualquier
-otro valor es un **400**. Los mensajes genéricos, los 413 y el 429 se devuelven en
-ese idioma. En `/api/transcribir` el idioma va como **campo del FormData**, porque
-su cuerpo es multipart y no JSON.
+Every route receives `idioma` (`'es' | 'en'`); absent means `'es'` and any other
+value is a **400**. Generic messages, 413s, and the 429 are returned in that
+language. On `/api/transcribir` the language goes as a **FormData field**,
+because its body is multipart and not JSON.
 
-El **429** es el único caso especial: lo arma el rate limit, que corre *antes* de
-leer el cuerpo (a propósito: no se parsean 20 MB de audio bajo abuso), así que
-toma el idioma de la cabecera `X-Idioma` que el cliente manda en cada petición.
-Cuando el cuerpo sí se puede leer, manda el cuerpo.
+The **429** is the only special case: the rate limit builds it, and the rate
+limit runs *before* reading the body (on purpose: 20 MB of audio are not parsed
+under abuse), so it takes the language from the `X-Idioma` header the client
+sends on every request. When the body can be read, the body wins.
 
-`/api/enriquecer` acepta y valida el campo, pero todavía no lo usa: localizar la
-consulta y los resultados de Tavily es una fase propia.
+`/api/enriquecer` accepts `idioma` and uses it. The search goes out with
+`language` and `filter_by_language`, and the visible pitch-type name comes from
+the session dictionary. The transcript is still never sent to Tavily.
 
-### Voz
+### Voice
 
-El veredicto y las preguntas de Resolver hallazgos pasan por `/api/tts`. El
-género (`male` / `female` / `random`) es el de la sesión y no cambia al
-cambiar de idioma; el idioma elige el par de Voice IDs. Si faltan las variables
-del idioma, el cliente cae a SpeechSynthesis.
+The verdict and the Resolve findings questions go through `/api/tts`. Gender
+(`male` / `female` / `random`) belongs to the session and does not change when
+the language changes; the language chooses the Voice ID pair. If the language's
+variables are missing, the client falls back to SpeechSynthesis.
 
-Scribe (`POST /v1/speech-to-text`) acepta `language_code` opcional (ISO 639-1 o
-639-3). Si se omite, autodetecta. Pitch Coach manda el idioma de la sesión
-(`es` o `en`) porque ya se conoce y el hint puede mejorar la transcripción.
-`ELEVENLABS_SCRIBE_MODEL` solo elige el modelo (default `scribe_v2`).
-`no_verbatim` se deja apagado: ese flag borra muletillas.
+Scribe (`POST /v1/speech-to-text`) accepts an optional `language_code` (ISO 639-1
+or 639-3). If it is omitted, Scribe autodetects. Pitch Coach sends the session
+language (`es` or `en`) because it is already known and the hint can improve
+the transcription. `ELEVENLABS_SCRIBE_MODEL` only chooses the model (default
+`scribe_v2`). `no_verbatim` is left off: that flag deletes filler words.
 
-### Fuera de esta fase
+### Out of this phase
 
-- Animación del coach (el indicador en vivo, no un orbe) y STT en vivo (Scribe
-  Realtime). El reemplazo visual llega en la fase de UX/UI.
-- Traducción de la consulta de Tavily.
+- Live STT (Scribe Realtime). This phase transcribes the full clip after stop.
+- A talking-head or 3D coach.

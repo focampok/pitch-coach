@@ -1,368 +1,368 @@
-# Referencias de diseño — Pitch Coach
+# Design references — Pitch Coach
 
-Carpeta de trabajo para la fase de UX/UI. Vive **dentro del repo**, en
-`docs/referencias-ui/`, versionada en git. (Antes estaba fuera, en
-`~/Proyectos/pitch-coach-refs/`; esa copia quedó obsoleta y se eliminó.)
+Working folder for the UX/UI phase. It lives **inside the repo**, in
+`docs/referencias-ui/`, versioned in git. (It used to live outside, in
+`~/Proyectos/pitch-coach-refs/`; that copy became obsolete and was deleted.)
 
-## Alcance de esta carpeta (y fuente de verdad del diseño)
+## Scope of this folder (and the design source of truth)
 
-Un proyecto tiene **una sola** carpeta de referencias de diseño: esta, dentro del
-repo. La copia de fuera quedó obsoleta y se eliminó; no crear una nueva.
+A project has **one** design-reference folder: this one, inside the
+repo. The outside copy became obsolete and was deleted; do not create a new one.
 
-Esta carpeta es **pre-dirección**: capturas y notas para **decidir** el mundo
-visual. Los tokens, valores y reglas que hay más abajo (paleta, rampa, animación)
-son una **propuesta derivada de las capturas**, pensada como insumo del rediseño
-— **todavía no son el contrato visual del producto**.
+This folder is **pre-direction**: captures and notes for **deciding** the visual
+world. The tokens, values, and rules further down (palette, ramp, animation)
+are a **proposal derived from the captures**, meant as input to the redesign
+— **they are not yet the product's visual contract**.
 
-La única fuente de verdad formal del sistema visual vive en [`DESIGN.md`](../../DESIGN.md)
-en la raíz del repo. Hoy ese documento registra el **mundo anterior al rediseño**
-y es **anti-referencia**; cuando arranque el rediseño, `DESIGN.md` es el destino
-de los tokens aprobados y de la dirección visual oficial. Contexto de diseño de
-producto (usuarios, compromisos de marca, accesibilidad): [`PRODUCT.md`](../../PRODUCT.md).
+The only formal source of truth for the visual system lives in [`DESIGN.md`](../../DESIGN.md)
+at the repo root. Today that document records the **world before the redesign**
+and is **anti-reference**; when the redesign starts, `DESIGN.md` is the destination
+for the approved tokens and the official visual direction. Product design context
+(users, brand commitments, accessibility): [`PRODUCT.md`](../../PRODUCT.md).
 
-Regla práctica: si un valor aparece acá y más adelante también en `DESIGN.md`,
-**manda `DESIGN.md`**. Acá no se duplican tokens ya adoptados.
+Practical rule: if a value appears here and later also in `DESIGN.md`,
+**`DESIGN.md` wins**. Adopted tokens are not duplicated here.
 
-Estado de la dirección: **propuesta**. La dirección de color, tipografía y
-jerarquía de este documento **todavía no fue elegida** por el usuario; es
-material para deliberar, no una decisión cerrada.
+Direction status: **proposal**. The color, type, and hierarchy direction in this
+document **has not yet been chosen** by the user; it is material for deliberation,
+not a closed decision.
 
-Acá van las capturas que vayas juntando a mano; las que ya están sembradas vienen
-de inspo/awwwards (MCP, 2026-10-02) y fueron **verificadas visualmente**, no solo
-por metadata.
+Hand-collected captures go here; the ones already seeded come
+from inspo/awwwards (MCP, 2026-10-02) and were **visually verified**, not only
+by metadata.
 
-## Cómo agregar referencias
+## How to add references
 
-Lo que más ayuda: **nombre de archivo con el producto** (`linear-inbox.png`,
-`granola-recording.png`) y, si se puede, **una línea de qué te gustó de esa
-captura**. Desde los píxeles se puede describir lo que hay, pero no siempre se
-sabe qué *elemento* te llamó la atención — y eso es lo que hace falta para curar
-contra la dirección del proyecto.
+What helps most: **a filename that names the product** (`linear-inbox.png`,
+`granola-recording.png`) and, if possible, **one line on what you liked about that
+capture**. Pixels can describe what is there, but they do not always reveal which
+*element* caught your attention — and that is what is needed to curate
+against the project's direction.
 
-## Criterio de validación
+## Validation criteria
 
-El criterio real de seriedad, medido en las capturas del núcleo (Tana, Harvard,
-Lucid, Railway), **no es el matiz elegido sino la disciplina**:
+The real criterion of seriousness, measured in the core captures (Tana, Harvard,
+Lucid, Railway), **is not the chosen hue but the discipline**:
 
-1. **Un solo portador de color por cuadro.** Tana: negro + un verde. Harvard:
-   vino + blanco. Lucid: foto + tan + blanco.
-2. **Muy pocos radios de borde.** Wealthsimple usa exactamente dos en toda la
-   página (`0px` y `12px`).
-3. **Ritmo de espaciado generoso:** 80–160px entre secciones (mediana medida:
-   96px). Por debajo de ~64px dos secciones leen como un bloque apretado.
-4. **El hero cabe en el primer viewport** (~1280×800). El desborde bajo el
-   pliegue es el fallo más común de páginas generadas por IA.
+1. **One color carrier per frame.** Tana: black + one green. Harvard:
+   wine + white. Lucid: photo + tan + white.
+2. **Very few corner radii.** Wealthsimple uses exactly two across the whole
+   page (`0px` and `12px`).
+3. **Generous spacing rhythm:** 80–160px between sections (measured median:
+   96px). Below ~64px two sections read as one cramped block.
+4. **The hero fits in the first viewport** (~1280×800). Overflow below the
+   fold is the most common failure of AI-generated pages.
 
-**Test rápido:** ¿la paleta sobrevive a ser el único color del cuadro?
-## Paleta propuesta — olivo, un solo matiz
+**Quick test:** does the palette survive as the only color in the frame?
+## Proposed palette — olive, a single hue
 
-> **Propuesta, no contrato.** Lo de abajo es la exploración de color derivada de
-> `color.png`, y sirve para deliberar el rediseño. Todavía **no** es el sistema de
-> tokens del producto: el registro formal vive en [`DESIGN.md`](../../DESIGN.md)
-> y, cuando el rediseño arranque, ahí se consolidan los tokens aprobados.
+> **Proposal, not a contract.** What follows is the color exploration derived from
+> `color.png`, and it is there to deliberate the redesign. It is **not** yet the
+> product's token system: the formal record lives in [`DESIGN.md`](../../DESIGN.md)
+> and, when the redesign starts, the approved tokens are consolidated there.
 
-Diseñada con la **animación como restricción de primera clase**. El indicador en
-vivo necesita un matiz con rango utilizable en los dos modos, y todo lo demás
-tiene que ser incoloro — porque "en vivo" solo se lee como vivo si es lo único
-con color en la pantalla.
+Designed with **animation as a first-class constraint**. The live indicator
+needs a hue with a usable range in both modes, and everything else
+has to be colorless — because "live" only reads as live if it is the only
+thing with color on the screen.
 
 
-Base: el olivo `#285828` extraído de `color.png`. Se extendió a una rampa de once
-pasos y se verificó cada uno contra los dos fondos.
+Base: the olive `#285828` extracted from `color.png`. It was extended into an eleven-step
+ramp, and each step was checked against both backgrounds.
 
-### La rampa — un matiz cubre ambos modos
+### The ramp — one hue covers both modes
 
-| Paso | Sobre claro `#F9F8F6` | Sobre oscuro `#0F0F0E` |
+| Step | On light `#F9F8F6` | On dark `#0F0F0E` |
 |---|---|---|
 | 950 `#16301A` | 13.44:1 AA | 1.34:1 |
 | 900 `#1E4022` | 10.92:1 AA | 1.65:1 |
-| 800 `#285828` ← tu elección | 7.86:1 AA | 2.30:1 |
-| 700 `#356B34` | 5.99:1 AA | 3.02:1 gráfico |
-| 600 `#457F42` ← **pivote / reposo** | 4.53:1 AA | 3.99:1 gráfico |
-| 500 `#5C9655` | 3.33:1 gráfico | 5.43:1 AA |
+| 800 `#285828` ← your choice | 7.86:1 AA | 2.30:1 |
+| 700 `#356B34` | 5.99:1 AA | 3.02:1 graphic |
+| 600 `#457F42` ← **pivot / rest** | 4.53:1 AA | 3.99:1 graphic |
+| 500 `#5C9655` | 3.33:1 graphic | 5.43:1 AA |
 | 400 `#7FA86B` | 2.56:1 | 7.05:1 AA |
 | 300 `#A3C48F` | 1.82:1 | 9.91:1 AA |
 | 200 `#C2DAB4` | 1.42:1 | 12.77:1 AA |
 | 100 `#DFEBD6` | 1.16:1 | 15.52:1 AA |
 | 50 `#F0F5EB` | 1.04:1 | 17.32:1 AA |
 
-El cruce cae entre 600 y 500, y **el paso 600 pasa el umbral de gráfico en los
-dos fondos** (4.53 claro / 3.99 oscuro). Ese es el pivote de todo el sistema.
+The crossover falls between 600 and 500, and **step 600 clears the graphic threshold on
+both backgrounds** (4.53 light / 3.99 dark). That is the pivot of the whole system.
 
-Esto es lo que el olivo compra y el burdeos no: cuando aclarás el vino para que
-funcione en oscuro se vuelve un rosa empolvado — *otro color*. El olivo aclarado
-sigue siendo olivo, solo se vuelve salvia. **Un matiz, identidad estable en los
-dos modos.**
+This is what olive buys and bordeaux does not: when you lighten the wine so it
+works on dark, it becomes a dusty rose — *another color*. Lightened olive
+is still olive; it only turns sage. **One hue, stable identity in both
+modes.**
 
-### Tokens (propuesta de trabajo)
+### Tokens (working proposal)
 
-> Los valores de abajo son la **propuesta de trabajo** de la paleta. Todavía **no**
-> viven en el código ni en [`DESIGN.md`](../../DESIGN.md); cuando el rediseño los
-> adopte, se consolidan ahí y este bloque pasa a ser histórico. Hasta entonces, la
-> app usa los tokens actuales (el mundo pre-rediseño documentado en `DESIGN.md`).
+> The values below are the palette's **working proposal**. They do **not** yet
+> live in the code or in [`DESIGN.md`](../../DESIGN.md); when the redesign adopts
+> them, they are consolidated there and this block becomes historical. Until then, the
+> app uses the current tokens (the pre-redesign world documented in `DESIGN.md`).
 
-**Claro** — fondo `#F9F8F6` · superficie `#F1F0ED` · elevada `#FFFFFF`
+**Light** — background `#F9F8F6` · surface `#F1F0ED` · elevated `#FFFFFF`
 
-| Token | Valor | Contraste |
+| Token | Value | Contrast |
 |---|---|---|
-| `text` | `#1A1917` | 16.55:1 sobre fondo · 17.57:1 sobre elevada |
+| `text` | `#1A1917` | 16.55:1 on background · 17.57:1 on elevated |
 | `text-muted` | `#6B6862` | 5.23:1 |
 | `text-subtle` | `#726E67` | 4.78:1 |
-| `signal` | `#285828` | 7.86:1 · 8.34:1 sobre elevada |
+| `signal` | `#285828` | 7.86:1 · 8.34:1 on elevated |
 | `signal-peak` | `#16301A` | 13.44:1 |
 | `signal-rest` | `#457F42` | 4.53:1 |
-| `signal-tint` | `#DFEBD6` | fila activa, ver abajo |
-| `field` | `#1E4022` | campo olivo, texto bone 10.92:1 |
-| `attention` | `#9E4A38` | 5.67:1 — solo hallazgos, nunca el score |
+| `signal-tint` | `#DFEBD6` | active row, see below |
+| `field` | `#1E4022` | olive field, bone text 10.92:1 |
+| `attention` | `#9E4A38` | 5.67:1 — findings only, never the score |
 | `border` | `#D6D2C9` | 1.42:1 |
 | `border-strong` | `#CCC8BF` | 1.57:1 |
 
-**Oscuro** — fondo `#0F0F0E` · superficie `#1A1A18` · elevada `#242422`
+**Dark** — background `#0F0F0E` · surface `#1A1A18` · elevated `#242422`
 
-| Token | Valor | Contraste |
+| Token | Value | Contrast |
 |---|---|---|
-| `text` | `#F4F3F0` | 17.28:1 sobre fondo |
+| `text` | `#F4F3F0` | 17.28:1 on background |
 | `text-muted` | `#A3A099` | 7.35:1 |
 | `text-subtle` | `#807D76` | 4.67:1 |
-| `signal` | `#A3C48F` | 9.91:1 · 9.01:1 sobre superficie |
+| `signal` | `#A3C48F` | 9.91:1 · 9.01:1 on surface |
 | `signal-peak` | `#DFEBD6` | 15.52:1 |
 | `signal-rest` | `#457F42` | 3.99:1 |
-| `signal-tint` | `#1E4022` | fila activa |
-| `field` | `#1E4022` | campo olivo, texto bone 10.45:1 |
+| `signal-tint` | `#1E4022` | active row |
+| `field` | `#1E4022` | olive field, bone text 10.45:1 |
 | `attention` | `#C97C68` | 6.00:1 |
 | `border` | `#35352F` | 1.55:1 |
 | `border-strong` | `#454540` | 1.99:1 |
 
-Nota: `border` está deliberadamente bajo (1.4-1.6:1). Un borde no es texto; por
-debajo de ~1.3:1 deja de verse. Los valores probados acá se ven sin gritar.
+Note: `border` is deliberately low (1.4–1.6:1). A border is not text; below
+~1.3:1 it stops being visible. The values tested here read without shouting.
 
-### Fila activa (patrón tomado de `layout.png`)
+### Active row (pattern taken from `layout.png`)
 
-Tu `layout.png` ya lo resolvía bien: icono sobre tinte del mismo matiz. Verificado:
+Your `layout.png` already solved this well: an icon on a tint of the same hue. Verified:
 
-- Claro: `signal` `#285828` sobre `signal-tint` `#DFEBD6` → **6.75:1 AA**
-- Oscuro: `signal` `#A3C48F` sobre `signal-tint` `#1E4022` → **5.99:1 AA**
+- Light: `signal` `#285828` on `signal-tint` `#DFEBD6` → **6.75:1 AA**
+- Dark: `signal` `#A3C48F` on `signal-tint` `#1E4022` → **5.99:1 AA**
 
-Es el patrón para la sección abierta de un acordeón de rúbrica.
+This is the pattern for the open section of a rubric accordion.
 
-## La animación — reglas que la paleta tiene que sostener
+## Animation — rules the palette has to hold
 
-> **Propuesta, no contrato.** Igual que la paleta: las reglas de abajo describen
-> cómo debería comportarse la animación del coach. Son objetivo de dirección, no
-> especificación implementada. Lo que hoy existe en la app es el indicador de
-> texto de [`alcance.md` §5.1](../alcance.md); el reemplazo con animación llega en
-> la fase de UX/UI.
+> **Proposal, not a contract.** Same as the palette: the rules below describe
+> how the coach animation should behave. They are a direction target, not
+> an implemented specification. What exists in the app today is the text
+> indicator in [`alcance.md` §5.1](../alcance.md); the animated replacement arrives in
+> the UX/UI phase.
 
-### 1. Un matiz, y el reposo es 600 en ambos modos
+### 1. One hue, and rest is 600 in both modes
 
-El indicador **nunca introduce un segundo color**. La animación mueve *un paso de
-la misma rampa*, y se aleja de 600 según la polaridad del modo:
+The indicator **never introduces a second color**. The animation moves *one step of
+the same ramp*, and moves away from 600 according to the mode's polarity:
 
-| | reposo (sin audio) | en vivo | pico |
+| | rest (no audio) | live | peak |
 |---|---|---|---|
-| Claro | `#457F42` 4.53:1 | `#285828` 7.86:1 | `#16301A` 13.44:1 |
-| Oscuro | `#457F42` 3.99:1 | `#A3C48F` 9.91:1 | `#DFEBD6` 15.52:1 |
+| Light | `#457F42` 4.53:1 | `#285828` 7.86:1 | `#16301A` 13.44:1 |
+| Dark | `#457F42` 3.99:1 | `#A3C48F` 9.91:1 | `#DFEBD6` 15.52:1 |
 
-En claro la señal **se oscurece** al subir la amplitud; en oscuro **se aclara**.
-Es contraintuitivo pero es lo correcto: cada modo se aleja de su fondo. Y como el
-reposo es el mismo `#457F42` en los dos, el comportamiento se describe una vez.
+On light the signal **darkens** as amplitude rises; on dark it **lightens**.
+That is counterintuitive, and it is the correct move: each mode moves away from its background. And because
+rest is the same `#457F42` in both, the behavior is described once.
 
-### 2. Sin brillo, sin degradado
+### 2. No glow, no gradient
 
-El look de IA que estamos evitando viene de *material* + *brillo*. La regla:
-**la animación varía altura y opacidad, nunca luminiscencia.** Si hace falta un
-rastro de decaimiento, es el mismo `signal` a ~40% de opacidad — no un glow.
+The AI look we are avoiding comes from *material* + *glow*. The rule:
+**the animation varies height and opacity, never luminescence.** If a decay
+trail is needed, it is the same `signal` at ~40% opacity — not a glow.
 
-### 3. Los motivos salen de tu propia referencia
+### 3. The motifs come from your own reference
 
-`color.png` ya contiene los tres, usados como lenguaje de datos:
+`color.png` already contains all three, used as a data language:
 
-- **Barras** — el gráfico "Order volume" *es* un ecualizador: barras delgadas
-  sobre línea base punteada. El paso más corto. La línea base usa `border`, **no**
-  `signal`, para que el matiz quede exclusivo del elemento vivo.
-- **Anillo** — el de "Registrations" (`73.37K`). Un anillo que se segmenta o
-  engrosa con el audio es la mejor respuesta anti-orbe: geométrico, no una esfera,
-  y ya justificado por el sistema del producto.
-- **Línea de señal** — la de "NPS", con relleno de área. Mismo motivo que el
-  precedente de Wealthsimple.
+- **Bars** — the "Order volume" chart *is* an equalizer: thin bars
+  on a dotted baseline. The shortest step. The baseline uses `border`, **not**
+  `signal`, so the hue stays exclusive to the live element.
+- **Ring** — the one in "Registrations" (`73.37K`). A ring that segments or
+  thickens with the audio is the best anti-orb answer: geometric, not a sphere,
+  and already justified by the product's own system.
+- **Signal line** — the one in "NPS", with an area fill. The same motif as the
+  Wealthsimple precedent.
 
-Un polígono en **wireframe** también sirve, pero solo si es estructural: contorno
-plano, vértices movidos por bandas de frecuencia, un color, sin sombreado. Un
-poliedro brillante devuelve al cliché — es el primo de la esfera, no su alternativa.
+A **wireframe** polygon also works, but only if it is structural: a flat
+outline, vertices moved by frequency bands, one color, no shading. A
+shiny polyhedron slips back into the cliché — it is the sphere's cousin, not an alternative to it.
 
-### 4. Continuidad grabación → resultado
+### 4. Continuity from recording to result
 
-La versión más fuerte: **el indicador en vivo se convierte en el score.** Mientras
-grabás, las barras o el anillo responden al micrófono; al terminar, ese mismo
-elemento se asienta y pasa a ser la visualización del score. Sin corte ni pantalla
-nueva — y sirve directo a la jerarquía de "score grande e inmediato", porque el
-elemento que estaba vivo *es* el veredicto.
+The strongest version: **the live indicator becomes the score.** While you
+record, the bars or the ring respond to the microphone; when recording ends, that same
+element settles and becomes the score visualization. No cut and no new
+screen — and it serves the "large, immediate score" hierarchy directly, because the
+element that was live *is* the verdict.
 
-El panel del score es `field` `#1E4022` con texto bone (10.92:1 claro / 10.45:1
-oscuro): el mismo panel funciona en los dos modos con el mismo color de texto.
+The score panel is `field` `#1E4022` with bone text (10.92:1 light / 10.45:1
+dark): the same panel works in both modes with the same text color.
 
-### 5. El verde no puede significar "aprobado"
+### 5. Green cannot mean "approved"
 
-El verde en UI lee *éxito*. Si el verde es el portador del color, un score de 3/10
-igual lee "bien" — el mismo problema que tenía el rojo, espejado (ahí un score bajo
-leía "error"). **El color es identidad y estructura; la valencia del score se
-comunica por otra vía**: peso y tamaño tipográfico, posición, y una etiqueta
-explícita ("Fuerte" / "A mejorar") con un punto, no un baño de color.
+Green in UI reads as *success*. If green is the color carrier, a 3/10 score
+still reads as "fine" — the same problem red had, mirrored (there a low score
+read as "error"). **Color is identity and structure; score valence is
+communicated another way**: typographic weight and size, position, and an
+explicit label ("Strong" / "Needs work") with a dot, not a wash of color.
 
-`attention` queda reservado para hallazgos concretos y estados de error (permiso de
-micrófono denegado) — nunca para el score.
+`attention` stays reserved for concrete findings and error states (microphone
+permission denied) — never for the score.
 
-### 6. Secundario opcional — solo si hay dos series
+### 6. Optional secondary — only when there are two series
 
-Si un gráfico necesita dos series distinguibles (ej. esta sesión vs. la anterior):
+If a chart needs two distinguishable series (e.g. this session vs. the previous one):
 
-- **Preferido:** dos pasos de la misma rampa (`signal` + `signal-peak`). Conserva
-  la disciplina de un solo portador.
-- **Si hace falta un matiz distinto:** slate `#46586B` en claro (6.90:1) y
-  `#7E8FA3` en oscuro (5.79:1). Subordinado y desaturado a propósito: no compite
-  con el olivo.
+- **Preferred:** two steps of the same ramp (`signal` + `signal-peak`). That keeps
+  the single-carrier discipline.
+- **If a distinct hue is required:** slate `#46586B` on light (6.90:1) and
+  `#7E8FA3` on dark (5.79:1). Subordinate and desaturated on purpose: it does not compete
+  with the olive.
 
-No agregar un tercer matiz.
+Do not add a third hue.
 
-## Contrastes verificados (WCAG, calculados)
+## Verified contrasts (WCAG, calculated)
 
-> La tabla siguiente es la exploración previa (burdeos vs. azul marino). Se
-> conserva porque documenta *por qué* se descartaron: ningún vino ni ningún navy
-> funciona como acento sobre fondo oscuro, y el olivo sí sobrevive el aclarado.
+> The table below is the earlier exploration (bordeaux vs. navy). It is
+> kept because it documents *why* they were discarded: no wine and no navy
+> works as an accent on a dark background, and olive does survive being lightened.
 
-`>= 4.5:1` texto normal · `>= 3:1` solo display grande
+`>= 4.5:1` normal text · `>= 3:1` large display only
 
-| Color | sobre near-black `#0E0B0C` | sobre bone `#FAF7F2` |
+| Color | on near-black `#0E0B0C` | on bone `#FAF7F2` |
 |---|---|---|
-| Burdeos `#6E1D2E` | **1.75:1 — falla** | **10.46:1 — AA** |
-| Burdeos profundo `#5C1A2B` | 1.53:1 — falla | 12.00:1 — AA |
-| Crimson Harvard `#A4293A` | 2.76:1 — falla | 6.65:1 — AA |
-| Wine Harvard `#681521` | 1.60:1 — falla | 11.44:1 — AA |
-| Navy `#1B2A4A` | **1.38:1 — falla** | **13.31:1 — AA** |
-| Navy sobre navy `#152853` | **1.00:1 — invisible** | 13.46:1 — AA |
-| Vino oxidado `#B8637A` | 4.76:1 — AA | 3.85:1 — display |
-| Rosa pulverizado `#C9808C` | 6.48:1 — AA | 2.83:1 — falla |
-| bone `#FAF7F2` sobre burdeos `#6E1D2E` | — | **10.46:1** (burdeos como campo) |
+| Bordeaux `#6E1D2E` | **1.75:1 — fails** | **10.46:1 — AA** |
+| Deep bordeaux `#5C1A2B` | 1.53:1 — fails | 12.00:1 — AA |
+| Harvard crimson `#A4293A` | 2.76:1 — fails | 6.65:1 — AA |
+| Harvard wine `#681521` | 1.60:1 — fails | 11.44:1 — AA |
+| Navy `#1B2A4A` | **1.38:1 — fails** | **13.31:1 — AA** |
+| Navy on navy `#152853` | **1.00:1 — invisible** | 13.46:1 — AA |
+| Oxidized wine `#B8637A` | 4.76:1 — AA | 3.85:1 — display |
+| Powdered rose `#C9808C` | 6.48:1 — AA | 2.83:1 — fails |
+| bone `#FAF7F2` on bordeaux `#6E1D2E` | — | **10.46:1** (bordeaux as a field) |
 
-### Las tres conclusiones que salen de esa tabla
+### The three conclusions from that table
 
-1. **Ningún vino ni ningún navy funciona como acento chico sobre fondo oscuro.**
-   Falla por luminancia, no por gusto. Es física, no estética.
-2. **Harvard usa el vino como *campo*, no como acento** — y esa es la única
-   forma en que el vino funciona en oscuro. Bone sobre `#6E1D2E` = 10.46:1.
-3. **En fondos oscuros estás obligado a aclarar el acento**, y aclarar empuja
-   cualquier matiz saturado hacia el pastel — que es exactamente la lavanda del
-   cliché de IA (el acento de Railway es `#b4a4d5`, un violeta *claro*). El look
-   "IA" es en parte un movimiento forzado por el contraste. Saberlo permite
-   desafiarlo en vez de sufrirlo.
+1. **No wine and no navy works as a small accent on a dark background.**
+   The failure is luminance, not taste. It is physics, not aesthetics.
+2. **Harvard uses the wine as a *field*, not as an accent** — and that is the only
+   way wine works on dark. Bone on `#6E1D2E` = 10.46:1.
+3. **On dark backgrounds the accent has to be lightened**, and lightening pushes
+   any saturated hue toward pastel — which is exactly the lavender of the
+   AI cliché (Railway's accent is `#b4a4d5`, a *light* violet). The "AI" look
+   is partly a move forced by contrast. Knowing that makes it possible to
+   challenge it instead of enduring it.
 
-## Referencias sembradas → qué tomar de cada una
+## Seeded references → what to take from each
 
-| Captura | Qué tomar exactamente |
+| Capture | What to take, exactly |
 |---|---|
-| `03-tipografia/railway-com-tipografia.png` | El sistema tipográfico: IBM Plex Serif con tracking negativo fuerte (−1.96px a 54px) sobre sans de cuerpo con interlínea amplia (1.63), en fondo oscuro. **Descartar el violeta del botón.** |
-| `02-color/harvard-edu.png` | La prueba de que el vino lee como gravedad institucional, no como estridencia — y de que va como **campo** con tipo claro encima. |
-| `03-tipografia/tana-inc.png` | La disciplina: negro puro, `Source Serif 4` grande, y **un solo elemento de color** en todo el viewport. Modelo para "score y veredicto grandes e inmediatos". |
-| `04-jerarquia-resultado/lucidmotors-com.png` | La franja de métricas: **versalita chica + valor grande + regla vertical fina**, en fila. Es la jerarquía para el score. |
-| `01-visualizador-audio/wealthsimple-com.png` | **Línea de señal** blanca de ancho completo que enhebra tarjetas, terminando en un pico agudo. Mejor precedente formal del enfoque "línea tipo mercado". |
-| `03-tipografia/moshimoshimusic-com.png` | Serif (`Libre Baskerville`) en tamaño chico con función de **etiqueta**, sobre grilla. Recurso para secciones colapsables. |
-| `02-color/copilot-money.png` | **Contra-referencia.** Es fintech, oscuro y con bento — cumple los criterios y así todo lee lúdico. Advertencia de qué pasa cuando el color decorativo entra sin disciplina. |
-| `03-tipografia/furoweb-eu.png` | `Instrument Serif` en oscuro, registro cálido. |
-| `03-tipografia/danielsun-space.png` | `LT Superior Serif` en oscuro, registro cálido. |
-| `04-jerarquia-resultado/basement-studio.png` | Oscuro extremo y art-directed; útil como techo de contención, registro demasiado "estudio creativo" para nosotros. |
-| `color.png` **(agregada por el usuario)** | Captura del set principal (vive acá, en la carpeta canónica). Fondo `#f8f8f8` y tarjetas `#f0f0f0` (nota: la tarjeta es *más oscura* que el fondo — superficie hundida, no elevada). Datos en olivo `#285828` + navy `#284078` + lavanda `#a0b0f0`. Contiene los tres motivos de animación: barras-ecualizador, anillo y línea de señal. De acá sale la rampa de la paleta **propuesta**. |
-| `layout.png` **(agregada por el usuario)** | Captura del set principal (vive acá, en la carpeta canónica). El patrón de fila: icono sobre tinte del mismo matiz + título + badge mono + descripción. Y el estado seleccionado resuelto con tinte + texto del mismo matiz (verificado AA). Es el modelo para las filas de rúbrica y para la sección abierta del acordeón. |
+| `03-tipografia/railway-com-tipografia.png` | The type system: IBM Plex Serif with strong negative tracking (−1.96px at 54px) over a body sans with a wide line-height (1.63), on a dark background. **Discard the button violet.** |
+| `02-color/harvard-edu.png` | Proof that wine reads as institutional gravity, not as stridency — and that it belongs as a **field** with light type on top. |
+| `03-tipografia/tana-inc.png` | The discipline: pure black, large `Source Serif 4`, and **a single colored element** in the whole viewport. The model for "large, immediate score and verdict". |
+| `04-jerarquia-resultado/lucidmotors-com.png` | The metrics strip: **small caps + large value + a thin vertical rule**, in a row. This is the hierarchy for the score. |
+| `01-visualizador-audio/wealthsimple-com.png` | A full-width white **signal line** that threads through cards and ends in a sharp peak. The best formal precedent for the "market-style line" approach. |
+| `03-tipografia/moshimoshimusic-com.png` | Serif (`Libre Baskerville`) at small size, used as a **label**, on a grid. A device for collapsible sections. |
+| `02-color/copilot-money.png` | **Counter-reference.** It is fintech, dark, and bento — it meets the criteria and still reads playful. A warning of what happens when decorative color enters without discipline. |
+| `03-tipografia/furoweb-eu.png` | `Instrument Serif` on dark, warm register. |
+| `03-tipografia/danielsun-space.png` | `LT Superior Serif` on dark, warm register. |
+| `04-jerarquia-resultado/basement-studio.png` | Extreme dark and art-directed; useful as a ceiling of restraint. The register is too "creative studio" for us. |
+| `color.png` **(added by the user)** | Capture from the main set (it lives here, in the canonical folder). Background `#f8f8f8` and cards `#f0f0f0` (note: the card is *darker* than the background — a sunken surface, not an elevated one). Data in olive `#285828` + navy `#284078` + lavender `#a0b0f0`. It contains the three animation motifs: equalizer bars, ring, and signal line. The **proposed** palette ramp comes from here. |
+| `layout.png` **(added by the user)** | Capture from the main set (it lives here, in the canonical folder). The row pattern: icon on a tint of the same hue + title + mono badge + description. The selected state is solved with tint + text in the same hue (AA verified). This is the model for rubric rows and for the accordion's open section. |
 
-## Registro de descartes y correcciones
+## Discard and correction log
 
-Aplicado el 2026-10-02 sobre el lote completo, para dejar un punto limpio. Se
-borran los archivos pero **se conserva la decisión**.
+Applied on 2026-10-02 across the full batch, to leave a clean checkpoint. The
+files are deleted, and **the decision is kept**.
 
-### Imágenes descartadas (13)
+### Discarded images (13)
 
-**Landings sin visualizador vivo (9).** Se capturaron pero no muestran UI de
-grabación, así que no aportan: `howlerjs-1280-inicio`, `descript-1280-inicio`,
+**Landings with no live visualizer (9).** They were captured, but they show no
+recording UI, so they contribute nothing: `howlerjs-1280-inicio`, `descript-1280-inicio`,
 `descript-390-inicio`, `riverside-1280-inicio`, `riverside-390-inicio`,
 `podcastle-1280-inicio`, `adobe-podcast-1280-inicio`, `tldv-1280-inicio`,
 `tldv-390-inicio`.
 
-**Duplicados exactos al sembrar la carpeta (4).** Ahora hay una sola copia por
-imagen:
+**Exact duplicates from seeding the folder (4).** There is now one copy per
+image:
 
-- `02-color/wealthsimple-senal.png` → queda `01-visualizador-audio/wealthsimple-com.png`
-- `02-color/lucidmotors-com.png` → queda `04-jerarquia-resultado/lucidmotors-com.png`
-- `04-jerarquia-resultado/copilot-money.png` → queda `02-color/copilot-money.png`
-- `02-color/railway-com.png` → queda `03-tipografia/railway-com-tipografia.png`
+- `02-color/wealthsimple-senal.png` → kept as `01-visualizador-audio/wealthsimple-com.png`
+- `02-color/lucidmotors-com.png` → kept as `04-jerarquia-resultado/lucidmotors-com.png`
+- `04-jerarquia-resultado/copilot-money.png` → kept as `02-color/copilot-money.png`
+- `02-color/railway-com.png` → kept as `03-tipografia/railway-com-tipografia.png`
 
-### Movidas
+### Moves
 
-`otter-1280-transcribiendo.png` y `fireflies-1280-transcribiendo.png` →
-`04-jerarquia-resultado/`. Son pantallas de transcripción, no de visualizador.
+`otter-1280-transcribiendo.png` and `fireflies-1280-transcribiendo.png` →
+`04-jerarquia-resultado/`. They are transcription screens, not visualizer screens.
 
-### Correcciones aplicadas
+### Corrections applied
 
-1. **`zencastr` estaba mal clasificado.** Figuraba como `anillo/medidor` con un
-   "aro rojo de grabación". Verificado: es una **landing de marketing con un
-   mockup de teléfono**, y el "aro" es un **botón de grabación circular**. El
-   motivo anillo **no tiene precedente de producto** en el lote — es una
-   extrapolación desde `color.png`, y conviene saberlo.
-2. **Gradiente rainbow de `audiomotion`.** Las tres capturas usan el mismo
-   gradiente por frecuencia (rojo→azul). Se marcó como contra-ejemplo solo la
-   radial; **aplica a la familia entera**.
-3. **`FICHAS.md`** tenía tabla sin encabezado (5 columnas sin etiquetar) y estaba
-   duplicado byte a byte. Rehecho con encabezados, una sola copia, en
+1. **`zencastr` was misclassified.** It was listed as `ring/meter` with a
+   "red recording ring". Verified: it is a **marketing landing with a
+   phone mockup**, and the "ring" is a **circular record button**. The
+   ring motif **has no product precedent** in the batch — it is an
+   extrapolation from `color.png`, and that is worth knowing.
+2. **`audiomotion` rainbow gradient.** All three captures use the same
+   frequency gradient (red→blue). Only the radial one was marked as a counterexample;
+   **it applies to the whole family**.
+3. **`FICHAS.md`** had a headerless table (5 unlabeled columns) and was
+   duplicated byte for byte. Rebuilt with headers, a single copy, in
    `01-visualizador-audio/`.
-4. **Afirmación no verificada retirada:** que el botón Record de `wavesurfer`
-   quedaba deshabilitado.
-5. **Copia canónica:** se eliminó una referencia a `/workspace/` que apuntaba a un
-   entorno inexistente. La canónica es esta carpeta.
-6. **Ancho:** las capturas nuevas son de **1280px**, no 1440px como pedía el
-   prompt. Defendible (la guía medida del propio archivo es "primer viewport
-   ~1280×800"), pero **no son comparables 1:1** con las de inspo, que son 1440.
+4. **Unverified claim removed:** that the `wavesurfer` Record button
+   stayed disabled.
+5. **Canonical copy:** a reference to `/workspace/` that pointed at a
+   nonexistent environment was removed. This folder is the canonical one.
+6. **Width:** the new captures are **1280px**, not the 1440px the
+   prompt asked for. Defensible (this file's own measured guide is "first viewport
+   ~1280×800"), but they are **not 1:1 comparable** with the inspo captures, which are 1440.
 
-## Visualizador de audio
+## Audio visualizer
 
-Estado: **cerrado en lo esencial.** Ver `01-visualizador-audio/FICHAS.md` para el
-detalle por captura, incluidas las dos tandas propias (`vivo/` y `nativas/`).
+Status: **closed in the essentials.** See `01-visualizador-audio/FICHAS.md` for the
+per-capture detail, including the two in-house passes (`vivo/` and `nativas/`).
 
-`01-visualizador-audio/` tiene 12 capturas, pero de las 22 que se barrieron, **11
-eran landings de producto sin visualizador vivo**. El material utilizable vino de
-**demos de librería** (`wavesurfer`, `peaksjs`, `audiomotion`) y de un mockup
-(`zencastr`) — no de UI de producto en vivo.
+`01-visualizador-audio/` holds 12 captures, but of the 22 that were swept, **11
+were product landings with no live visualizer**. The usable material came from
+**library demos** (`wavesurfer`, `peaksjs`, `audiomotion`) and from a mockup
+(`zencastr`) — not from live product UI.
 
-**El aprendizaje que importa: las landings públicas de productos de grabación no
-exponen su visualizador.** Tampoco lo cubren las fuentes MCP — inspo devuelve
-sitios de *marcas* de audio (SoundCloud, Dolby, Epidemic Sound, ElevenLabs) y
-awwwards devolvió un sitio.
+**The learning that matters: public landings of recording products do not
+expose their visualizer.** MCP sources do not cover it either — inspo returns
+audio *brand* sites (SoundCloud, Dolby, Epidemic Sound, ElevenLabs), and
+awwwards returned one site.
 
-Eso se resolvió con dos barridos propios: **estados en vivo** capturados con
-Chromium y micrófono sintético (`vivo/`), y **capturas nativas** de apps reales
-desde la ficha de Google Play a 1080px (`nativas/`).
+That was resolved with two in-house sweeps: **live states** captured with
+Chromium and a synthetic microphone (`vivo/`), and **native captures** of real apps
+from the Google Play listing at 1080px (`nativas/`).
 
-Lo que sí quedó resuelto de esta categoría, verificado mirando las imágenes:
+What this category did settle, verified by looking at the images:
 
-- **El estado de reposo es un plano vacío**, no un pulso de espera
-  (`audiomotion` activo vs. sin-audio).
-- **El panel de onda vacío + "Press Record"** de `wavesurfer` es el estado previo
-  al permiso de micrófono, que es específicamente web y ninguna captura nativa
-  enseña.
-- **Barras que son indicador y control a la vez** (los 9 faders de `wavesurfer`).
-- **El LED de pico sostenido** (`audiomotion-minimal`): el pico queda un instante
-  y cae. Es "reposo con memoria" — resuelve el estado de reposo sin pulso
-  decorativo.
-- **La composición nativa del estado grabando** (`app-recorder-grabando`): timer
-  gigante como héroe, botón circular con halo, waveform de ancho completo al pie.
-- **El timer en línea entre dos mitades de waveform** (`app-otter-grabando`), con
-  tabs Summary / Transcript / AI Chat arriba — el patrón de nuestras secciones.
-- **Convergencia de motivo:** los cinco íconos de apps de grabación que bajé y
-  descarté eran **todos** barras o waveform. Es el idioma universal de la
-  categoría, y por eso mismo necesita tratamiento propio para no ser el default.
+- **The rest state is an empty plane**, not a waiting pulse
+  (`audiomotion` active vs. no-audio).
+- **The empty wave panel + "Press Record"** in `wavesurfer` is the state before
+  microphone permission, which is specifically a web state, and no native capture
+  shows it.
+- **Bars that are indicator and control at once** (the 9 faders in `wavesurfer`).
+- **The held peak LED** (`audiomotion-minimal`): the peak stays for an instant
+  and then falls. It is "rest with memory" — it solves the rest state without a
+  decorative pulse.
+- **The native composition of the recording state** (`app-recorder-grabando`): a giant
+  timer as the hero, a circular button with a halo, and a full-width waveform at the foot.
+- **The timer inline between two waveform halves** (`app-otter-grabando`), with
+  Summary / Transcript / AI Chat tabs above — the pattern for our sections.
+- **Motif convergence:** the five recording-app icons downloaded and then
+  discarded were **all** bars or a waveform. That is the category's universal
+  language, which is why it needs its own treatment so it does not become the default.
 
-## Fuentes
+## Sources
 
-- inspo — `https://inspomcp.dev/api/mcp` · DESIGN.md por sitio en
+- inspo — `https://inspomcp.dev/api/mcp` · per-site DESIGN.md at
   `https://inspomcp.dev/d/<slug>/DESIGN.md`
 - awwwards — `npx -y awwwards-mcp`
-- Capturas originales `hero.1440.webp` en
+- Original captures `hero.1440.webp` at
   `https://0nme3pk5am3urwa9.public.blob.vercel-storage.com/captures/<slug>/`
-  (también `full.1440`, `mobile.384`)
+  (also `full.1440`, `mobile.384`)

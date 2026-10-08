@@ -1,23 +1,24 @@
-# Estado post-Nebius
+# Post-Nebius state
 
-Documento **después** del baseline [`docs/pre-nebius.md`](pre-nebius.md). Describe el
-repositorio en su estado actual: migración a Nebius Token Factory, hardening previo y
-todo lo implementado desde entonces (STT universal, bilingüe, hallazgos, Ultra,
-Tavily enriquecido, Sentry, historial local, guion descargable, etc.).
+Document **after** the [`docs/pre-nebius.md`](pre-nebius.md) baseline. It describes the
+repository in its current state: the migration to Nebius Token Factory, the prior
+hardening, and everything implemented since then (universal STT, bilingual mode,
+findings, Ultra, enriched Tavily, Sentry, local history, downloadable script, and
+so on).
 
-**Contraparte viva del mapa archivo ↔ código:** [`docs/status.md`](status.md) (misma
-fecha de corte y mismo criterio de verificación). Este archivo enfatiza el **antes /
-después** frente al tag `pre-nebius` y la arquitectura de la capa de modelo; el
-detalle tabular de implementación no se duplica aquí — vive en `status.md` §1.
+**Living counterpart of the file ↔ code map:** [`docs/status.md`](status.md) (same
+cutoff date and the same verification standard). This file emphasizes the **before /
+after** against the `pre-nebius` tag and the architecture of the model layer; the
+tabular implementation detail is not duplicated here — it lives in `status.md` §1.
 
-| Referencia | Valor |
+| Reference | Value |
 | --- | --- |
 | Baseline | tag `pre-nebius` → `51ddfd6` (2026-08-30) |
-| Estado documentado | `HEAD` en `main` al **2026-10-02** → `e90781a` ("feat(stt): download a timed pitch script…") |
-| Commits desde el tag | 26 (`git rev-list --count pre-nebius..HEAD`) |
-| Diff acumulado vs tag | 117 archivos, +21325 / −2284 (`git diff --shortstat pre-nebius HEAD`) |
+| Documented state | `HEAD` on `main` as of **2026-10-02** → `e90781a` ("feat(stt): download a timed pitch script…") |
+| Commits since the tag | 26 (`git rev-list --count pre-nebius..HEAD`) |
+| Cumulative diff vs tag | 117 files, +21325 / −2284 (`git diff --shortstat pre-nebius HEAD`) |
 
-Hito Nebius (solo la migración de proveedor, no el repo completo):
+Nebius milestone (the provider migration only, not the whole repo):
 
 ```
 c018cc6 hardening: secure, determinize and isolate the model layer before Nebius
@@ -26,58 +27,58 @@ ea1c55e feat(model): add Nebius Token Factory provider, standard + ultra tiers
 15902cb feat(modelo): log mínimo no sensible en la ruta de éxito
 ```
 
-Todo lo posterior en `main` (Scribe, sparring, bilingüe, Tavily fases A/B, Sentry,
-historial, guion, etc.) está reflejado en el **resumen de producto** (§4) y en
-[`status.md`](status.md).
+Everything after that on `main` (Scribe, sparring, bilingual mode, Tavily phases A/B,
+Sentry, history, script, and so on) is reflected in the **product summary** (§4) and
+in [`status.md`](status.md).
 
 ---
 
-## 1. Arquitectura del análisis (ahora)
+## 1. Analysis architecture (now)
 
-La API route no conoce proveedores concretos. El flujo es: **route → caso de uso →
-capa neutra → adaptador**.
+The API route does not know concrete providers. The flow is: **route → use case →
+neutral layer → adapter**.
 
-| Capa | Archivo | Rol |
+| Layer | File | Role |
 | --- | --- | --- |
-| Entrada HTTP | [`src/app/api/analizar-pitch/route.ts`](../src/app/api/analizar-pitch/route.ts) | Valida cuerpo e `idioma`, límite 8000 caracteres (413), prompt, `analizarConModelo`, compone `ResultadoAnalisis` con muletillas server-side, 502 genérico al cliente |
-| Caso de uso | [`src/lib/analisis-modelo.ts`](../src/lib/analisis-modelo.ts) | `system` + `user`, esquema, nombres de puntos, `validarAnalisis` |
-| Política compartida | [`src/lib/modelo.ts`](../src/lib/modelo.ts) | Fallbacks, reintentos, backoff, timeout (20 s estándar/rápido; 90 s ultra), parseo JSON |
-| Adaptadores | [`proveedor-nebius.ts`](../src/lib/proveedor-nebius.ts), [`proveedor-gemini.ts`](../src/lib/proveedor-gemini.ts) | Solo transporte HTTP |
+| HTTP entry | [`src/app/api/analizar-pitch/route.ts`](../src/app/api/analizar-pitch/route.ts) | Validates the body and `idioma`, 8000-character limit (413), prompt, `analizarConModelo`, composes `ResultadoAnalisis` with server-side filler words, generic 502 to the client |
+| Use case | [`src/lib/analisis-modelo.ts`](../src/lib/analisis-modelo.ts) | `system` + `user`, schema, point names, `validarAnalisis` |
+| Shared policy | [`src/lib/modelo.ts`](../src/lib/modelo.ts) | Fallbacks, retries, backoff, timeout (20 s standard/fast; 90 s ultra), JSON parsing |
+| Adapters | [`proveedor-nebius.ts`](../src/lib/proveedor-nebius.ts), [`proveedor-gemini.ts`](../src/lib/proveedor-gemini.ts) | HTTP transport only |
 
-**Selección de proveedor:** `proveedorActivo()` lee `MODEL_PROVIDER` en cada
-llamada. Default **`nebius`**; `gemini` es contingencia manual; otro valor →
+**Provider selection:** `proveedorActivo()` reads `MODEL_PROVIDER` on every
+call. Default **`nebius`**; `gemini` is a manual contingency; any other value →
 `ErrorModelo`.
 
-**Tres niveles Nebius** (`crearProveedorNebius(nivel)`):
+**Three Nebius tiers** (`crearProveedorNebius(nivel)`):
 
-| Nivel | Uso en el producto | Modelo | Razonamiento |
+| Tier | Use in the product | Model | Reasoning |
 | --- | --- | --- | --- |
-| `estandar` | Análisis principal del pitch | `MODEL` (default Super) | `enable_thinking: false` |
-| `ultra` | Botón "Análisis Ultra" en el dashboard | `NEBIUS_MODEL_ULTRA` | Campo omitido (thinking activo) + `traza` en JSON |
-| `rapido` | Sparring, Tavily, validaciones auxiliares | `NEBIUS_MODEL_NANO` | `enable_thinking: false` |
+| `estandar` | Main pitch analysis | `MODEL` (default Super) | `enable_thinking: false` |
+| `ultra` | "Ultra analysis" button on the dashboard | `NEBIUS_MODEL_ULTRA` | Field omitted (thinking on) + `traza` in the JSON |
+| `rapido` | Sparring, Tavily, auxiliary checks | `NEBIUS_MODEL_NANO` | `enable_thinking: false` |
 
-Gemini ignora el nivel (`estandar` / `ultra` / `rapido`): una sola calidad de
-modelo vía `GEMINI_*` / `MODEL_*`.
+Gemini ignores the tier (`estandar` / `ultra` / `rapido`): a single model quality
+via `GEMINI_*` / `MODEL_*`.
 
-**Esquema restringido (Nebius):** `construirEsquemaAnalisisRestringido(puntos)` en
-[`validar-analisis.ts`](../src/lib/validar-analisis.ts) — longitud exacta de
-`rubrica`, ítems `{ cumplido, comentario }` sin `punto` ni `score`. Gemini usa el
-esquema neutro sin restricción estricta de longitud en el proveedor.
+**Restricted schema (Nebius):** `construirEsquemaAnalisisRestringido(puntos)` in
+[`validar-analisis.ts`](../src/lib/validar-analisis.ts) — exact length of
+`rubrica`, items `{ cumplido, comentario }` with no `punto` and no `score`. Gemini uses the
+neutral schema without a strict length constraint in the provider.
 
-Guía operativa: [`guia-integracion-nebius.md`](guia-integracion-nebius.md).
+Operations guide: [`guia-integracion-nebius.md`](guia-integracion-nebius.md).
 
 ---
 
-## 2. Contrato de salida (ahora)
+## 2. Output contract (now)
 
-El modelo devuelve **solo** evaluación y copy; el servidor asigna ids/nombres de
-rúbrica y calcula el **score** de forma determinista:
+The model returns **only** the evaluation and the copy; the server assigns rubric
+ids/names and computes the **score** deterministically:
 
 ```
 score = clamp( round(cumplidos / total * 80) + clamp(claridad, 0, 20), 0, 100 )
 ```
 
-JSON típico (análisis estándar):
+Typical JSON (standard analysis):
 
 ```json
 {
@@ -90,141 +91,141 @@ JSON típico (análisis estándar):
 }
 ```
 
-Análisis Ultra añade `"traza": ["paso 1", "..."]` (4–8 pasos). El prompt y el
-esquema van en el **idioma de sesión** (`es` / `en`); ver [`alcance.md`](alcance.md)
+Ultra analysis adds `"traza": ["paso 1", "..."]` (4–8 steps). The prompt and the
+schema are in the **session language** (`es` / `en`); see [`alcance.md`](alcance.md)
 §15.
 
-Validación local **tolerante** a campos extra del modelo; **estricta** en el número
-de ítems de rúbrica (dispara reintento vía capa neutra).
+Local validation is **tolerant** of extra fields from the model; **strict** on the
+number of rubric items (a mismatch triggers a retry through the neutral layer).
 
 ---
 
-## 3. Tabla comparativa (tag `pre-nebius` vs. `HEAD` actual)
+## 3. Comparison table (tag `pre-nebius` vs. current `HEAD`)
 
-| Área | Antes (`pre-nebius`) | Después (`HEAD`, 2026-10-02) |
+| Area | Before (`pre-nebius`) | After (`HEAD`, 2026-10-02) |
 | --- | --- | --- |
-| **Proveedor LLM** | Solo Gemini en `gemini.ts` | Nebius default + Gemini contingencia; capa neutra |
-| **Score y nombres de rúbrica** | Los inventaba el modelo | Servidor: ids/nombres por índice + score determinista |
-| **Prompt / inyección** | Un string con transcripción embebida | `system` / `user`, transcripción delimitada como dato no confiable |
-| **STT** | Web Speech API (Chrome) | MediaRecorder + **ElevenLabs Scribe** (`/api/transcribir`); texto de respaldo |
-| **Seguridad XSS** | `dangerouslySetInnerHTML` sin escapar | HTML escapado + resaltado por intervalos |
-| **Límites y rate limit** | No existían | 8000 chars, 20 MB audio, 10/10 min (5/10 en `/api/enriquecer`) |
-| **Tests** | Ninguno | Vitest: `src/lib/` + rutas API (`npm test`) |
-| **Idioma** | Solo español en producto | **es / en** completo (UI, rúbricas, prompts, voz, muletillas) |
-| **Ultra** | N/A | Botón en dashboard + traza |
-| **Hallazgos** | N/A | "Resolver hallazgos" — `/api/sparring/*`, hasta 3 puntos |
-| **Tavily** | `results[0]` simple | Pipeline con entidades, Extract, validación de cifra, frase hablada |
-| **Historial** | N/A | `localStorage`, panel "Tu progreso" (20 entradas) |
-| **Guion** | N/A | Descarga `.txt` con marcas `[mm:ss.cc]` si Scribe devolvió timestamps |
-| **Coach UI** | Avatar reactivo (2 estados) | Indicador de **texto** temporal (UX/UI pendiente) |
-| **Observabilidad** | Logs locales | **Sentry** opcional con scrub de PII (ver `sentry.md`, `status.md` §5) |
-| **Rutas API** | 3 | 6 (+ sparring pregunta/evaluar, transcribir) |
+| **LLM provider** | Gemini only, in `gemini.ts` | Nebius by default + Gemini as contingency; neutral layer |
+| **Score and rubric names** | Invented by the model | Server: ids/names by index + deterministic score |
+| **Prompt / injection** | One string with the transcript embedded | `system` / `user`, transcript delimited as untrusted data |
+| **STT** | Web Speech API (Chrome) | MediaRecorder + **ElevenLabs Scribe** (`/api/transcribir`); fallback text |
+| **XSS security** | `dangerouslySetInnerHTML` without escaping | Escaped HTML + highlight by intervals |
+| **Limits and rate limit** | Did not exist | 8000 chars, 20 MB audio, 10/10 min (5/10 on `/api/enriquecer`) |
+| **Tests** | None | Vitest: `src/lib/` + API routes (`npm test`) |
+| **Language** | Spanish only in the product | Full **es / en** (UI, rubrics, prompts, voice, filler words) |
+| **Ultra** | N/A | Dashboard button + trace |
+| **Findings** | N/A | "Resolve findings" — `/api/sparring/*`, up to 3 points |
+| **Tavily** | Simple `results[0]` | Pipeline with entities, Extract, figure validation, spoken sentence |
+| **History** | N/A | `localStorage`, "Your progress" panel (20 entries) |
+| **Script** | N/A | `.txt` download with `[mm:ss.cc]` marks if Scribe returned timestamps |
+| **Coach UI** | Reactive avatar (2 states) | Temporary **text** indicator (UX/UI still pending) |
+| **Observability** | Local logs | Optional **Sentry** with PII scrub (see `sentry.md`, `status.md` §5) |
+| **API routes** | 3 | 6 (+ sparring question/evaluate, transcribe) |
 
-Detalle fila por fila de la migración Nebius (HTTP, `json_schema`, reintento por
-`length`): tabla histórica en commits `ea1c55e`–`15902cb`; el comportamiento
-vigente coincide con [`guia-integracion-nebius.md`](guia-integracion-nebius.md).
+Row-by-row detail of the Nebius migration (HTTP, `json_schema`, retry on
+`length`): historical table in commits `ea1c55e`–`15902cb`; current behavior
+matches [`guia-integracion-nebius.md`](guia-integracion-nebius.md).
 
 ---
 
-## 4. Estado del producto (alineado con `status.md`)
+## 4. Product state (aligned with `status.md`)
 
-Resumen al **2026-10-02** — mismo contenido que el bloque inicial de
-[`status.md`](status.md). Para la tabla **Implementado ↔ archivos**, usar
+Summary as of **2026-10-02** — the same content as the opening block of
+[`status.md`](status.md). For the **Implemented ↔ files** table, use
 `status.md` §1.
 
-**Cerrado:**
+**Closed:**
 
-- Loop voz → Scribe → muletillas → análisis → dashboard + veredicto a pedido.
-- Indicador de coach en texto (`Escuchando…` / `Transcribiendo…` / frases finales).
-- Análisis Nebius/Gemini, Ultra, Resolver hallazgos, Tavily enriquecido (2 primeros
-  puntos fallidos de la rúbrica), TTS sin autoplay, historial local, modo bilingüe,
-  guion descargable, deploy Railway, tests unitarios, Sentry con privacidad.
+- Loop from voice → Scribe → filler words → analysis → dashboard + verdict on demand.
+- Coach indicator in text (`Escuchando…` / `Transcribiendo…` / closing phrases).
+- Nebius/Gemini analysis, Ultra, Resolve findings, enriched Tavily (first 2
+  failed rubric points), TTS without autoplay, local history, bilingual mode,
+  downloadable script, Railway deploy, unit tests, Sentry with privacy.
 
-**Limitaciones conscientes (🟡):**
+**Conscious limitations (🟡):**
 
-- Transcripción **no en vivo** (batch Scribe al detener).
-- Coach **solo texto**; animación en fase UX/UI (indicador en vivo, **no** un
-  orbe/esfera).
-- Rate limit **en memoria** por instancia.
-- Sin E2E automatizado con micrófono.
+- Transcription is **not live** (batch Scribe when recording stops).
+- Coach is **text only**; animation is in the UX/UI phase (live indicator, **not** an
+  orb/sphere).
+- Rate limit **in memory** per instance.
+- No automated E2E with a microphone.
 
-**Abierto para la comunidad** (`status.md` §2): historial entre dispositivos,
-rúbricas custom, idiomas nuevos, STT Realtime, animación del coach.
+**Open for the community** (`status.md` §2): history across devices,
+custom rubrics, new languages, Realtime STT, coach animation.
 
 ---
 
-## 5. Estructura del repo (ahora)
+## 5. Repo structure (now)
 
-Raíz relevante (sin `node_modules` / `.next`):
+Relevant root (without `node_modules` / `.next`):
 
 ```
 src/app/api/     analizar-pitch, transcribir, tts, enriquecer, sparring/*
-src/components/  selectores, GrabadorVoz, Dashboard, SparringCoach, PanelProgreso, …
+src/components/  selectors, GrabadorVoz, Dashboard, SparringCoach, PanelProgreso, …
 src/lib/         modelo, proveedores, rubricas, muletillas, prompts*, tavily*, …
-test/            vitest (lib + rutas con fetch mockeado)
-docs/            alcance, status, pre/post-nebius, guías, sentry
+test/            vitest (lib + routes with mocked fetch)
+docs/            alcance, status, pre/post-nebius, guides, sentry
 ```
 
-**Demo:** misma URL que en el README de producción
-(`pitch-coach-production-1c0c.up.railway.app`). Licencia MIT.
+**Demo:** the same URL as in the production README
+(`pitch-coach-production-1c0c.up.railway.app`). MIT license.
 
-Variables de entorno: [`.env.example`](../.env.example) y `status.md` §3.
+Environment variables: [`.env.example`](../.env.example) and `status.md` §3.
 
 ---
 
-## 6. Evidencia y pruebas
+## 6. Evidence and tests
 
-| Qué | Cómo |
+| What | How |
 | --- | --- |
-| Contrato Nebius real | `scripts/smoke-nebius.mjs` (Node ≥ 22.6, importa `src/lib` sin build) |
-| Regresión automática | `npm test` — suite en `test/` (proveedor Nebius, validación, API, Sentry, Tavily, historial, guion, idiomas, …) |
-| Nebius en producción | Log `[modelo] proveedor=nebius modelo=…` en Railway (observación operativa; ver `status.md`) |
-| Privacidad Sentry | Tests + auditoría documentada en [`sentry.md`](sentry.md) y `status.md` §5 |
+| Real Nebius contract | `scripts/smoke-nebius.mjs` (Node ≥ 22.6, imports `src/lib` without a build) |
+| Automatic regression | `npm test` — suite in `test/` (Nebius provider, validation, API, Sentry, Tavily, history, script, languages, …) |
+| Nebius in production | Log `[modelo] proveedor=nebius modelo=…` on Railway (operational observation; see `status.md`) |
+| Sentry privacy | Tests + audit documented in [`sentry.md`](sentry.md) and `status.md` §5 |
 
-**Modo ultra:** implementado en UI y API; la medición sistemática de tokens de
-razonamiento en producción no está instrumentada en logs (`modelo.ts` solo imprime
-proveedor y modelo en éxito).
-
----
-
-## 7. Qué no volvió al estado pre-Nebius
-
-Estas piezas **sí cambiaron** respecto al tag `pre-nebius` y **no** se documentan
-como "igual que antes":
-
-- STT dejó de ser Web Speech → Scribe batch universal.
-- Producto pasó de monolingüe a bilingüe con ids estables de rúbrica.
-- Tavily pasó de enriquecimiento mínimo a pipeline con validación y frase hablada.
-- Observabilidad: Sentry integrado con scrub agresivo (sin Session Replay).
-- Avatar eliminado → indicador textual (decisión de producto en `alcance.md` §5.1).
-
-Lo que **permanece** como en la era post-hardening: sesión anónima, rúbricas fijas
-(4×5), sin backend separado, `Dockerfile` solo deploy, Gemini como respaldo manual.
+**Ultra mode:** implemented in the UI and the API; systematic measurement of reasoning
+tokens in production is not instrumented in the logs (`modelo.ts` only prints
+provider and model on success).
 
 ---
 
-## 8. Pendientes técnicos (no confundir con "no implementado")
+## 7. What did not return to the pre-Nebius state
 
-Items vivos para mantenedores — no son deuda del tag `pre-nebius`:
+These pieces **did change** relative to the `pre-nebius` tag and are **not** documented
+as "the same as before":
 
-1. **Rate limit en memoria** — revisar si hay varias réplicas en Railway.
-2. **Tokens de modelo en logs** — propagar `usage` desde adaptadores si se quiere
-   auditar costo/razonamiento en producción.
-3. **Migración Sentry SDK v12** — `beforeSendTransaction` deprecado; planificar
+- STT stopped being Web Speech → batch Scribe, universal.
+- The product went from monolingual to bilingual, with stable rubric ids.
+- Tavily went from minimal enrichment to a pipeline with validation and a spoken sentence.
+- Observability: Sentry integrated with aggressive scrubbing (no Session Replay).
+- Avatar removed → text indicator (product decision in `alcance.md` §5.1).
+
+What **remains** as in the post-hardening era: anonymous session, fixed rubrics
+(4×5), no separate backend, `Dockerfile` for deploy only, Gemini as a manual fallback.
+
+---
+
+## 8. Technical follow-ups (do not confuse with "not implemented")
+
+Live items for maintainers — they are not debt from the `pre-nebius` tag:
+
+1. **In-memory rate limit** — check whether Railway is running several replicas.
+2. **Model tokens in logs** — propagate `usage` from the adapters if you want to
+   audit cost/reasoning in production.
+3. **Sentry SDK v12 migration** — `beforeSendTransaction` deprecated; plan
    `beforeSendSpan` (`sentry.md` §10).
-4. **Trampa `genAI`** — no instalar SDK `openai` sin desactivar captura de prompts
+4. **`genAI` trap** — do not install the `openai` SDK without turning off prompt capture
    (`sentry.md` §3.6.2).
-5. **UX/UI** — lenguaje visual del coach y posible STT Realtime (fuera de alcance
-   actual en `alcance.md`).
+5. **UX/UI** — the coach's visual language and possible Realtime STT (out of current
+   scope in `alcance.md`).
 
 ---
 
-## Referencias cruzadas
+## Cross-references
 
-| Documento | Uso |
+| Document | Use |
 | --- | --- |
-| [`pre-nebius.md`](pre-nebius.md) | Baseline **antes** del hardening + migración |
-| [`status.md`](status.md) | Mapa **vivo** implementado ↔ archivos |
-| [`alcance.md`](alcance.md) | Reglas de producto y contratos (incl. bilingüe) |
-| [`guia-integracion-nebius.md`](guia-integracion-nebius.md) | HTTP, esquema, smoke test |
-| [`README.md`](../README.md) | Entrada rápida y setup |
+| [`pre-nebius.md`](pre-nebius.md) | Baseline **before** the hardening + migration |
+| [`status.md`](status.md) | **Living** map of implemented ↔ files |
+| [`alcance.md`](alcance.md) | Product rules and contracts (including bilingual mode) |
+| [`guia-integracion-nebius.md`](guia-integracion-nebius.md) | HTTP, schema, smoke test |
+| [`README.md`](../README.md) | Quick start and setup |

@@ -1,51 +1,51 @@
-# Guía de integración Nebius Token Factory
+# Nebius Token Factory integration guide
 
-Cómo Pitch Coach habla con Nebius Token Factory usando un endpoint
-**OpenAI-compatible**. Es el proveedor **por defecto** del análisis; Gemini queda
-como contingencia manual.
+How Pitch Coach talks to Nebius Token Factory through an
+**OpenAI-compatible** endpoint. It is the **default** analysis provider; Gemini
+stays as a manual fallback.
 
-- Adaptador: [`src/lib/proveedor-nebius.ts`](../src/lib/proveedor-nebius.ts).
-- Capa neutra (reintentos, timeout, parseo) y fábrica: [`src/lib/modelo.ts`](../src/lib/modelo.ts).
-- Esquema restringido: [`src/lib/validar-analisis.ts`](../src/lib/validar-analisis.ts).
+- Adapter: [`src/lib/proveedor-nebius.ts`](../src/lib/proveedor-nebius.ts).
+- Neutral layer (retries, timeout, parsing) and factory: [`src/lib/modelo.ts`](../src/lib/modelo.ts).
+- Constrained schema: [`src/lib/validar-analisis.ts`](../src/lib/validar-analisis.ts).
 
-No se usa ningún SDK: basta `fetch` nativo.
+No SDK is used: native `fetch` is enough.
 
 ---
 
-## 1. Selección de proveedor
+## 1. Provider selection
 
-`MODEL_PROVIDER` decide qué adaptador usa `proveedorActivo()`:
+`MODEL_PROVIDER` decides which adapter `proveedorActivo()` uses:
 
-| `MODEL_PROVIDER` | Adaptador | Key requerida |
+| `MODEL_PROVIDER` | Adapter | Required key |
 |---|---|---|
 | `nebius` (default) | `proveedor-nebius.ts` | `NEBIUS_API_KEY` |
 | `gemini` | `proveedor-gemini.ts` | `GEMINI_API_KEY` |
 
-Un valor distinto lanza `ErrorModelo` con el mensaje de valores válidos. Si la
-variable falta, se asume `nebius`.
+Any other value throws `ErrorModelo` with the message that lists the valid values. If the
+variable is missing, `nebius` is assumed.
 
 ---
 
-## 2. Variables de entorno
+## 2. Environment variables
 
 ```bash
-# Proveedor activo: "nebius" (default) o "gemini"
+# Active provider: "nebius" (default) or "gemini"
 MODEL_PROVIDER=nebius
 
-# Requerida con MODEL_PROVIDER=nebius. Solo server-side.
+# Required when MODEL_PROVIDER=nebius. Server-side only.
 NEBIUS_API_KEY=
 
-# Base URL OpenAI-compatible. Default:
+# OpenAI-compatible base URL. Default:
 # https://api.tokenfactory.nebius.com/v1
 NEBIUS_BASE_URL=
 
-# Modelo del modo "Análisis Ultra" (botón en el dashboard).
+# Model for "Ultra analysis" mode (button on the dashboard).
 # Default: nvidia/Nemotron-3-Ultra-550b-a55b
 NEBIUS_MODEL_ULTRA=
 
-# Neutras, compartidas con el resto de proveedores:
-MODEL=                        # default Nebius: nvidia/nemotron-3-super-120b-a12b
-MODEL_FALLBACK_MODELS=        # separadas por comas
+# Neutral settings, shared with the other providers:
+MODEL=                        # Nebius default: nvidia/nemotron-3-super-120b-a12b
+MODEL_FALLBACK_MODELS=        # comma-separated
 MODEL_MAX_TOKENS=             # default 1024
 MODEL_TEMPERATURE=            # default 0.7
 MODEL_RETRY_ATTEMPTS=         # default 3
@@ -53,16 +53,16 @@ MODEL_RETRY_DELAY_MS=         # default 1000
 MODEL_RETRY_MAX_DELAY_MS=     # default 8000
 ```
 
-`NEBIUS_BASE_URL` se normaliza (se le quita la barra final) antes de concatenar
+`NEBIUS_BASE_URL` is normalized (the trailing slash is removed) before appending
 `/chat/completions`.
 
-Sin `NEBIUS_API_KEY`, el adaptador lanza un `ErrorModelo` claro **antes** de
-cualquier `fetch`; la API route lo convierte en 502 con mensaje genérico al
-cliente y el detalle queda solo en logs del servidor.
+Without `NEBIUS_API_KEY`, the adapter throws a clear `ErrorModelo` **before**
+any `fetch`; the API route turns that into a 502 with a generic message for the
+client, and the detail stays in server logs only.
 
 ---
 
-## 3. Contrato HTTP
+## 3. HTTP contract
 
 ```
 POST {NEBIUS_BASE_URL}/chat/completions
@@ -70,7 +70,7 @@ Authorization: Bearer {NEBIUS_API_KEY}
 Content-Type: application/json
 ```
 
-Cuerpo (modo estándar, el del despliegue):
+Body (standard mode, the one used in the deployment):
 
 ```json
 {
@@ -93,111 +93,114 @@ Cuerpo (modo estándar, el del despliegue):
 }
 ```
 
-Puntos que no se deben cambiar sin volver a probar contra la API real:
+The two `content` strings in that body are unchanged placeholders for the
+system and user text that [`src/lib/prompts.ts`](../src/lib/prompts.ts) builds.
 
-- **El envoltorio del esquema es obligatorio.** `response_format.json_schema`
-  debe llevar `{ name, strict, schema }`. Un esquema sin envolver devuelve **422**.
-- **`messages` va separado** en `system` y `user` (igual que produce
-  [`src/lib/prompts.ts`](../src/lib/prompts.ts)).
-- **`chat_template_kwargs: { enable_thinking: false }`** es válido y baja los
-  tokens de razonamiento a 0 sin perder validez del JSON. Se agrega por defecto
-  en modo estándar.
-- Con `finish_reason: "stop"`, el JSON completo está en `choices[0].message.content`.
-  No hace falta leer `reasoning_content`.
+Points that should stay as they are until you test again against the real API:
 
-Se extrae el texto de `choices[0].message.content`.
+- **The schema wrapper is required.** `response_format.json_schema`
+  must carry `{ name, strict, schema }`. An unwrapped schema returns **422**.
+- **`messages` is split** into `system` and `user` (the same split
+  [`src/lib/prompts.ts`](../src/lib/prompts.ts) produces).
+- **`chat_template_kwargs: { enable_thinking: false }`** is valid and drops
+  reasoning tokens to 0 while the JSON stays valid. It is added by default
+  in standard mode.
+- With `finish_reason: "stop"`, the full JSON is in `choices[0].message.content`.
+  There is no need to read `reasoning_content`.
+
+The text is taken from `choices[0].message.content`.
 
 ---
 
-## 4. Modo estándar y modo ultra
+## 4. Standard mode and ultra mode
 
-`crearProveedorNebius(nivel)` acepta un parámetro interno:
+`crearProveedorNebius(nivel)` takes an internal parameter:
 
-| Nivel | Modelo | `chat_template_kwargs` | Lista de modelos |
+| Level | Model | `chat_template_kwargs` | Model list |
 |---|---|---|---|
-| `estandar` (default) | `MODEL` (o `nvidia/nemotron-3-super-120b-a12b`) | Se envía `{ enable_thinking: false }` | principal + `MODEL_FALLBACK_MODELS` |
-| `ultra` | `NEBIUS_MODEL_ULTRA` | **Se omite** (deja el razonamiento activo) | solo ese modelo, sin fallbacks |
+| `estandar` (default) | `MODEL` (or `nvidia/nemotron-3-super-120b-a12b`) | Sends `{ enable_thinking: false }` | primary + `MODEL_FALLBACK_MODELS` |
+| `ultra` | `NEBIUS_MODEL_ULTRA` | **Omitted** (reasoning stays on) | that model only, no fallbacks |
 
-El nivel `ultra` se invoca desde el dashboard (`POST /api/analizar-pitch` con
-`nivel: "ultra"`): mismo proveedor Nebius, modelo `NEBIUS_MODEL_ULTRA`, sin
-`enable_thinking: false` y con campo `traza` en la respuesta. El análisis
-estándar de la sesión usa `proveedorNebius` (nivel `estandar`). El nivel
-`rapido` (Nano) alimenta sparring, Tavily y validaciones auxiliares.
-
----
-
-## 5. Reintento por `finish_reason: "length"`
-
-Una respuesta truncada no es éxito ni error genérico: es señal de que faltó
-presupuesto de tokens. El adaptador **reintenta esa misma llamada una vez** con
-`max_tokens` duplicado (tope `8192`) antes de devolver el control al bucle de
-reintentos/modelos de `modelo.ts`.
-
-- Si el segundo intento vuelve a truncarse → `ErrorModelo` (sin `codigoHttp`, es
-  decir reintentable por la capa neutra).
-- Si el primer `max_tokens` ya está en `8192` y sigue truncando → error claro, no
-  se reintenta con menos.
+The `ultra` level is invoked from the dashboard (`POST /api/analizar-pitch` with
+`nivel: "ultra"`): the same Nebius provider, model `NEBIUS_MODEL_ULTRA`, without
+`enable_thinking: false`, and with a `traza` field in the response. The session's
+standard analysis uses `proveedorNebius` (level `estandar`). The
+`rapido` level (Nano) feeds sparring, Tavily, and auxiliary checks.
 
 ---
 
-## 6. Esquema restringido (una sola generación)
+## 5. Retry on `finish_reason: "length"`
 
-En modo estricto conviene que el esquema fije el número exacto de ítems.
-`construirEsquemaAnalisisRestringido(puntos)` deriva de `ESQUEMA_ANALISIS` un
-esquema con:
+A truncated response is neither success nor a generic error: it means the token
+budget ran out. The adapter **retries that same call once** with
+`max_tokens` doubled (cap `8192`) before handing control back to the
+retry/model loop in `modelo.ts`.
 
-- `minItems === maxItems === puntos.length` en `rubrica`;
-- ítems de la forma `{ cumplido, comentario }`: el modelo **no** nombra los
-  puntos ni se declara un `enum` de nombres (el servidor asigna el nombre por
-  índice desde la rúbrica);
-- `required` + `additionalProperties: false` donde corresponde.
-
-Se genera **una sola vez por conjunto de puntos** (caché por nombres en orden).
-El llamador aporta los puntos vía `SolicitudModelo.puntosRubrica` (opcional);
-solo se usan para la longitud exacta del array. Gemini **no** lo usa, así que el
-esquema restringido queda específico de Nebius.
+- If the second attempt is truncated again → `ErrorModelo` (no `codigoHttp`,
+  so the neutral layer may retry it).
+- If the first `max_tokens` is already `8192` and the response is still truncated → a clear error;
+  it is not retried with a smaller budget.
 
 ---
 
-## 7. Prueba de humo real (manual, fuera de vitest)
+## 6. Constrained schema (a single generation)
 
-Los tests automatizados usan `fetch` mockeado y **nunca** pegan a la red. Para
-verificar contra la API real con tu clave:
+In strict mode the schema should fix the exact number of items.
+`construirEsquemaAnalisisRestringido(puntos)` derives from `ESQUEMA_ANALISIS` a
+schema with:
+
+- `minItems === maxItems === puntos.length` on `rubrica`;
+- items shaped as `{ cumplido, comentario }`: the model does **not** name the
+  points, and no name `enum` is declared (the server assigns each name by
+  index from the rubric);
+- `required` + `additionalProperties: false` where that applies.
+
+It is generated **once per set of points** (cached by names in order).
+The caller supplies the points through `SolicitudModelo.puntosRubrica` (optional);
+they are used only for the array's exact length. Gemini does **not** use it, so the
+constrained schema stays specific to Nebius.
+
+---
+
+## 7. Real smoke test (manual, outside vitest)
+
+Automated tests use a mocked `fetch` and **never** hit the network. To
+check against the real API with your key:
 
 ```bash
-# Con NEBIUS_API_KEY en el entorno o en .env.local
+# With NEBIUS_API_KEY in the environment or in .env.local
 NEBIUS_API_KEY=... node scripts/smoke-nebius.mjs
 
-# Para probar también el modelo ultra (omite chat_template_kwargs)
+# To also test the ultra model (omits chat_template_kwargs)
 NEBIUS_API_KEY=... node scripts/smoke-nebius.mjs --ultra
 ```
 
-El script **no duplica lógica**: importa `construirEsquemaAnalisisRestringido()`,
-`validarAnalisis()`, `RUBRICAS` y `construirPrompt()` de `src/lib` (Node ≥ 22.6
-ejecuta los `.ts` directamente, sin runner ni build). Por eso una desalineación
-entre producción y prueba de humo hace fallar al script.
+The script **does not duplicate logic**: it imports `construirEsquemaAnalisisRestringido()`,
+`validarAnalisis()`, `RUBRICAS`, and `construirPrompt()` from `src/lib` (Node ≥ 22.6
+runs the `.ts` files directly, with no runner and no build). A mismatch
+between production and the smoke test makes the script fail.
 
-Imprime: el esquema de producción efectivo (longitud de la rúbrica,
-`items.required`, si existe `punto`), status HTTP, `finish_reason`, uso de tokens,
-el **JSON completo sin recortar** del `content`, el resultado de
-`validarAnalisis()` real y el número de ítems de `rubrica`.
+It prints: the effective production schema (rubric length,
+`items.required`, whether `punto` exists), HTTP status, `finish_reason`, token
+usage, the **full untrimmed JSON** from `content`, the real
+`validarAnalisis()` result, and the number of `rubrica` items.
 
-Sobre campos extra del modelo: `validarAnalisis()` **ignora** claves de más
-(incluido un `punto` alucinado) y **nunca** las rechaza — el servidor asigna el
-nombre de cada punto por índice desde `RUBRICAS`. Así que un `rubrica` con
-exactamente `puntos.length` ítems y `{ cumplido, comentario }` válidos siempre
-pasa, aunque el modelo agregue campos.
+On extra fields from the model: `validarAnalisis()` **ignores** surplus keys
+(including a hallucinated `punto`) and **never** rejects them — the server assigns
+each point's name by index from `RUBRICAS`. So a `rubrica` with
+exactly `puntos.length` items and valid `{ cumplido, comentario }` always
+passes, even if the model adds fields.
 
 ---
 
-## 8. Resiliencia (compartida con Gemini)
+## 8. Resilience (shared with Gemini)
 
-La política vive en `modelo.ts`, no en el adaptador:
+The policy lives in `modelo.ts`, not in the adapter:
 
-- Recorre `[principal, ...fallbacks]`; por modelo, hasta `MODEL_RETRY_ATTEMPTS`
-  intentos con backoff `min(delayBase * 2^(n-1), delayMax)`.
-- Reintenta 408/429/5xx, timeout y errores de red; un error permanente
-  (400/404…) salta al siguiente modelo.
-- Timeout por intento: 20 s (`AbortSignal.timeout`).
-- El error del proveedor se clasifica con `ErrorModelo` y `codigoHttp`, así que
-  el backoff se reutiliza: el adaptador **no** duplica lógica de reintentos.
+- It walks `[primary, ...fallbacks]`; per model, up to `MODEL_RETRY_ATTEMPTS`
+  attempts with backoff `min(delayBase * 2^(n-1), delayMax)`.
+- It retries 408/429/5xx, timeouts, and network errors; a permanent error
+  (400/404…) skips to the next model.
+- Timeout per attempt: 20 s (`AbortSignal.timeout`).
+- The provider error is classified with `ErrorModelo` and `codigoHttp`, so
+  the backoff is reused: the adapter does **not** duplicate retry logic.

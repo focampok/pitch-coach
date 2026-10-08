@@ -1,84 +1,89 @@
 # Contributing — Pitch Coach
 
-Gracias por contribuir a **Pitch Coach**. Es open source (MIT); toda ayuda suma,
-desde reportar un bug hasta agregar un idioma o un tipo de pitch.
+Thanks for contributing to **Pitch Coach**. It is open source (MIT). Help of
+any size counts, from a bug report to a new language or pitch type.
 
-## Cómo correr el proyecto en local
+## Run it locally
 
-La sección **Setup local** del [README](README.md) es la fuente de verdad. Resumen:
+The **Local setup** section of the [README](README.md) is the source of truth.
+Short version:
 
-1. Clonar el repositorio.
+1. Clone the repository.
 2. `npm install`
-3. Copiar `.env.example` a `.env.local`:
-   - `NEBIUS_API_KEY` — análisis con el proveedor por defecto (**requerida**).
-   - O `MODEL_PROVIDER=gemini` + `GEMINI_API_KEY` como contingencia.
-   - `ELEVENLABS_API_KEY` — STT (Scribe) y TTS; sin ella hay texto de respaldo y
-     SpeechSynthesis.
-   - Voice IDs en español e inglés (ver `.env.example`).
-   - `TAVILY_API_KEY` — opcional; sin ella no hay sugerencias.
+3. Copy `.env.example` to `.env.local`:
+   - `NEBIUS_API_KEY` — analysis with the default provider (**required**).
+   - Or `MODEL_PROVIDER=gemini` + `GEMINI_API_KEY` as the fallback.
+   - `ELEVENLABS_API_KEY` — STT (Scribe) and TTS. Without it there is backup
+     text and SpeechSynthesis.
+   - Voice IDs in Spanish and English (see `.env.example`).
+   - `TAVILY_API_KEY` — optional. Without it there are no suggestions.
 4. `npm run dev`
 
-Desarrollo nativo, sin Docker. El `Dockerfile` es solo para Railway.
+Native development, no Docker. The `Dockerfile` is only for Railway.
 
-**Navegador:** Chrome, Firefox, Safari, Brave o móvil con micrófono. STT =
-MediaRecorder + Scribe en el servidor.
+**Browser:** Chrome, Firefox, Safari, Brave, or a phone with a microphone.
+STT is MediaRecorder plus Scribe on the server.
 
-**Tests:** `npm test` antes de abrir un PR.
+**Tests:** `npm test` before opening a PR.
 
-## Convenciones
+## Conventions
 
-- **Producto bilingüe (es / en):** textos de UI, rúbricas visibles, prompts y
-  salidas del modelo van en el idioma de sesión (`idioma`). Ver
-  [`CLAUDE.md`](CLAUDE.md) y [`docs/alcance.md`](docs/alcance.md) §15.
-- **Código:** nombres técnicos en inglés; dominio de negocio puede usar español
-  en archivos como `rubricas.ts` o `SelectorTipoPitch.tsx`.
+- **Bilingual product (es / en):** UI copy, visible rubric labels, prompts, and
+  model output follow the session language (`idioma`). See
+  [`CLAUDE.md`](CLAUDE.md) and [`docs/alcance.md`](docs/alcance.md) §15.
+- **Documentation is English.** Markdown in this repo is written in English.
+  The app itself stays bilingual.
+- **Code:** technical names in English. Business-domain files may stay in
+  Spanish, such as `rubricas.ts` or `SelectorTipoPitch.tsx`.
 
-## Puntos de extensión
+## Extension points
 
-### Nuevo tipo de pitch
+### New pitch type
 
-1. Rúbrica en [`src/lib/rubricas.ts`](src/lib/rubricas.ts): 5 puntos con `id`
-   estable + nombre y `queBuscar` **por idioma**.
-2. Opción en [`src/components/SelectorTipoPitch.tsx`](src/components/SelectorTipoPitch.tsx).
-3. Tipo en [`src/types/pitch.ts`](src/types/pitch.ts) (`TipoPitch`).
-4. Claves de UI en [`src/lib/diccionario-es.ts`](src/lib/diccionario-es.ts) y
+1. Rubric in [`src/lib/rubricas.ts`](src/lib/rubricas.ts): 5 points with a
+   stable `id`, plus `nombre` and `queBuscar` **per language**.
+2. Option in [`src/components/SelectorTipoPitch.tsx`](src/components/SelectorTipoPitch.tsx).
+3. Type in [`src/types/pitch.ts`](src/types/pitch.ts) (`TipoPitch`).
+4. UI keys in [`src/lib/diccionario-es.ts`](src/lib/diccionario-es.ts) and
    [`src/lib/diccionario-en.ts`](src/lib/diccionario-en.ts).
 
-### Nueva muletilla
+### New filler word
 
-Patrones en [`src/lib/muletillas.ts`](src/lib/muletillas.ts) — fuente única para
-conteo y resaltado. En inglés, extender `patronesMuletillas("en")` con las mismas
-reglas de contexto que las existentes (`like`, `so`, `right`, etc.).
+Patterns live in [`src/lib/muletillas.ts`](src/lib/muletillas.ts) — one source
+for counting and highlighting. In English, extend `patronesMuletillas("en")`
+with the same context rules as the existing patterns (`like`, `so`, `right`,
+and the rest).
 
-### Nuevo idioma
+### New language
 
-Agregar datos, no ramificar componentes:
+Add data. Do not branch the components:
 
-1. Entrada en [`src/lib/idiomas.ts`](src/lib/idiomas.ts)
-2. Diccionario nuevo tipado contra `typeof es`
-3. Par de Voice IDs en `.env.example` + lectura en TTS
-4. Patrones de muletillas si aplica
+1. Entry in [`src/lib/idiomas.ts`](src/lib/idiomas.ts)
+2. New dictionary typed against `typeof es`
+3. Voice ID pair in `.env.example`, read by TTS
+4. Filler-word patterns if they apply
 
-### Coach (estado / copy)
+### Coach (status / copy)
 
-Indicador de texto en [`src/lib/mensajes-coach.ts`](src/lib/mensajes-coach.ts)
-y diccionarios. El reemplazo visual (animación) lo define la fase de UX/UI — ver
-[`docs/alcance.md`](docs/alcance.md) §5.1.
+Text indicator in [`src/lib/mensajes-coach.ts`](src/lib/mensajes-coach.ts) and
+the dictionaries. The visual replacement (animation) belongs to the UX/UI
+phase — see [`docs/alcance.md`](docs/alcance.md) §5.1.
 
-## Qué se espera de un PR
+## What a PR should include
 
-- `npm test` y `npm run lint` en verde.
-- Si tocas grabación, dashboard o voz: **prueba manual** en la descripción:
-  - Qué probaste (pasos).
-  - Qué viste.
-  - Navegador y idioma de sesión.
+- `npm test` and `npm run lint` green.
+- If you touch recording, the dashboard, or voice: a **manual check** in the
+  description:
+  - What you tried (steps).
+  - What you saw.
+  - Browser and session language.
 
-## Cómo reportar bugs
+## How to report bugs
 
-Abre un **Issue** con:
+Open an **Issue** with:
 
-- Navegador y versión.
-- Errores de la consola (sin pegar transcripciones largas ni API keys).
-- Pasos para reproducir y resultado esperado vs. real.
+- Browser and version.
+- Console errors (do not paste long transcripts or API keys).
+- Steps to reproduce, and expected versus actual result.
 
-Más contexto: [`docs/README.md`](docs/README.md).
+More context: [`docs/README.md`](docs/README.md).

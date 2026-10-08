@@ -1,99 +1,114 @@
-# Guía para actualizar el README de Pitch Coach
+# Guide for updating the Pitch Coach README
 
-Úsala cuando el Serverless Job del acta de comité ya funcione de punta a punta: se crea, termina, y el dashboard muestra el acta. No antes. Si el job no está, no lo nombres en el README.
+Use this once the committee-minutes Serverless Job already works end to end: it is created, it finishes, and the dashboard shows the minutes. Not before. If the job is absent, do not name it in the README.
 
-No es una landing ni un pitch deck. El README sigue siendo la ficha de setup. Lo técnico (NVIDIA, Nebius, Tavily, el job) entra en dos sitios: una sección corta en este README y el detalle que ya vive en `docs/`. El video se graba después de este pase.
+Keep the root README in English.
 
-No toques el tono de producto de las primeras líneas. No añadas mercado, equipo, ni una segunda página.
+This is not a landing page or a pitch deck. The README stays the setup sheet. The technical pieces (NVIDIA, Nebius, Tavily, the job) go in two places: a short section in this README and the detail that already lives in `docs/`. Record the video after this pass.
 
-## Qué editar, en este orden
+Leave the product tone of the opening lines as it is. Do not add a market, a team, or a second page.
 
-### 1. Loop principal
+When the product loop includes them, the README names four things in the session description: the public-room objection, the spoken-figure check, the timeline, and the 45-second retake. Section 1 says where.
 
-En **Qué hace**, después del dashboard, una frase y nada más:
+## What to edit, in this order
 
-El servidor puede pedir un acta de comité. Un job en Nebius corre fuera del request, escribe una objeción por cada punto no cumplido y un guion que cabe en la duración elegida, y el dashboard lo muestra cuando el archivo ya está.
+### 1. Main loop
 
-No digas que el job reemplaza el análisis. El análisis de la grabación sigue siendo Token Factory en el proceso de Next (Super por defecto, Ultra solo si se pide, Nano en lo barato).
+In **What it does** (the live heading may be **What a session does**), after the dashboard, one sentence and nothing more for the job:
 
-### 2. Sección nueva: Cómo corre
+The server can request committee minutes. A job on Nebius runs outside the request, writes one objection for each missed point and a script that fits the chosen duration, and the dashboard shows it once the file is there.
 
-Ponla después de **Stack** y antes de **Setup local**. Cuatro bloques, cada uno con el archivo real. Rellena los huecos con lo que quedó en el código, no con esta guía.
+Do not say the job replaces the analysis. Analysis of the recording is still Token Factory inside the Next process (Super by default, Ultra only when asked, Nano for the cheap calls).
 
-**Token Factory (NVIDIA, en cada práctica).** El servidor llama a `https://api.tokenfactory.nebius.com/v1/chat/completions` desde `src/lib/proveedor-nebius.ts`. Modelos por defecto:
+When they are part of the product loop, the same session description also names:
 
-- Análisis de la toma: `nvidia/nemotron-3-super-120b-a12b` (Super).
-- Análisis Ultra, solo si el usuario lo pide: `nvidia/Nemotron-3-Ultra-550b-a55b`.
-- Sparring, entidades y validación de cifra: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`.
+- **Public-room objection** — one objection on the first missed point. The room follows the pitch type.
+- **Spoken-figure check** — one figure the speaker already said.
+- **Timeline** — where the covered points sit on the recording.
+- **45-second retake** — a second take on one missed point.
 
-El modelo no pone el score. La rúbrica está en `src/lib/rubricas.ts` y el servidor recalcula las muletillas. Detalle: `docs/guia-integracion-nebius.md`.
+The transcript is never sent to Tavily.
 
-**Tavily (solo si falta un punto).** Search y extract desde el servidor. La transcripción no se envía. Como máximo dos puntos en el request de la práctica (`MAX_PUNTOS_ENRIQUECIDOS`). Si no hay cifra usable, no hay sugerencia. Detalle: `docs/guia-integracion-tavily.md`.
+### 2. New section: How it runs
 
-**Job del acta (Nebius Serverless AI, sin GPU).** No es un Endpoint y no rehospeda la app. Railway sigue sirviendo Next. El job es una VM que arranca, escribe el acta y sale. El token de AI Cloud no es `NEBIUS_API_KEY`.
+Place it after **Stack** and before **Local setup**. Four blocks, each with the real file. Fill the gaps with what landed in the code, not with this guide.
 
-Completa esta lista con los valores del job que sí corriste:
+**Token Factory (NVIDIA, on every practice).** The server calls `https://api.tokenfactory.nebius.com/v1/chat/completions` from `src/lib/proveedor-nebius.ts`. Default models:
 
-- Imagen y worker: ruta real (la propuesta era `jobs/comite/`).
-- Crear el job: método y URL reales (la doc de jobs usa `POST https://api.nebius.cloud/ai/v1/jobs`).
-- VM: platform y preset sin GPU, los que elegiste en consola. No copies un preset con GPU.
-- Entrada: archivo inyectado con la sesión ya analizada. Tope documentado: 64 KiB.
-- Salida: volumen o bucket donde queda `acta.json`. Sin eso el disco del job se borra al terminar.
-- Timeout que configuraste. El mínimo documentado es 1 hora; el worker tiene que salir solo.
-- Qué modelo usa el worker. La propuesta era Super para el acta y Nano para aceptar o rechazar la cifra. Ultra no entra en el job.
-- Misma regla de Tavily: al job no le llega la transcripción, solo entidades cortas y el nombre del punto.
+- Take analysis: `nvidia/nemotron-3-super-120b-a12b` (Super).
+- Ultra analysis, only if the user asks: `nvidia/Nemotron-3-Ultra-550b-a55b`.
+- Sparring, entities, and figure validation: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`.
 
-**Qué no hace falta para la regla del hackathon.** La app ya llama a Token Factory en runtime. El job es el acta, no el requisito de entrada. Gemini sigue siendo contingencia manual (`MODEL_PROVIDER=gemini`) y no es el camino de la demo.
+When the product loop includes them, the Nano line also names the room objection, the spoken-figure check, the timeline, and the 45-second retake.
+
+The model does not set the score. The rubric lives in `src/lib/rubricas.ts` and the server recounts filler words. Detail: `docs/guia-integracion-nebius.md`.
+
+**Tavily (only when a point is missing).** Search and extract from the server. The transcript is not sent. At most two points in the practice request (`MAX_PUNTOS_ENRIQUECIDOS`). If there is no usable figure, there is no suggestion. The same server call also asks for one public-room objection on the first missed point and checks one figure the speaker already said. Detail: `docs/guia-integracion-tavily.md`.
+
+**Committee-minutes job (Nebius Serverless AI, no GPU).** It is not an Endpoint and it does not rehost the app. Railway still serves Next. The job is a VM that starts, writes the minutes, and exits. The AI Cloud token is not `NEBIUS_API_KEY`.
+
+Complete this list with the values from the job you actually ran:
+
+- Image and worker: the real path (the proposal was `jobs/comite/`).
+- Create the job: the real method and URL (the jobs docs use `POST https://api.nebius.cloud/ai/v1/jobs`).
+- VM: the platform and the preset without a GPU, the ones you chose in the console. Do not copy a preset that includes a GPU.
+- Input: a file injected with the session already analyzed. Documented cap: 64 KiB.
+- Output: the volume or bucket where `acta.json` lands. Without that, the job disk is wiped when the job ends.
+- The timeout you configured. The documented minimum is 1 hour; the worker has to exit on its own.
+- Which model the worker uses. The proposal was Super for the minutes and Nano to accept or reject the figure. Ultra does not enter the job.
+- The same Tavily rule: the job does not receive the transcript, only short entities and the point name.
+
+**What the hackathon rule does not require.** The app already calls Token Factory at runtime. The job is the minutes, not the entry requirement. Gemini stays a manual fallback (`MODEL_PROVIDER=gemini`) and is not the demo path.
 
 ### 3. Stack
 
-Añade una línea, solo si el código ya está:
+Add one line, only if the code is already there:
 
-- **Nebius Serverless Job** — acta de comité, VM sin GPU, un proceso que termina.
+- **Nebius Serverless Job** — committee minutes, a VM without a GPU, one process that exits.
 
-No listes un Endpoint.
+Do not list an Endpoint.
 
-### 4. Setup local
+### 4. Local setup
 
-En el paso de variables, separa las dos claves:
+In the variables step, split the two keys:
 
-- `NEBIUS_API_KEY` — Token Factory. Sigue siendo la del análisis.
-- La clave de AI Cloud del job — el nombre real de la variable en `.env.example`. No la llames igual que la de Token Factory si el código no lo hace.
+- `NEBIUS_API_KEY` — Token Factory. It is still the analysis key.
+- The job's AI Cloud key — the real variable name in `.env.example`. Do not give it the same name as the Token Factory key if the code does not.
 
-El job no tiene que correr para `npm run dev`. Di cómo se dispara desde el dashboard y qué pasa si falta la clave (el análisis de la toma sigue; el acta no).
+The job does not have to run for `npm run dev`. Say how it is triggered from the dashboard and what happens if the key is missing (take analysis continues; the minutes do not).
 
-### 5. Limitaciones
+### 5. Limits
 
-Quita o reescribe la línea que diga que no hay trabajo fuera del request, si el job ya lo es. Deja las que sigan siendo ciertas: historial en `localStorage`, STT no en vivo, tests sin UI.
+Remove or rewrite the line that says there is no work outside the request, if the job already is that work. Keep the lines that are still true: history in `localStorage`, STT is not live, tests have no UI.
 
-Añade solo limitaciones reales del job que hayas visto (por ejemplo: el acta no aparece si el volumen no montó, o el dashboard no hace polling de logs).
+Add only real job limits you have seen (for example: the minutes do not appear if the volume did not mount, or the dashboard does not poll logs).
 
-### 6. Documentación
+### 6. Documentation
 
-Una fila nueva en la tabla:
+One new row in the table:
 
-| `docs/guia-integracion-job.md` | Acta de comité: imagen, variables, volumen, cómo leer el resultado |
+| `docs/guia-integracion-job.md` | Committee minutes: image, variables, volume, how to read the result |
 
-Ese archivo se escribe en el mismo pase que el README. No dupliques el contenido en los dos sitios: el README resume, la guía tiene comandos y variables.
+That file is written in the same pass as the README. Do not duplicate the content in both places: the README summarizes, the guide has commands and variables.
 
-### 7. Capturas
+### 7. Screenshots
 
-Sustituye o suma una captura del dashboard donde se lea, sin abrir DevTools:
+Replace or add a dashboard screenshot where a reader can see, without opening DevTools:
 
-- el id del modelo de Token Factory de esa toma
-- una cifra de Tavily con su URL, o el descarte
-- el id del job y el acta (objeciones y guion)
+- the Token Factory model id for that take
+- a Tavily figure with its URL, or the discard
+- the job id and the minutes (objections and script)
 
-Esas tres son las que el video va a enseñar. Si una no cabe en la UI, no la inventes en el README.
+Those three are what the video will show. If one does not fit in the UI, do not invent it in the README.
 
-## Qué no poner
+## What to leave out
 
-- Una landing, un mercado, un equipo o un "por qué ahora".
-- Jobs, Endpoints o AI Cloud como si ya estuvieran, si el job de prueba no terminó.
-- Un preset de GPU copiado de la documentación de Nebius.
-- Claves, tokens o el contenido de `.env.local`.
-- Otro hackathon, otro calendario, u otra pista.
+- A landing page, a market, a team, or a "why now".
+- Jobs, Endpoints, or AI Cloud as if they were already there, if the trial job did not finish.
+- A GPU preset copied from the Nebius documentation.
+- Keys, tokens, or the contents of `.env.local`.
+- Another hackathon, another calendar, or another track.
 
-## Cuando el README ya quedó
+## Once the README is done
 
-Recién ahí se prepara el video. Menos de 3 minutos, público en YouTube, y en este orden: una grabación corta, el dashboard con el id del modelo, la cifra de Tavily o su descarte, el id del job y el acta. El formulario de Devpost y el párrafo de proyecto previo (`docs/formulario-devpost.md`, sección 6) van después del video. El cierre del envío es el viernes 30 oct 2026, 11:00 GT.
+Only then prepare the video. Under 3 minutes, public on YouTube, and in this order: a short recording, the dashboard with the model id, the Tavily figure or its discard, the job id and the minutes. The Devpost form and the prior-project paragraph (`docs/formulario-devpost.md`, section 6) come after the video. Submission closes Friday 30 Oct 2026, 11:00 GT.

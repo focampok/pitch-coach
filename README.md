@@ -1,143 +1,155 @@
 # Pitch Coach
 
-Entrena tu pitch en voz alta y recibe feedback estructurado según el tipo
-(capital, educación, innovación o tecnología): rúbrica, score, muletillas y un
-veredicto que puedes escuchar cuando quieras. Interfaz y análisis en **español o
-inglés** (LATAM-first).
+Practice a pitch out loud and get structured feedback for the type you chose
+(capital, education, innovation, or technology): a rubric, a score, filler
+words, and a verdict you can listen to when you want. The interface and the
+analysis run in **Spanish or English** (LATAM-first).
 
-Herramienta open source: puedes usarla, forkarla y madurarla como quieras.
+Open source: use it, fork it, and keep going.
 
-Licencia: [MIT](LICENSE).
+License: [MIT](LICENSE).
 
-## Qué hace
+Live demo: [https://pitch-coach.focampo.com](https://pitch-coach.focampo.com).
 
-**Loop principal:** eliges idioma, tipo y duración → grabas (MediaRecorder, corte
-automático) → el servidor transcribe (ElevenLabs Scribe) → se cuentan muletillas →
-el modelo evalúa contra la rúbrica (Nebius por defecto) → el dashboard muestra
-score, puntos cumplidos/faltantes y transcripción resaltada.
+Product and implementation docs: [`docs/README.md`](docs/README.md).
 
-**Extras en la misma sesión:**
+## What a session does
 
-- **Guion descargable** con marcas de tiempo por frase (`[mm:ss.cc]`) si grabaste
-  (no si escribiste el texto a mano).
-- **Escuchar veredicto** (ElevenLabs; fallback SpeechSynthesis).
-- **Análisis Ultra** — reanálisis con razonamiento extendido y traza de pasos.
-- **Resolver hallazgos** — hasta 3 preguntas de seguimiento sobre puntos no
-  cumplidos (voz o texto de respaldo).
-- **Sugerencias con dato real** (Tavily) cuando falta un punto de rúbrica, con
-  validación y frase lista para decir en voz alta.
-- **Tu progreso** — historial local (últimas 20 prácticas en este navegador).
+**Main loop:** choose language, type, and duration → record (MediaRecorder,
+automatic cutoff) → the server transcribes (ElevenLabs Scribe) → filler words
+are counted → the model judges the take against the rubric (Nebius by default)
+→ the dashboard shows the score, covered and missing points, and the highlighted
+transcript.
 
-Indicador de estado en vivo: el anillo reacciona a la voz y acompaña los
-mensajes de estado (`Escuchando…` / `Transcribiendo…` / frase final), en el
-idioma de la sesión. Sesión anónima, sin login.
+**Same session, after the score:**
 
-Demo en línea:
-<!-- [https://pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/). -->
-[https://pitch-coach.focampo.com](https://pitch-coach.focampo.com).
+- **Downloadable script** with a timestamp per sentence (`[mm:ss.cc]`) when the
+  pitch was recorded (not when it was typed).
+- **Listen to the verdict** (ElevenLabs; SpeechSynthesis is the fallback).
+- **Public room** — one sourced objection on the first missed point. The room
+  follows the type: investment panel, classroom, innovation committee, or
+  technical buyer. The five rubric ids do not change.
+- **Figures you said** — if the pitch already stated a figure, Tavily looks for
+  a source of the same order. If none is found, the dashboard says so and does
+  not penalize the point.
+- **Where the time went** — when Scribe returned word timestamps, covered
+  points are placed on the audio.
+- **Second take** — 45 seconds on one missed point. If it is covered, this
+  browser remembers the point id and does not store the retake text.
+- **Ultra analysis** — opt-in re-analysis with an extended-reasoning trace.
+- **Resolve findings** — up to 3 follow-up questions on missed points (voice or
+  backup text).
+- **Cited figures** (Tavily) for up to two missed rubric points, with a
+  sentence ready to say out loud.
+- **Your progress** — local history (last 20 practices in this browser),
+  including which points closed or opened versus the previous practice of the
+  same type and language.
 
-Documentación del producto e implementación: [`docs/README.md`](docs/README.md).
+The live indicator is a ring that reacts to the voice and sits with the status
+lines (`Listening…` / `Transcribing…` / the closing line), in the session
+language. The session is anonymous. There is no login.
 
-## Capturas
+## Screenshots
 
-| Selección del pitch | Coach (indicador) | Dashboard de resultados |
+| Pitch setup | Coach (indicator) | Result dashboard |
 | :---: | :---: | :---: |
-| <img src="public/screenshots/01.png" alt="Pantalla de selección de tipo de pitch y duración máxima" width="400"> | <img src="public/screenshots/02.png" alt="Indicador del coach durante la grabación" width="400"> | <img src="public/screenshots/03.png" alt="Dashboard con score, rúbrica, muletillas y veredicto" width="400"> |
+| <img src="public/screenshots/01.png" alt="Pitch type and maximum duration selection" width="400"> | <img src="public/screenshots/02.png" alt="Coach indicator while recording" width="400"> | <img src="public/screenshots/03.png" alt="Dashboard with score, rubric, filler words, and verdict" width="400"> |
 
-## Limitaciones conocidas
+## Known limits
 
-- **Tests unitarios, no de UI** — `npm test` (vitest) cubre `src/lib/` y rutas
-  de API (fetch mockeado); el loop con micrófono se verifica a mano.
-- **Sesión anónima** — el historial vive en `localStorage`; no hay cuentas ni
-  sincronización entre dispositivos.
-- **STT** — requiere `ELEVENLABS_API_KEY` (Scribe). Sin ella, o sin micrófono,
-  hay campo de texto de respaldo.
-- **Transcripción no en vivo** — grabar → detener → transcribir el clip completo.
-- **Coach visual** — anillo en vivo (anti-orbe) que reacciona al audio y se
-  asienta como score; los mensajes de estado lo acompañan.
-- **Proveedores externos** — Nebius, ElevenLabs y Tavily tienen rate limits y
-  dependen de internet; el TTS cae a SpeechSynthesis si falla ElevenLabs.
+- **Unit tests, not UI tests** — `npm test` (vitest) covers `src/lib/` and API
+  routes (mocked fetch). The microphone loop is checked by hand.
+- **Anonymous session** — history lives in `localStorage`. There are no
+  accounts and no sync across devices.
+- **STT** — needs `ELEVENLABS_API_KEY` (Scribe). Without it, or without a
+  microphone, there is a backup text field.
+- **Transcription is not live** — record → stop → transcribe the whole clip.
+- **Visual coach** — a live ring (no glowing orb) that reacts to the audio and
+  settles as the score. Status lines sit with it.
+- **External providers** — Nebius, ElevenLabs, and Tavily have rate limits and
+  need a network. TTS falls back to SpeechSynthesis if ElevenLabs fails.
 
 ## Stack
 
 - **Next.js 16** (App Router + API routes), **React 19**, **Tailwind CSS 4**
-- **Nebius Token Factory** — análisis por defecto (`MODEL_PROVIDER=nebius`)
-- **Gemini API** — contingencia manual (`MODEL_PROVIDER=gemini`)
-- **MediaRecorder + ElevenLabs Scribe** — captura y STT server-side
-- **ElevenLabs** — TTS (veredicto y preguntas de hallazgos)
-- **Tavily** — enriquecimiento opcional del dashboard
-- **Sentry** — errores y tracing (opcional; ver `.env.example`)
-- **Railway** — deploy (`Dockerfile` solo producción)
+- **Nebius Token Factory** — default analysis (`MODEL_PROVIDER=nebius`)
+- **Gemini API** — manual fallback (`MODEL_PROVIDER=gemini`)
+- **MediaRecorder + ElevenLabs Scribe** — capture and server-side STT
+- **ElevenLabs** — TTS (verdict and finding questions)
+- **Tavily** — optional dashboard enrichment
+- **Sentry** — errors and tracing (optional; see `.env.example`)
+- **Railway** — deploy (`Dockerfile` is production only)
 
-## Cómo corre
+## How the models run
 
-**Token Factory (NVIDIA, en cada práctica).** El servidor llama a
-`https://api.tokenfactory.nebius.com/v1/chat/completions` desde
-`src/lib/proveedor-nebius.ts`. Nemotron entra en tres modos:
+**Token Factory (NVIDIA, on every practice).** The server calls
+`https://api.tokenfactory.nebius.com/v1/chat/completions` from
+`src/lib/proveedor-nebius.ts`. Nemotron is used in three sizes:
 
-- Análisis de la toma: `nvidia/nemotron-3-super-120b-a12b` (Super).
-- Análisis Ultra, solo si el usuario lo pide: `nvidia/Nemotron-3-Ultra-550b-a55b`.
-- Sparring, entidades, la query de búsqueda, la validación de la sugerencia,
-  la objeción de sala, el contraste de cifras dichas, la línea de tiempo y la
-  segunda toma: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (Nano).
+- Take analysis: `nvidia/nemotron-3-super-120b-a12b` (Super).
+- Ultra analysis, only if the user asks: `nvidia/Nemotron-3-Ultra-550b-a55b`.
+- Sparring, entities, the search query, suggestion checks, the room objection,
+  the spoken-figure check, the timeline, and the second take:
+  `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` (Nano).
 
-El modelo no pone el score. La rúbrica está en `src/lib/rubricas.ts`; el
-servidor lo deriva y cuenta las muletillas. Detalle:
+The model does not set the score. The rubric lives in `src/lib/rubricas.ts`;
+the server derives the score and counts filler words. Detail:
 [`docs/guia-integracion-nebius.md`](docs/guia-integracion-nebius.md).
 
-**Tavily.** Search y extract desde el servidor (`src/lib/tavily.ts`,
-`POST /api/enriquecer`). La transcripción no se envía. Como máximo dos puntos
-por práctica reciben una cifra (`MAX_PUNTOS_ENRIQUECIDOS`). La misma llamada
-trae una objeción de la sala del tipo y contrasta una cifra que el pitch ya
-dijo. Si no hay cifra usable para un punto faltante, no hay sugerencia. Si la
-cifra dicha no tiene fuente del mismo orden, el dashboard lo dice y no castiga
-el punto. Detalle:
+**Tavily.** Search and extract run on the server (`src/lib/tavily.ts`,
+`POST /api/enriquecer`). The transcript is not sent. At most two points per
+practice receive a figure (`MAX_PUNTOS_ENRIQUECIDOS`). The same call brings one
+room objection for the type and checks one figure the pitch already said. If a
+missed point has no usable figure, there is no suggestion. If a spoken figure
+has no source of the same order, the dashboard says so and does not penalize
+the point. Detail:
 [`docs/guia-integracion-tavily.md`](docs/guia-integracion-tavily.md).
 
-La app llama a Token Factory en runtime. Gemini sigue siendo contingencia
-manual (`MODEL_PROVIDER=gemini`) y no es el camino de la demo.
+The app calls Token Factory at runtime. Gemini remains a manual fallback
+(`MODEL_PROVIDER=gemini`) and is not the demo path.
 
-## Setup local
+## Local setup
 
-Desarrollo nativo en Linux (sin Docker para el día a día).
+Native development on Linux. Docker is not part of the daily loop.
 
-1. Clonar el repositorio.
+1. Clone the repository.
 2. `npm install`
-3. Copiar `.env.example` a `.env.local` y completar al menos:
-   - `MODEL_PROVIDER` — `nebius` (default) o `gemini`
-   - `NEBIUS_API_KEY` — **requerida** con Nebius (default). Es la clave de Token Factory.
-   - `GEMINI_API_KEY` — **requerida** solo si `MODEL_PROVIDER=gemini`
-4. Opcional pero recomendado para el loop completo:
+3. Copy `.env.example` to `.env.local` and set at least:
+   - `MODEL_PROVIDER` — `nebius` (default) or `gemini`
+   - `NEBIUS_API_KEY` — **required** with Nebius (the default). Token Factory key.
+   - `GEMINI_API_KEY` — **required** only if `MODEL_PROVIDER=gemini`
+4. Optional, for the full loop:
    - `ELEVENLABS_API_KEY` — STT + TTS
-   - `ELEVENLABS_VOICE_ID_*` — español e inglés (ver `.env.example`)
-   - `TAVILY_API_KEY` — sugerencias en el dashboard
+   - `ELEVENLABS_VOICE_ID_*` — Spanish and English (see `.env.example`)
+   - `TAVILY_API_KEY` — dashboard suggestions
 5. `npm run dev`
 
-Navegador moderno con micrófono. HTTPS fuera de localhost para el micrófono.
+A current browser with a microphone. HTTPS outside localhost for the microphone.
 
-**Comandos útiles:** `npm test`, `npm run lint`, `npm run build`.
+**Useful commands:** `npm test`, `npm run lint`, `npm run build`.
 
 ## Deploy (Railway)
 
-Build con `Dockerfile` (Next.js standalone) y `railway.toml`. Configura en
-Settings → Variables las mismas keys que en `.env.local` (incluidas
-`NEXT_PUBLIC_SENTRY_*` y `ARG` del Dockerfile si usas Sentry — ver
+Build with `Dockerfile` (Next.js standalone) and `railway.toml`. The Dockerfile
+is for this deploy only. It is not used for local development. In Settings →
+Variables, set the same keys as `.env.local` (including `NEXT_PUBLIC_SENTRY_*`
+and the Dockerfile `ARG`s if you use Sentry — see
 [`docs/sentry.md`](docs/sentry.md)).
 
-## Documentación
+## Documentation
 
-| Documento | Para qué |
+| Document | What it is for |
 | --- | --- |
-| [`docs/README.md`](docs/README.md) | Índice (tutorial, guías, referencia) |
-| [`docs/alcance.md`](docs/alcance.md) | Producto, reglas de negocio, contratos |
-| [`docs/status.md`](docs/status.md) | Qué está implementado y dónde vive en código |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribuir y puntos de extensión |
-| [`CLAUDE.md`](CLAUDE.md) | Reglas para agentes en el repo |
+| [`docs/README.md`](docs/README.md) | Index (tutorial, guides, reference) |
+| [`docs/alcance.md`](docs/alcance.md) | Product, business rules, contracts |
+| [`docs/status.md`](docs/status.md) | What is implemented and where it lives |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contributing and extension points |
+| [`CLAUDE.md`](CLAUDE.md) | Rules for agents in this repo |
 
-## Contribuir
+## Contributing
 
-Issues y pull requests son bienvenidos. Ver [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Issues and pull requests are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-## Licencia
+## License
 
-MIT — ver [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

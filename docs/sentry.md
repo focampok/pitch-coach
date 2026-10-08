@@ -1,84 +1,84 @@
-# Sentry en Pitch Coach — registro de lo realizado
+# Sentry in Pitch Coach — record of what was done
 
-> **2026-09-27** (actualizado con el repo en `main`). Documento de decisión: qué
-> se integró, por qué, qué está verificado y qué no. Resumen operativo en
-> `docs/status.md` §5; aquí está el detalle y el porqué de cada decisión.
-
----
-
-## 1. Objetivo
-
-Monitoreo de errores en servidor y cliente, con la misma garantía de privacidad
-que ya se aplicó al historial local: **el texto del usuario no sale del
-proceso**.
-
-La app maneja la transcripción del pitch y el contenido de las rúbricas. Sentry
-es un tercero. La regla que ordena todo el diseño es que nada de eso llegue
-ahí, aunque cueste funcionalidad.
+> **2026-09-27** (updated with the repo on `main`). Decision document: what
+> was integrated, why, what is verified, and what is not. Operational summary in
+> `docs/status.md` §5; the detail and the reason for each decision are here.
 
 ---
 
-## 2. Qué se integró
+## 1. Goal
 
-| Runtime | Archivo | Contenido |
+Error monitoring on server and client, with the same privacy guarantee
+already applied to the local history: **the user's text does not leave the
+process**.
+
+The app handles the pitch transcript and the rubric content. Sentry
+is a third party. The rule that orders the whole design is that none of that arrives
+there, even if it costs functionality.
+
+---
+
+## 2. What was integrated
+
+| Runtime | File | Contents |
 |---|---|---|
 | Node | `src/sentry.server.config.ts` | API routes, Server Components, Server Actions |
-| Edge | `src/sentry.edge.config.ts` | middleware y handlers en el borde |
-| Navegador | `src/instrumentation-client.ts` | bundle del cliente |
-| Registro | `src/instrumentation.ts` | carga el config según `NEXT_RUNTIME` |
+| Edge | `src/sentry.edge.config.ts` | middleware and edge handlers |
+| Browser | `src/instrumentation-client.ts` | client bundle |
+| Registration | `src/instrumentation.ts` | loads the config according to `NEXT_RUNTIME` |
 
-Versión: `@sentry/nextjs@11.0.0` sobre Next 16.3.1 con Turbopack. Se usa el
-patrón de Next 16 (`instrumentation-client.ts`) y no `sentry.client.config.ts`,
-que es el nombre de versiones anteriores.
+Version: `@sentry/nextjs@11.0.0` on Next 16.3.1 with Turbopack. It uses the
+Next 16 pattern (`instrumentation-client.ts`) and not `sentry.client.config.ts`,
+which is the name from earlier versions.
 
-**Session Replay no está instalado.** Graba interacciones del DOM —incluido
-texto tipeado y leído—, que es exactamente el tipo de captura que este proyecto
-no quiere.
+**Session Replay is not installed.** It records DOM interactions — including
+typed and read text — which is exactly the kind of capture this project
+does not want.
 
-### Opciones compartidas
+### Shared options
 
-`src/lib/sentry-options.ts` centraliza lo que comparten las tres configs:
-entorno, interruptor maestro, muestreo y `tracePropagationTargets`. Vive en
-`src/lib/` para poder testearse con Vitest, igual que el resto de la lógica.
+`src/lib/sentry-options.ts` centralizes what the three configs share:
+environment, master switch, sampling, and `tracePropagationTargets`. It lives in
+`src/lib/` so it can be tested with Vitest, like the rest of the logic.
 
-Destinos de propagación de traza (los dos dominios de producción):
+Trace propagation targets (the two production domains):
 
 ```
 https://pitch-coach.focampo.com
 https://pitch-coach-production-1c0c.up.railway.app
 ```
 
-Muestreo: 100% en desarrollo, 10% en producción.
+Sampling: 100% in development, 10% in production.
 
 ---
 
-## 3. Privacidad — la parte que importa
+## 3. Privacy — the part that matters
 
-### 3.1 Filtro centralizado
+### 3.1 Centralized filter
 
-`src/lib/sentry-scrub.ts`. Función pura, testeable, aplicada como `beforeSend` y
-`beforeSendTransaction` en las tres configs. Redacta recursivamente toda
-propiedad cuyo **nombre** esté en esta lista, sin importar el nivel ni si
-cuelga de un array:
+`src/lib/sentry-scrub.ts`. Pure function, testable, applied as `beforeSend` and
+`beforeSendTransaction` in the three configs. It recursively redacts every
+property whose **name** is in this list, regardless of depth or whether
+it hangs off an array:
 
 ```
 transcripcion, comentario, traza, pregunta, respuesta,
 veredicto, veredicto_corto, audio
 ```
 
-Cubre las formas reales del dominio porque el contenido sensible siempre cuelga
-de una de esas claves: `rubrica` es un array de objetos con `comentario`, y
-`turnos` es un array de objetos con `pregunta`, `respuesta` y `comentario`.
+It covers the real shapes of the domain because sensitive content always hangs
+off one of those keys: `rubrica` is an array of objects with `comentario`, and
+`turnos` is an array of objects with `pregunta`, `respuesta`, and `comentario`.
 
-Se aplica a `request.data`, `request.headers`, `extra`, `contexts`, `user` y
-`breadcrumbs`. De los breadcrumbs, los de **consola se descartan enteros** (§3.7).
+It is applied to `request.data`, `request.headers`, `extra`, `contexts`, `user`, and
+`breadcrumbs`. Of the breadcrumbs, **console ones are dropped entirely** (§3.7).
 
-### 3.2 Sanitización del error del proveedor
+### 3.2 Sanitizing the provider error
 
-Esto **no** lo cubre el filtro, y es el hallazgo más importante del trabajo.
+The filter does **not** cover this, and it is the most important finding of the work.
 
-`src/lib/proveedor-nebius.ts` construye el mensaje de error pegándole el cuerpo
-de respuesta crudo del proveedor:
+`src/lib/proveedor-nebius.ts` builds the error message by appending the provider's
+raw response body:
 
 ```ts
 detalle = await respuesta.text();
@@ -88,158 +88,158 @@ throw new ErrorModelo(
 );
 ```
 
-Ese cuerpo, en errores de validación, suele repetir la petición — y la petición
-contiene la transcripción. El filtro decide por **nombre** de propiedad y no ve
-dentro de un string, así que `captureException(error)` habría mandado el pitch a
-Sentry en el título del issue.
+That body, on validation errors, usually repeats the request — and the request
+contains the transcript. The filter decides by property **name** and does not look
+inside a string, so `captureException(error)` would have sent the pitch to
+Sentry in the issue title.
 
-Solución: `src/lib/sentry-reporte.ts` **nunca manda el error crudo**. Construye
-un resumen (tipo de error, código HTTP, proveedor, nivel) y conserva el stack
-descartando su primera línea, que es la que arrastra el mensaje original. El
-detalle completo sigue yendo a los logs de consola.
+Solution: `src/lib/sentry-reporte.ts` **never sends the raw error**. It builds
+a summary (error type, HTTP code, provider, tier) and keeps the stack
+while discarding its first line, which is the one that carries the original message. The
+full detail still goes to the console logs.
 
-### 3.3 Qué NO llega a Sentry
+### 3.3 What does NOT reach Sentry
 
-- La transcripción del pitch.
-- El campo `comentario` de cualquier rúbrica (principal, Ultra, o de un turno
-  de "Resolver hallazgos").
-- El campo `traza` del Análisis Ultra.
-- La `pregunta` y la `respuesta` de un turno de hallazgos.
-- El `veredicto` y el `veredicto_corto`.
-- Audio en cualquier forma.
-- El mensaje crudo de `ErrorModelo`.
-- La **IP del cliente**, por los cuatro canales por los que llegaba (§3.6).
-- Los **breadcrumbs de consola**, y con ellos el detalle crudo del proveedor que
-  arrastraban (§3.7).
+- The pitch transcript.
+- The `comentario` field of any rubric (main, Ultra, or a
+  "Resolve findings" turn).
+- The `traza` field of the Ultra analysis.
+- The `pregunta` and the `respuesta` of a findings turn.
+- The `veredicto` and the `veredicto_corto`.
+- Audio in any form.
+- The raw `ErrorModelo` message.
+- The **client IP**, through the four channels it used to arrive on (§3.6).
+- The **console breadcrumbs**, and with them the raw provider detail they
+  carried (§3.7).
 
-### 3.4 Límite conocido, sin maquillar
+### 3.4 Known limit, stated plainly
 
-El filtro decide por **nombre**, no por contenido. Un texto sensible que viaje
-como **valor** de una propiedad con nombre permitido no se detecta. Por eso:
+The filter decides by **name**, not by content. Sensitive text that travels
+as the **value** of a property with an allowed name is not detected. That is why:
 
-- Las rutas nunca adjuntan texto del usuario como contexto.
-- El error del proveedor se resume en vez de reenviarse.
-- Los breadcrumbs de consola, que son texto libre por construcción, se descartan
-  (§3.7) — ese fue exactamente el agujero por donde se fugó el pitch una vez.
+- The routes never attach user text as context.
+- The provider error is summarized instead of being forwarded.
+- Console breadcrumbs, which are free text by construction, are dropped
+  (§3.7) — that was exactly the hole the pitch leaked through once.
 
-Hay un test que fija este límite a propósito
-(`test/sentry-reporte.test.ts`, "LÍMITE CONOCIDO"), para que nadie asuma una
-cobertura que no existe. Si se agrega un `extra` nuevo en alguna ruta, hay que
-revisarlo contra esta sección.
+There is a test that pins this limit on purpose
+(`test/sentry-reporte.test.ts`, "LÍMITE CONOCIDO"), so nobody assumes
+coverage that does not exist. If a new `extra` is added on some route, it has to
+be checked against this section.
 
-**El límite sigue vivo para el resto de los breadcrumbs.** Un breadcrumb de
-`fetch` cuyo `data` llevara texto del usuario en un string seguiría sin
-detectarse. Hoy no ocurre —los de `http`/`fetch` llevan método, url y status
-(verificado en el sobre)—, pero la regla no lo impide.
+**The limit is still alive for the rest of the breadcrumbs.** A `fetch`
+breadcrumb whose `data` carried user text in a string would still go
+undetected. It does not happen today — `http`/`fetch` ones carry method, url, and status
+(verified in the envelope) — but the rule does not prevent it.
 
-### 3.5 Otras decisiones de privacidad
+### 3.5 Other privacy decisions
 
-- **`includeLocalVariables` no está activo.** Las variables locales de los stack
-  frames del pipeline de análisis contienen el texto del pitch.
-- **La IP del cliente NO se reporta** (desde el commit `fix(sentry): stop
-  reporting client IP to align with anonymous-session design`). La app es de
-  sesión anónima: sin cuentas, la IP era el único identificador de cliente que
-  podía colarse, y no se quiere. El detalle de cómo se apaga, en §3.6.
-- **`dataCollection` SÍ se define** (`userInfo: false` + denegación de cabeceras
-  de IP). Ver §3.6: dejarlo ausente NO era conservador.
-- **`traceLifecycle` es `"static"`, explícito.** Sin eso, `beforeSendTransaction`
-  no se ejecuta y la mitad "transacción" del filtro es código muerto. Ver §3.8.
+- **`includeLocalVariables` is not active.** Local variables in the stack
+  frames of the analysis pipeline contain the pitch text.
+- **The client IP is NOT reported** (since the commit `fix(sentry): stop
+  reporting client IP to align with anonymous-session design`). The app is an
+  anonymous session: with no accounts, the IP was the only client identifier that
+  could slip in, and it is not wanted. How it is turned off is in §3.6.
+- **`dataCollection` IS defined** (`userInfo: false` + denial of IP
+  headers). See §3.6: leaving it absent was NOT conservative.
+- **`traceLifecycle` is `"static"`, explicit.** Without that, `beforeSendTransaction`
+  does not run and the "transaction" half of the filter is dead code. See §3.8.
 
-### 3.6 La IP del cliente: por qué salía y cómo se apaga
+### 3.6 The client IP: why it was leaving and how it is turned off
 
-**Corrección de un supuesto previo.** Este documento afirmaba que omitir
-`dataCollection` mantenía el comportamiento de `sendDefaultPii: false` y que
-pasar el objeto —aunque fuera `{}`— activaba categorías permisivas. Las dos
-cosas son falsas en `@sentry/nextjs@11.0.0`, y se comprobó leyendo el SDK:
+**Correction of a previous assumption.** This document claimed that omitting
+`dataCollection` kept the behavior of `sendDefaultPii: false` and that
+passing the object — even `{}` — turned on permissive categories. Both
+things are false in `@sentry/nextjs@11.0.0`, and that was checked by reading the SDK:
 
-- `sendDefaultPii` **no existe** en v11: no aparece en el código de
-  `@sentry/core`, `@sentry/node` ni `@sentry/nextjs`. No protege nada.
-- Los defaults de `dataCollection` son **permisivos** y no dependen de nada:
-  `resolveDataCollectionOptions` fija `userInfo: true`, `cookies: true`,
-  `httpHeaders.request/response: true`, los cuatro `httpBodies` y `genAI`.
-  Omitir la opción es equivalente a `dataCollection: {}`: cada campo se resuelve
-  como `dc.campo ?? DEFAULTS.campo`, así que pasar un objeto parcial no "activa"
-  nada nuevo. (Que el default de `genAI` sea permisivo no implica que capture
-  algo acá: sin un SDK de IA no hay quién lo lea. Ver §3.6.2.)
+- `sendDefaultPii` **does not exist** in v11: it does not appear in the code of
+  `@sentry/core`, `@sentry/node`, or `@sentry/nextjs`. It protects nothing.
+- The `dataCollection` defaults are **permissive** and depend on nothing:
+  `resolveDataCollectionOptions` sets `userInfo: true`, `cookies: true`,
+  `httpHeaders.request/response: true`, the four `httpBodies`, and `genAI`.
+  Omitting the option is equivalent to `dataCollection: {}`: each field resolves
+  as `dc.field ?? DEFAULTS.field`, so passing a partial object does not "turn on"
+  anything new. (That the `genAI` default is permissive does not mean it captures
+  anything here: without an AI SDK there is nothing to read it. See §3.6.2.)
 
-**La IP salía por cuatro canales**, no por uno. Verificado con un DSN local que
-captura el sobre real (sin mandar nada a Sentry):
+**The IP left through four channels**, not one. Verified with a local DSN that
+captures the real envelope (without sending anything to Sentry):
 
-| # | Canal | Dónde |
+| # | Channel | Where |
 |---|---|---|
-| 1 | `event.user.ip_address` | evento de error |
-| 2 | `event.request.headers["x-forwarded-for"]` | evento de error |
-| 3 | `items[].attributes["user.ip_address"]` | sobre de spans |
-| 4 | `items[].attributes["http.request.header.x-forwarded-for"]` | sobre de spans |
+| 1 | `event.user.ip_address` | error event |
+| 2 | `event.request.headers["x-forwarded-for"]` | error event |
+| 3 | `items[].attributes["user.ip_address"]` | span envelope |
+| 4 | `items[].attributes["http.request.header.x-forwarded-for"]` | span envelope |
 
-**Por qué hacen falta DOS piezas** (y no alcanza con una):
+**Why TWO pieces are required** (and one is not enough):
 
 1. `dataCollection.userInfo: false`. `RequestData.extractNormalizedRequestData`
-   hace dos cosas cuando `include.ip` es falso —y `include.ip` sale de
-   `userInfo`—: no setea `user.ip_address` y **borra** de `request.headers` toda
-   cabecera de su lista de IP. Eso cierra 1, 2 y 3.
-2. `httpHeaders.request.deny` con la lista de cabeceras de IP. El punto 1 **no
-   alcanza para 4**: los atributos `http.request.header.*` los arma
-   `httpHeadersToSpanAttributes`, que filtra por
-   `dataCollection.httpHeaders.request` y no mira `include.ip`. Con `deny`, el
-   valor del atributo queda `"[Filtered]"`.
+   does two things when `include.ip` is false — and `include.ip` comes from
+   `userInfo` —: it does not set `user.ip_address` and it **deletes** from `request.headers` every
+   header on its IP list. That closes 1, 2, and 3.
+2. `httpHeaders.request.deny` with the IP header list. Point 1 **is not
+   enough for 4**: the `http.request.header.*` attributes are built by
+   `httpHeadersToSpanAttributes`, which filters by
+   `dataCollection.httpHeaders.request` and does not look at `include.ip`. With `deny`, the
+   attribute value becomes `"[Filtered]"`.
 
-> **Por qué el filtro de §3.1 no bastaba.** Los sobres de spans se exportan SIN
-> pasar por `beforeSend`, así que `src/lib/sentry-scrub.ts` no los ve. Para
-> ellos la única barrera posible es la de colección. Por eso la pieza 1 es la
-> importante y la denegación de cabeceras en `sentry-scrub.ts` es redundancia
-> deliberada, no la defensa principal.
+> **Why the §3.1 filter was not enough.** Span envelopes are exported WITHOUT
+> passing through `beforeSend`, so `src/lib/sentry-scrub.ts` does not see them. For
+> them the only possible barrier is the collection one. That is why piece 1 is the
+> important one and the header denial in `sentry-scrub.ts` is deliberate
+> redundancy, not the main defense.
 
-**Efecto lateral aceptado:** `deny` matchea por substring, así que
-`x-forwarded-host`, `x-forwarded-port` y `x-forwarded-proto` también quedan
-`[Filtered]`. No llevan la IP y se pierden como dato de debugging; se aceptó a
-cambio de no dejar pasar una cabecera `X-Forwarded` a secas, que sí puede
-llevarla. `host` y `user-agent` siguen intactos.
+**Accepted side effect:** `deny` matches by substring, so
+`x-forwarded-host`, `x-forwarded-port`, and `x-forwarded-proto` also become
+`[Filtered]`. They do not carry the IP and they are lost as debugging data; that was accepted in
+exchange for not letting a bare `X-Forwarded` header through, which can
+carry it. `host` and `user-agent` stay intact.
 
-**Pendiente de decisión, no resuelto acá:** el interruptor apaga la IP, pero los
-demás defaults permisivos siguen activos. `httpBodies` **ya se auditó** (§3.6.1) y
-`genAI` resultó **inerte por construcción** (§3.6.2); `cookies`,
-`urlQueryParams` y `httpHeaders.response` **siguen sin auditarse** (§3.6.3).
+**Decision still pending, not resolved here:** the switch turns off the IP, but the
+other permissive defaults stay active. `httpBodies` **was already audited** (§3.6.1) and
+`genAI` turned out **inert by construction** (§3.6.2); `cookies`,
+`urlQueryParams`, and `httpHeaders.response` **are still unaudited** (§3.6.3).
 
-### 3.6.1 Auditoría de `httpBodies`: sin fuga
+### 3.6.1 `httpBodies` audit: no leak
 
-**Pregunta:** ¿`httpBodies` en su default permisivo tiene una vía de fuga que
-saltee `beforeSend`, como la tenía la IP en los spans?
+**Question:** does `httpBodies` at its permissive default have a leak path that
+skips `beforeSend`, the way the IP did in spans?
 
-**Respuesta: no, y es verificable.** Se hizo un POST real con la transcripción
-en el cuerpo a `/api/analizar-pitch` (el proveedor apuntado a un servidor local
-que devolvía eco, para no llamar a nadie), y se auditaron los sobres:
+**Answer: no, and it is verifiable.** A real POST was made with the transcript
+in the body to `/api/analizar-pitch` (the provider pointed at a local server
+that returned an echo, so nobody else was called), and the envelopes were audited:
 
-| Dónde podría viajar el cuerpo | Qué se encontró |
+| Where the body could travel | What was found |
 |---|---|
-| `event.request.data` | **ausente** — el SDK no adjunta el cuerpo de la petición entrante en estas rutas |
-| `http.request.body.data` (atributo de span) | **no existe** |
-| Atributos de span de la llamada saliente al proveedor | solo el nombre (`POST 127.0.0.1`); sin cuerpo ni cabecera `authorization` |
-| Breadcrumb `http` de la llamada saliente | solo `http.request.method`, `status_code`, `url` |
-| Breadcrumb de consola | **aquí sí salía** — pero no es `httpBodies`: ver §3.7 |
+| `event.request.data` | **absent** — the SDK does not attach the incoming request body on these routes |
+| `http.request.body.data` (span attribute) | **does not exist** |
+| Span attributes of the outgoing call to the provider | only the name (`POST 127.0.0.1`); no body and no `authorization` header |
+| `http` breadcrumb of the outgoing call | only `http.request.method`, `status_code`, `url` |
+| Console breadcrumb | **this one did leave** — but it is not `httpBodies`: see §3.7 |
 
-**Por qué no hay fuga, y por qué eso no depende de suerte.** El atributo
-`http.request.body.data` lo arma `addNormalizedRequestDataToSpan`
-(`@sentry/core/.../integrations/requestdata.js`) a partir de
-`normalizedRequest.data` —el mismo objeto que alimenta `event.request.data`—, y
-en estas rutas ese campo llega vacío: Next.js no lo puebla para route handlers.
-No es que el filtro lo redacte: es que **no hay nada que redactar**. Por eso la
-conclusión vale mientras el SDK no empiece a poblar `normalizedRequest.data`; si
-algún día lo hace, el cuerpo entraría como `http.request.body.data` en un
-atributo de span, que **no pasa por `beforeSend`** en modo stream. Ver §3.8.
+**Why there is no leak, and why that does not depend on luck.** The attribute
+`http.request.body.data` is built by `addNormalizedRequestDataToSpan`
+(`@sentry/core/.../integrations/requestdata.js`) from
+`normalizedRequest.data` — the same object that feeds `event.request.data` —
+and on these routes that field arrives empty: Next.js does not populate it for route handlers.
+It is not that the filter redacts it: there is **nothing to redact**. That is why the
+conclusion holds until the SDK starts populating `normalizedRequest.data`; if
+it ever does, the body would enter as `http.request.body.data` on a
+span attribute, which **does not pass through `beforeSend`** in stream mode. See §3.8.
 
-### 3.6.2 `genAI`: inerte por construcción (verificado)
+### 3.6.2 `genAI`: inert by construction (verified)
 
-**Pregunta:** ¿`genAI` captura algo cuando se usa `fetch` crudo, como hacen
-`proveedor-nebius.ts` y `proveedor-gemini.ts`?
+**Question:** does `genAI` capture anything when raw `fetch` is used, as
+`proveedor-nebius.ts` and `proveedor-gemini.ts` do?
 
-**Respuesta: no. Solo instrumenta SDKs de IA reconocidos.** Este proyecto no usa
-ninguno, así que la categoría es inerte y no hay nada que auditar.
+**Answer: no. It only instruments recognized AI SDKs.** This project uses
+none, so the category is inert and there is nothing to audit.
 
-**Cómo se engancha `genAI`** (leído en el SDK instalado, no deducido): las
-integraciones de proveedor que leen `dataCollection.genAI` instrumentan
-**módulos por nombre de paquete, rango de versión, ruta de archivo exacta y
-clase/método**:
+**How `genAI` hooks in** (read in the installed SDK, not inferred): the
+provider integrations that read `dataCollection.genAI` instrument
+**modules by package name, version range, exact file path, and
+class/method**:
 
 ```
 @google/genai          >=0.10.0 <3    dist/node/index.js      Models.generateContent
@@ -248,97 +248,97 @@ groq-sdk               >=0.3.0 <2
 @mistralai/mistralai   >=2.0.0 <3
 ```
 
-**No hay matching por URL ni por host en ninguna parte.** Grep de
-`api.openai.com`, `anthropic.com`, `generativelanguage`, `api.mistral` y
-similares en todo `@sentry/**`: **cero coincidencias**. Las configs de los
-proveedores que sí vienen registrados por defecto tienen **cero** referencias a
-URLs o hosts.
+**There is no matching by URL or by host anywhere.** Grep of
+`api.openai.com`, `anthropic.com`, `generativelanguage`, `api.mistral`, and
+similar across all of `@sentry/**`: **zero matches**. The configs of the
+providers that do come registered by default have **zero** references to
+URLs or hosts.
 
-**El módulo que podía haber sido la excepción no lo es.**
-`openAiCompatibleConfig` —y Nebius **es** OpenAI-compatible, así que era la duda
-legítima— no matchea endpoints: es una **fábrica parametrizada por descriptor de
-módulo** (`{ name, versionRange, filePath }`). No existe detección de "endpoint
-compatible", y `openAICompatibleIntegration` no está en las listas por defecto.
+**The module that could have been the exception is not.**
+`openAiCompatibleConfig` — and Nebius **is** OpenAI-compatible, so the doubt
+was legitimate — does not match endpoints: it is a **factory parameterized by a module
+descriptor** (`{ name, versionRange, filePath }`). There is no "compatible
+endpoint" detection, and `openAICompatibleIntegration` is not on the default lists.
 
-**Confirmación empírica, con los sobres ya capturados.** La llamada real al
-proveedor por `fetch` crudo salió trazada como `sentry.origin =
-auto.http.node_fetch` / `sentry.op = http.client`, **sin ningún atributo
-`gen_ai.*`**. En todos los sobres capturados: **0 archivos** con `gen_ai.*` ni
-`auto.ai.*`. Detalle que refuerza el caso: el proveedor simulado tenía la ruta
-`/fake-provider/chat/completions` —un path que *parece* la API de OpenAI— y aun
-así no disparó nada.
+**Empirical confirmation, with the envelopes already captured.** The real call to the
+provider through raw `fetch` was traced as `sentry.origin =
+auto.http.node_fetch` / `sentry.op = http.client`, **with no
+`gen_ai.*` attribute**. Across every captured envelope: **0 files** with `gen_ai.*` or
+`auto.ai.*`. A detail that strengthens the case: the simulated provider had the path
+`/fake-provider/chat/completions` — a path that *looks like* the OpenAI API — and even
+so it triggered nothing.
 
-**El proyecto no tiene ningún SDK de IA instalado.** Grep de `openai`,
+**The project has no AI SDK installed.** Grep of `openai`,
 `@google/genai`, `@google/generative-ai`, `@anthropic-ai/sdk`, `langchain`, `ai`,
-`groq-sdk`, `@mistralai/mistralai`, `together-ai`: ninguno presente.
-`dependencies` es exactamente `@sentry/nextjs, next, react, react-dom`.
+`groq-sdk`, `@mistralai/mistralai`, `together-ai`: none present.
+`dependencies` is exactly `@sentry/nextjs, next, react, react-dom`.
 
-> **⚠️ Trampa latente, para el futuro.** Las integraciones de IA **sí se
-> registran por defecto** —están en `getTracingIntegrations()` del runtime
-> Node—; simplemente son **no-ops mientras el paquete del vendor no exista**. Si
-> alguien reemplaza el `fetch` crudo de `src/lib/proveedor-nebius.ts` por el
-> **paquete oficial `openai`** (plausible, porque Nebius es compatible con esa
-> API), `genAI` se activa con sus **defaults permisivos** (`inputs: true`,
-> `outputs: true`) y el prompt —que contiene la transcripción del pitch— empieza
-> a viajar a Sentry **sin que nadie toque la configuración de privacidad**. El
-> filtro de §3.1 no lo detiene: `genAI` graba prompts y completions como
-> atributos de span, y los spans no pasan por `beforeSend`. Si eso pasa, hay que
-> poner `dataCollection.genAI: { inputs: false, outputs: false }` **antes** de
-> cambiar el proveedor.
+> **⚠️ Latent trap, for the future.** The AI integrations **are
+> registered by default** — they are in `getTracingIntegrations()` of the Node
+> runtime —; they are simply **no-ops while the vendor package does not exist**. If
+> someone replaces the raw `fetch` in `src/lib/proveedor-nebius.ts` with the
+> **official `openai` package** (plausible, because Nebius is compatible with that
+> API), `genAI` turns on with its **permissive defaults** (`inputs: true`,
+> `outputs: true`) and the prompt — which contains the pitch transcript — starts
+> traveling to Sentry **without anyone touching the privacy configuration**. The
+> §3.1 filter does not stop it: `genAI` records prompts and completions as
+> span attributes, and spans do not pass through `beforeSend`. If that happens,
+> set `dataCollection.genAI: { inputs: false, outputs: false }` **before**
+> changing the provider.
 
-### 3.6.3 Lo que sigue sin auditar
+### 3.6.3 What is still unaudited
 
-`cookies`, `urlQueryParams` y `httpHeaders.response` quedan con sus defaults
-permisivos y **no se auditaron**. No hay evidencia de fuga, pero tampoco la hay
-de lo contrario: no afirmar que están cubiertos. Lo que sí se sabe: la app no usa
-`setContext`, `setExtra` ni `addBreadcrumb` en `src/`, y sus URLs no llevan texto
-del usuario en el query string (el pitch va en el cuerpo de un POST).
+`cookies`, `urlQueryParams`, and `httpHeaders.response` keep their permissive
+defaults and **were not audited**. There is no evidence of a leak, and there is also no
+evidence of the opposite: do not claim they are covered. What is known: the app does not use
+`setContext`, `setExtra`, or `addBreadcrumb` in `src/`, and its URLs do not carry user
+text in the query string (the pitch goes in the body of a POST).
 
-### 3.7 Fuga real por breadcrumb de consola (reproducida y cerrada)
+### 3.7 Real leak through a console breadcrumb (reproduced and closed)
 
-**Este fue un agujero vivo, no teórico.** Encontrarlo es el resultado más
-importante de esta fase después de la IP.
+**This was a live hole, not a theoretical one.** Finding it is the most
+important result of this phase after the IP.
 
-**La cadena:**
-1. `src/lib/proveedor-nebius.ts` mete el cuerpo de respuesta crudo del proveedor
-   en el mensaje de `ErrorModelo` (§3.2).
-2. El `catch` de cada ruta hace `console.error("[/api/…] fallo …", error)`.
-3. La integración `Console` del SDK graba ese `console.error` como breadcrumb
-   `category: "console"` con los argumentos serializados en `data.arguments` —
-   **incluido el Error con su `message` y su `stack` completos**.
-4. Los breadcrumbs viajan en el evento. El filtro de §3.1 los procesa, pero
-   decide por **nombre** de propiedad y el pitch va **dentro de un string**.
-5. Resultado: la transcripción llegaba a Sentry.
+**The chain:**
+1. `src/lib/proveedor-nebius.ts` puts the provider's raw response body
+   into the `ErrorModelo` message (§3.2).
+2. Each route's `catch` does `console.error("[/api/…] fallo …", error)`.
+3. The SDK's `Console` integration records that `console.error` as a breadcrumb
+   `category: "console"` with the arguments serialized in `data.arguments` —
+   **including the Error with its full `message` and `stack`**.
+4. Breadcrumbs travel on the event. The §3.1 filter processes them, but
+   it decides by property **name** and the pitch is **inside a string**.
+5. Result: the transcript was reaching Sentry.
 
-**Reproducción.** Con un proveedor simulado que devolvía `400` y un cuerpo con
-eco de la petición, el centinela apareció en el sobre, exactamente en:
+**Reproduction.** With a simulated provider that returned `400` and a body with
+an echo of the request, the sentinel appeared in the envelope, exactly at:
 
 ```
 breadcrumbs[4].data.arguments[1].message
 breadcrumbs[4].data.arguments[1].stack
 ```
 
-**Por qué `reportarFallo` no alcanzaba.** Sanitiza la **excepción** (§3.2), pero
-el breadcrumb lo genera el `console.error`, que es otro camino. Y no se arregla
-quitando el log: el detalle completo en consola es deliberado, es la vía de
-depuración del mantenedor.
+**Why `reportarFallo` was not enough.** It sanitizes the **exception** (§3.2), but
+the breadcrumb is generated by the `console.error`, which is another path. And it is not fixed
+by removing the log: the full detail in the console is deliberate; it is the maintainer's
+debugging path.
 
-**Fix aplicado:** `beforeSend` y `beforeSendTransaction` **descartan** los
-breadcrumbs de consola (no los redactan: su contenido es arbitrario, no hay
-nombre de propiedad estable que marcar). Los demás breadcrumbs siguen su curso
-con `scrub` — verificado que un breadcrumb `http` sobrevive con su método,
-status y url.
+**Fix applied:** `beforeSend` and `beforeSendTransaction` **drop** console
+breadcrumbs (they do not redact them: their content is arbitrary, and there is no
+stable property name to mark). The other breadcrumbs continue
+with `scrub` — verified that an `http` breadcrumb survives with its method,
+status, and url.
 
-**Nota sobre la alternativa que se descartó.** `consoleIntegration` acepta un
-`filter` de patrones, pero descarta la llamada **antes** de instrumentarla y
-además la silencia de la consola real (`if (!isFiltered || debug) log(...)`). Eso
-mataría el log local, que es justamente lo que se quiere conservar. El filtro en
-`beforeSend` corta solo la salida hacia el tercero.
+**Note on the alternative that was discarded.** `consoleIntegration` accepts a
+pattern `filter`, but it drops the call **before** instrumenting it and
+it also silences it from the real console (`if (!isFiltered || debug) log(...)`). That
+would kill the local log, which is exactly what should be kept. The filter in
+`beforeSend` cuts only the output toward the third party.
 
-### 3.8 `traceLifecycle: "static"`: por qué no se usa el default
+### 3.8 `traceLifecycle: "static"`: why the default is not used
 
-Con el default del SDK (`"stream"`), **`beforeSendTransaction` no se ejecuta**.
-El SDK lo dice en sus tipos:
+With the SDK default (`"stream"`), **`beforeSendTransaction` does not run**.
+The SDK says so in its types:
 
 > `@deprecated` This option only has an effect if `traceLifecycle` is set to
 > `'static'`. With span streaming (`traceLifecycle: 'stream'`, the default), the
@@ -346,119 +346,119 @@ El SDK lo dice en sus tipos:
 > be **removed in v12** of the SDK.
 > — `@sentry/core/build/types/types/options.d.ts`
 
-O sea: la mitad "transacción" del filtro era código muerto. Se puso
-`traceLifecycle: "static"` —documentado como la salida oficial— por una razón
-concreta, no por nostalgia del modelo viejo: **los eventos de transacción llevan
-breadcrumbs**, y los breadcrumbs pueden llevar texto del usuario (§3.7). Pasar a
-`static` crea esa superficie; `beforeSendTransaction` es lo que la filtra.
+That is: the "transaction" half of the filter was dead code. It was set to
+`traceLifecycle: "static"` — documented as the official way out — for a
+concrete reason, not out of nostalgia for the old model: **transaction events carry
+breadcrumbs**, and breadcrumbs can carry user text (§3.7). Moving to
+`static` creates that surface; `beforeSendTransaction` is what filters it.
 
-**Lo que se pierde, y por qué no importa acá:**
+**What is lost, and why it does not matter here:**
 
-| Beneficio de `"stream"` | Por qué no aplica |
+| Benefit of `"stream"` | Why it does not apply |
 |---|---|
-| Sin tope de 1000 spans por traza | Las trazas medidas tienen 1–40 spans (la home: 36 en el navegador) |
-| Menos memoria | Los datos se retienen lo que dura una petición: un render o una llamada a API |
-| Datos parciales si el proceso muere | No hay procesos largos, colas ni cron |
-| Visibilidad más rápida | Operativo, no de privacidad |
+| No cap of 1000 spans per trace | The measured traces have 1–40 spans (the home: 36 in the browser) |
+| Less memory | The data is retained for the length of a request: a render or an API call |
+| Partial data if the process dies | There are no long-running processes, queues, or cron |
+| Faster visibility | Operational, not privacy |
 
-**Verificado, no supuesto:** con `"static"` sigue habiendo la misma cantidad de
-spans —el navegador manda una transacción `platform=javascript` con 36 spans, y
-los servidores transacciones `platform=node`— y ya no hay ningún sobre
-`application/vnd.sentry.items.span.v2+json`. No se pierde telemetría: se cambia
-de sobre.
+**Verified, not assumed:** with `"static"` there is still the same number of
+spans — the browser sends a `platform=javascript` transaction with 36 spans, and
+the servers send `platform=node` transactions — and there is no longer any envelope
+`application/vnd.sentry.items.span.v2+json`. Telemetry is not lost: the envelope
+changes.
 
-**Deuda con fecha.** `beforeSendTransaction` se elimina en la v12 del SDK. Esta
-decisión compra el filtro hoy al precio de migrar a `beforeSendSpan` antes de
-subir a v12. No es urgente, pero es una fecha, y conviene que la migración sea
-deliberada y no un efecto colateral de un upgrade. Ver §9.7 y §10.
+**Dated debt.** `beforeSendTransaction` is removed in v12 of the SDK. This
+decision buys the filter today at the price of migrating to `beforeSendSpan` before
+upgrading to v12. It is not urgent, but it is a date, and the migration should be
+deliberate and not a side effect of an upgrade. See §9.7 and §10.
 
 ---
 
-## 4. Variables de entorno
+## 4. Environment variables
 
-Todas opcionales: sin `SENTRY_DSN` la app funciona igual y el SDK no envía nada.
+All optional: without `SENTRY_DSN` the app works the same and the SDK sends nothing.
 
-| Variable | Default | Para qué |
+| Variable | Default | Purpose |
 |---|---|---|
-| `SENTRY_DSN` | — | runtime de servidor y edge |
-| `NEXT_PUBLIC_SENTRY_DSN` | — | navegador (mismo valor; un DSN es clave de ingesta pública) |
-| `SENTRY_ENVIRONMENT` | `production` | etiqueta de entorno |
-| `SENTRY_ENABLED` | `true` | apagar el envío sin tocar código |
-| `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | — | espejo para el navegador |
-| `NEXT_PUBLIC_SENTRY_ENABLED` | — | espejo para el navegador |
-| `SENTRY_AUTH_TOKEN` | — | **build-time**, subida de source maps |
-| `SENTRY_ORG` / `SENTRY_PROJECT` | — | build-time, subida de source maps |
+| `SENTRY_DSN` | — | server and edge runtime |
+| `NEXT_PUBLIC_SENTRY_DSN` | — | browser (same value; a DSN is a public ingest key) |
+| `SENTRY_ENVIRONMENT` | `production` | environment tag |
+| `SENTRY_ENABLED` | `true` | turn sending off without touching code |
+| `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | — | mirror for the browser |
+| `NEXT_PUBLIC_SENTRY_ENABLED` | — | mirror for the browser |
+| `SENTRY_AUTH_TOKEN` | — | **build-time**, source map upload |
+| `SENTRY_ORG` / `SENTRY_PROJECT` | — | build-time, source map upload |
 
-Detalles que no son obvios:
+Details that are not obvious:
 
-- **Los espejos `NEXT_PUBLIC_*` son necesarios.** Next.js solo reemplaza en el
-  bundle del cliente las referencias *estáticas* a `NEXT_PUBLIC_*`; el navegador
-  no puede leer `SENTRY_ENVIRONMENT`. No estaban en el brief original; se
-  agregaron porque sin ellos el cliente no reporta entorno.
-- **El entorno cae a `NODE_ENV` antes que a `production`.** Sin ese fallback, el
-  desarrollo local se etiquetaría como `production` y se mezclaría con los
-  eventos reales.
-- **`SENTRY_AUTH_TOKEN` va en `.env.sentry-build-plugin`** en local (gitignoreado),
-  no en `.env.local`. Ese archivo lo crea uno a mano y su ausencia es silenciosa.
+- **The `NEXT_PUBLIC_*` mirrors are necessary.** Next.js only replaces, in the
+  client bundle, *static* references to `NEXT_PUBLIC_*`; the browser
+  cannot read `SENTRY_ENVIRONMENT`. They were not in the original brief; they were
+  added because without them the client does not report an environment.
+- **The environment falls back to `NODE_ENV` before `production`.** Without that fallback,
+  local development would be tagged as `production` and would mix with the
+  real events.
+- **`SENTRY_AUTH_TOKEN` goes in `.env.sentry-build-plugin`** locally (gitignored),
+  not in `.env.local`. That file is created by hand and its absence is silent.
 
 ---
 
-## 5. Captura
+## 5. Capture
 
-### Servidor — 5 rutas
+### Server — 5 routes
 
 `analizar-pitch`, `sparring/pregunta`, `sparring/evaluar`, `tts`, `enriquecer`.
-Las cinco ya tenían el patrón "mensaje genérico al cliente, detalle en logs"; se
-les agregó el reporte a Sentry. **No se cambió ningún código HTTP ni ningún
-mensaje que vea el cliente.**
+All five already had the pattern "generic message to the client, detail in the logs";
+Sentry reporting was added. **No HTTP code and no
+message the client sees was changed.**
 
-### Cliente — error boundaries
+### Client — error boundaries
 
-`src/app/error.tsx` (nuevo) y `src/app/global-error.tsx`.
+`src/app/error.tsx` (new) and `src/app/global-error.tsx`.
 
-Antes de esto **no existía ningún `error.tsx`**, así que los errores de render
-de `GrabadorVoz`, `DashboardResultado` y `PanelProgreso` no llegaban a Sentry en
-absoluto: Next los atrapa para mostrar la UI de respaldo y nunca alcanzan el
-handler global del SDK. `global-error.tsx` solo dispara si falla el layout raíz.
+Before this **there was no `error.tsx` at all**, so render errors
+in `GrabadorVoz`, `DashboardResultado`, and `PanelProgreso` did not reach Sentry
+at all: Next catches them to show the fallback UI and they never reach the
+SDK's global handler. `global-error.tsx` only fires if the root layout fails.
 
-Se reporta únicamente el error. No se adjuntan props ni estado de componentes.
+Only the error is reported. Props and component state are not attached.
 
 ### Tags
 
-En cada evento de servidor: `proveedor` y `nivel`. Dato operativo, no privado.
+On every server event: `proveedor` and `nivel`. Operational data, not private.
 
-- `analizar-pitch` → `nebius`/`gemini` según `MODEL_PROVIDER`, y el `nivel` real
-  (`estandar`/`ultra`/`rapido`, con `estandar` por defecto).
-- `sparring/pregunta` y `sparring/evaluar` → nivel `rapido`.
-- `tts` → `elevenlabs`; `enriquecer` → `tavily`. Se usa el proveedor real de
-  cada ruta, no el modelo de lenguaje.
+- `analizar-pitch` → `nebius`/`gemini` according to `MODEL_PROVIDER`, and the real `nivel`
+  (`estandar`/`ultra`/`rapido`, with `estandar` by default).
+- `sparring/pregunta` and `sparring/evaluar` → tier `rapido`.
+- `tts` → `elevenlabs`; `enriquecer` → `tavily`. The real provider of
+  each route is used, not the language model.
 
-### Sentry: dónde está el proyecto
+### Sentry: where the project is
 
-- Organización `focampo`, proyecto `pitch-coach`, **región EU** (`de.sentry.io`).
-- DSN en `.env.local` (gitignoreado).
+- Organization `focampo`, project `pitch-coach`, **EU region** (`de.sentry.io`).
+- DSN in `.env.local` (gitignored).
 
 ---
 
 ## 6. Source maps
 
-Configurado y **verificado de punta a punta**, no solo "el build dice OK".
-`next.config.ts` usa `withSentryConfig` con `authToken`,
-`widenClientFileUpload` y `tunnelRoute: "/monitoring"`.
+Configured and **verified end to end**, not only "the build says OK".
+`next.config.ts` uses `withSentryConfig` with `authToken`,
+`widenClientFileUpload`, and `tunnelRoute: "/monitoring"`.
 
-> **Ojo:** el brief original decía no configurar esto todavía ("decisión mía").
-> Se mantuvo por decisión explícita posterior, porque ya estaba funcionando y
-> verificado. Si se quiere sacar del merge, hay que revertir `next.config.ts`,
-> los `ARG` del `Dockerfile` y las variables asociadas en `.env.example`.
+> **Note:** the original brief said not to configure this yet ("my decision").
+> It was kept by a later explicit decision, because it was already working and
+> verified. If it should come out of the merge, revert `next.config.ts`,
+> the `ARG`s in the `Dockerfile`, and the associated variables in `.env.example`.
 
-Verificación empírica: en un build de producción, el mismo error mostró esto en
-la terminal local (sin source maps)
+Empirical verification: in a production build, the same error showed this in
+the local terminal (without source maps)
 
 ```
 at t (.next/server/chunks/[root-of-the-server]__1kd39kw._.js:2:943)
 ```
 
-y esto en Sentry, desde el mismo binario minificado
+and this in Sentry, from the same minified binary
 
 ```
 ../../../src/app/api/sentry-prod-test/route.ts:4:9 (GET)
@@ -466,328 +466,328 @@ y esto en Sentry, desde el mismo binario minificado
   → 4 │     throw new Error(
 ```
 
-Con comentarios originales y línea correcta.
+With the original comments and the correct line.
 
-### Producción: los `ARG` del build
+### Production: the build `ARG`s
 
-**Verificado en un deploy real** (issue `PITCH-COACH-5`, 2026-09-27): el stack
-trace llegó con el código original (`../../../src/lib/modelo.ts:255`).
+**Verified on a real deploy** (issue `PITCH-COACH-5`, 2026-09-27): the stack
+trace arrived with the original code (`../../../src/lib/modelo.ts:255`).
 
-**Cómo se sabe que Railway pasa las variables como build args** (la evidencia
-correcta, que no es la del párrafo anterior): los artefactos que solo existen en
-build-time llegan al navegador. Dos pruebas independientes:
+**How it is known that Railway passes the variables as build args** (the correct
+evidence, which is not the previous paragraph's): artifacts that exist only at
+build time reach the browser. Two independent proofs:
 
-1. `NEXT_PUBLIC_SENTRY_DSN` aparece **inlineada** en los chunks del cliente. Sin
-   el `ARG`, la referencia quedaba como lectura en runtime y no había DSN.
-2. El release del cliente aparece **inyectado como literal** en los chunks
+1. `NEXT_PUBLIC_SENTRY_DSN` appears **inlined** in the client chunks. Without
+   the `ARG`, the reference stayed as a runtime read and there was no DSN.
+2. The client release appears **injected as a literal** in the chunks
    (`release:"90fa3e5…"`).
 
-> **Corrección de un razonamiento anterior de este documento:** se había escrito
-> que el `release` del servidor probaba el mecanismo de `ARG`. **Era falso.** El
-> servidor obtiene su release en **runtime**, no en build: Railway inyecta
-> `RAILWAY_GIT_COMMIT_SHA` en el contenedor y `getSentryRelease()` lo lee. Por eso
-> el servidor tenía release desde el primer deploy, cuando el cliente no tenía
-> ninguno.
+> **Correction of an earlier line of reasoning in this document:** it had been written
+> that the server `release` proved the `ARG` mechanism. **That was false.** The
+> server gets its release at **runtime**, not at build: Railway injects
+> `RAILWAY_GIT_COMMIT_SHA` into the container and `getSentryRelease()` reads it. That is why
+> the server had a release from the first deploy, when the client had
+> none.
 
-Declarados en la etapa `builder`:
+Declared in the `builder` stage:
 
 1. **`SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_RELEASE`** —
-   para la subida de source maps. Sin el token, el build avisa *"No auth token
-   provided. Will not upload source maps"* y los stack traces de producción
-   salen minificados.
-2. **`SENTRY_RELEASE` hay que pasarlo explícito** como
-   `${{RAILWAY_GIT_COMMIT_SHA}}`. El `.dockerignore` excluye `.git`, así que la
-   detección automática por SHA de git no encuentra nada y todos los eventos
-   caerían en un release desconocido. Por la misma razón, los commits no se
-   vinculan al release en producción (en local sí lo hacen).
+   for the source map upload. Without the token, the build warns *"No auth token
+   provided. Will not upload source maps"* and production stack traces
+   come out minified.
+2. **`SENTRY_RELEASE` has to be passed explicitly** as
+   `${{RAILWAY_GIT_COMMIT_SHA}}`. The `.dockerignore` excludes `.git`, so
+   automatic detection by git SHA finds nothing and every event
+   would fall into an unknown release. For the same reason, commits are not
+   linked to the release in production (locally they are).
 3. **`NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENABLED`,
-   `NEXT_PUBLIC_SENTRY_ENVIRONMENT`** — los espejos del navegador. Se agregaron
-   después de encontrar el agujero que se describe abajo.
+   `NEXT_PUBLIC_SENTRY_ENVIRONMENT`** — the browser mirrors. They were added
+   after the hole described below was found.
 
-#### El agujero que esto cerraba (encontrado en producción)
+#### The hole this closed (found in production)
 
-En el primer deploy, **el cliente no reportaba nada**: sin `POST /monitoring` en
-DevTools y sin eventos de navegador. La causa, leída en los chunks desplegados:
+On the first deploy, **the client reported nothing**: no `POST /monitoring` in
+DevTools and no browser events. The cause, read in the deployed chunks:
 
 ```js
 { dsn: _.default.env.NEXT_PUBLIC_SENTRY_DSN, ... }
 ```
 
-**Sin ningún DSN inlineado.** Next.js reemplaza `process.env.NEXT_PUBLIC_*` por
-su literal en build-time, pero **solo si el valor está presente**; si no, deja
-una lectura a un objeto `env` en runtime, que en el navegador no tiene el valor.
-Como `.dockerignore` excluye `.env.local` y el Dockerfile no declaraba esos
-`ARG`, el build nunca veía la variable.
+**With no DSN inlined.** Next.js replaces `process.env.NEXT_PUBLIC_*` with
+its literal at build time, but **only if the value is present**; if it is not, it leaves
+a read of an `env` object at runtime, which in the browser does not have the value.
+Because `.dockerignore` excludes `.env.local` and the Dockerfile did not declare those
+`ARG`s, the build never saw the variable.
 
-Verificado en local con un build centinela: con `NEXT_PUBLIC_SENTRY_DSN`
-definida en el build, el bundle contiene el literal
-(`dsn:"https://…@o1.ingest.de.sentry.io/1"`); sin ella, la lectura en runtime.
+Verified locally with a sentinel build: with `NEXT_PUBLIC_SENTRY_DSN`
+defined at build time, the bundle contains the literal
+(`dsn:"https://…@o1.ingest.de.sentry.io/1"`); without it, the runtime read.
 
-> **Alcance:** esto afecta a **cualquier** `NEXT_PUBLIC_*` que agregue el
-> proyecto. Si se suma una nueva, hay que declararla también como `ARG` o no
-> llegará al navegador.
+> **Scope:** this affects **any** `NEXT_PUBLIC_*` the
+> project adds. If a new one is added, it also has to be declared as an `ARG` or it will not
+> reach the browser.
 
-**Confirmado en producción el 2026-09-27:** con las variables y los `ARG`
-nuevos, el cliente reporta. Verificado por dos vías independientes: `POST
-/monitoring` visible en DevTools, y spans de navegador llegando a Sentry con
-`environment: production`, `transaction: "/"` y
+**Confirmed in production on 2026-09-27:** with the new variables and `ARG`s,
+the client reports. Verified by two independent paths: `POST
+/monitoring` visible in DevTools, and browser spans arriving at Sentry with
+`environment: production`, `transaction: "/"`, and
 `auto.pageload.nextjs.app_router_instrumentation`.
 
 ---
 
-## 7. Los commits de la rama
+## 7. The branch commits
 
-| Commit | Qué hace |
+| Commit | What it does |
 |---|---|
-| `46a5e29` | Integración + opciones compartidas + esquema de entorno |
-| `c2b80eb` | Filtro de privacidad + 32 tests |
-| `05b8092` | Captura en las 5 rutas de servidor, con resumen sanitizado |
-| `6b42d9b` | Error boundaries de cliente |
-| `2a8148f` | Verificación de los tags operativos |
-| `1816d3a` | Documentación en `docs/status.md` |
-| `dc30f50` | **La IP del cliente deja de reportarse** (§3.6) + verificación del filtro en el pipeline real |
-| `ff2d1d1` | Registra la verificación de la fase: el camino de error de cliente y la IP |
-| `5d822ea` | **`traceLifecycle: "static"`** (§3.8) + **cierre de la fuga por breadcrumb de consola** (§3.7) + auditoría de `httpBodies` (§3.6.1) + alcance real del scrub en `extra` (§9.9) |
-| *(este commit)* | Registra la verificación empírica de las dos tareas anteriores |
+| `46a5e29` | Integration + shared options + environment schema |
+| `c2b80eb` | Privacy filter + 32 tests |
+| `05b8092` | Capture on the 5 server routes, with a sanitized summary |
+| `6b42d9b` | Client error boundaries |
+| `2a8148f` | Verification of the operational tags |
+| `1816d3a` | Documentation in `docs/status.md` |
+| `dc30f50` | **The client IP stops being reported** (§3.6) + verification of the filter on the real pipeline |
+| `ff2d1d1` | Records the phase verification: the client error path and the IP |
+| `5d822ea` | **`traceLifecycle: "static"`** (§3.8) + **closure of the console-breadcrumb leak** (§3.7) + `httpBodies` audit (§3.6.1) + real scope of the scrub on `extra` (§9.9) |
+| *(this commit)* | Records the empirical verification of the two previous tasks |
 
-**Nota de transparencia:** la emisión de tags quedó dentro del commit `05b8092`,
-no del `2a8148f`, porque `reportarFallo` necesitaba el parámetro `tags` desde el
-principio. No se reescribió la historia para disimularlo; el commit de la tarea
-5 aporta la verificación, que era lo que faltaba de verdad.
+**Transparency note:** tag emission ended up inside commit `05b8092`,
+not `2a8148f`, because `reportarFallo` needed the `tags` parameter from the
+start. History was not rewritten to hide that; the task
+5 commit contributes the verification, which was what was actually missing.
 
 ---
 
-## 8. Estado de verificación
+## 8. Verification status
 
-### Verificado
+### Verified
 
-| Qué | Cómo |
+| What | How |
 |---|---|
-| Camino de error de servidor | Error real lanzado contra `npm run dev` y contra un build de producción; llegó a Sentry (`PITCH-COACH-1`, `PITCH-COACH-2`) |
-| Source maps | Stack trace desminificado en Sentry desde binario de producción |
-| `onRequestError` | `mechanism: auto.function.nextjs.on_request_error` en el evento |
-| Release | Coincide entre build y runtime (`72ab2a5…`), por eso Sentry encontró los mapas |
-| Entorno | `environment: production` en el evento de producción |
-| Muestreo | `client_sample_rate: 0.1` en producción |
-| Inlineado de `NEXT_PUBLIC_*` | Valor centinela en un build; aparece en el bundle del cliente |
-| Filtro de privacidad | 40 tests, afirmando por valor además de por nombre |
-| Sanitización del error | 13 tests; el cuerpo del proveedor no llega al SDK por ninguna vía |
-| Tags | 8 tests ejecutando las 5 rutas con el proveedor caído |
-| **El filtro corre de verdad (servidor)** | `Sentry.setExtra` con centinelas sin filtrar, en una ruta temporal: el sobre real salió con `transcripcion: "[Filtered]"` y `veredicto_corto: "[Filtered]"`. No es solo un test unitario |
-| **El camino de error del CLIENTE** | Chrome 152 headless contra `npm run dev`: un throw en `useEffect` y otro en render hacen que `error.tsx` muestre la UI de respaldo, y sale un evento con la excepción real (`LanzaEnEfecto.useEffect`) hacia `/monitoring` |
-| **La IP ya no se reporta** | Sobre real capturado con un DSN local, antes y después. Antes: `user.ip_address` + `x-forwarded-for` en el evento y en los spans. Después: los cuatro canales limpios, y `settings.infer_ip: "never"` en el sobre del cliente |
-| **`beforeSendTransaction` SÍ se ejecuta** | No alcanza con que desaparezca el warning. Prueba directa: con centinelas sin filtrar adjuntos a una transacción real (`GET /api/tmp-transaction-probe`), el sobre salió con `extra.analisis.transcripcion: "[Filtered]"` y `contexts.sparring.respuesta: "[Filtered]"`, conservando `score: 72`. Ese marcador solo lo produce el callback |
-| **El modo `static` no pierde telemetría** | Mismo conteo de spans que antes: el navegador manda una transacción `platform=javascript` con 36 spans; los servidores, transacciones `platform=node`. Cero sobres `span.v2` (antes eran todos así) |
-| **`httpBodies` no filtra el cuerpo** | POST real con la transcripción a `/api/analizar-pitch`: el cuerpo no aparece en `event.request.data`, ni en `http.request.body.data`, ni en los spans de la llamada saliente, ni en los breadcrumbs `http`. Detalle en §3.6.1 |
-| **La fuga por breadcrumb de consola está cerrada** | Antes: con un proveedor que devolvía eco, el pitch aparecía en `breadcrumbs[].data.arguments[1].message`. Después: el centinela no llega a ningún sobre, y un breadcrumb `http` sigue sobreviviendo con método, status y url |
-| **`genAI` no captura nada con `fetch` crudo** | Por código: instrumenta módulos por paquete + versión + archivo exactos, sin matching por URL/host (grep de hosts de proveedores: 0 coincidencias). Empíricamente: la llamada al proveedor sale como `auto.http.node_fetch` / `http.client` sin atributos `gen_ai.*`, y 0 archivos capturados contienen `gen_ai.*` ni `auto.ai.*` |
-| Suite completa | 181 tests en verde (175 previos + 6 nuevos) |
-| Lint / tipos / build | `npm run lint`, `npx tsc --noEmit`, `next build` — todos limpios |
+| Server error path | Real error thrown against `npm run dev` and against a production build; it reached Sentry (`PITCH-COACH-1`, `PITCH-COACH-2`) |
+| Source maps | Unminified stack trace in Sentry from a production binary |
+| `onRequestError` | `mechanism: auto.function.nextjs.on_request_error` on the event |
+| Release | Matches between build and runtime (`72ab2a5…`), which is why Sentry found the maps |
+| Environment | `environment: production` on the production event |
+| Sampling | `client_sample_rate: 0.1` in production |
+| Inlining of `NEXT_PUBLIC_*` | Sentinel value in a build; it appears in the client bundle |
+| Privacy filter | 40 tests, asserting by value as well as by name |
+| Error sanitization | 13 tests; the provider body does not reach the SDK by any path |
+| Tags | 8 tests running the 5 routes with the provider down |
+| **The filter actually runs (server)** | `Sentry.setExtra` with unfiltered sentinels, on a temporary route: the real envelope came out with `transcripcion: "[Filtered]"` and `veredicto_corto: "[Filtered]"`. It is not only a unit test |
+| **The CLIENT error path** | Headless Chrome 152 against `npm run dev`: a throw in `useEffect` and another in render make `error.tsx` show the fallback UI, and an event goes out with the real exception (`LanzaEnEfecto.useEffect`) toward `/monitoring` |
+| **The IP is no longer reported** | Real envelope captured with a local DSN, before and after. Before: `user.ip_address` + `x-forwarded-for` on the event and on the spans. After: the four channels clean, and `settings.infer_ip: "never"` on the client envelope |
+| **`beforeSendTransaction` DOES run** | It is not enough for the warning to disappear. Direct proof: with unfiltered sentinels attached to a real transaction (`GET /api/tmp-transaction-probe`), the envelope came out with `extra.analisis.transcripcion: "[Filtered]"` and `contexts.sparring.respuesta: "[Filtered]"`, keeping `score: 72`. Only the callback produces that marker |
+| **`static` mode does not lose telemetry** | Same span count as before: the browser sends a `platform=javascript` transaction with 36 spans; the servers, `platform=node` transactions. Zero `span.v2` envelopes (before they were all like that) |
+| **`httpBodies` does not leak the body** | Real POST with the transcript to `/api/analizar-pitch`: the body does not appear in `event.request.data`, nor in `http.request.body.data`, nor in the outgoing-call spans, nor in the `http` breadcrumbs. Detail in §3.6.1 |
+| **The console-breadcrumb leak is closed** | Before: with a provider that returned an echo, the pitch appeared in `breadcrumbs[].data.arguments[1].message`. After: the sentinel reaches no envelope, and an `http` breadcrumb still survives with method, status, and url |
+| **`genAI` captures nothing with raw `fetch`** | By code: it instruments modules by exact package + version + file, with no matching by URL/host (grep of provider hosts: 0 matches). Empirically: the call to the provider goes out as `auto.http.node_fetch` / `http.client` with no `gen_ai.*` attributes, and 0 captured files contain `gen_ai.*` or `auto.ai.*` |
+| Full suite | 181 tests green (175 previous + 6 new) |
+| Lint / types / build | `npm run lint`, `npx tsc --noEmit`, `next build` — all clean |
 
-**Los issues de prueba que generaron estas verificaciones quedaron todos en
-`resolved`** (`PITCH-COACH-1` a `PITCH-COACH-5`), cada uno con un comentario que
-explica qué era la prueba. No queda ninguno abierto.
+**The test issues these verifications generated were all left
+`resolved`** (`PITCH-COACH-1` through `PITCH-COACH-5`), each with a comment that
+explains what the test was. None remains open.
 
-### Cómo se verificó lo del cliente (reproducible)
+### How the client part was verified (reproducible)
 
-1. `npm run dev` y abrir `http://localhost:3000/…` en Chrome. **Usar `localhost`,
-   no `127.0.0.1`**: el dev server de Next 16 responde **403** a los assets de
-   desarrollo pedidos a `127.0.0.1`, así que la página no hidrata, ningún efecto
-   corre y la prueba falla por una razón que no tiene nada que ver con el código.
-   Costó un intento fallido descubrirlo.
-2. Un componente cliente que lanza en `useEffect` (no en render: los efectos no
-   corren en el servidor, así que el fallo es inequívocamente del navegador).
-3. Con Playwright: esperar `text=Algo salió mal`, interceptar el POST a
-   `/monitoring` y leer el sobre.
+1. `npm run dev` and open `http://localhost:3000/…` in Chrome. **Use `localhost`,
+   not `127.0.0.1`**: the Next 16 dev server responds **403** to development
+   assets requested at `127.0.0.1`, so the page does not hydrate, no effect
+   runs, and the test fails for a reason that has nothing to do with the code.
+   It took one failed attempt to discover that.
+2. A client component that throws in `useEffect` (not in render: effects do not
+   run on the server, so the failure is unambiguously the browser's).
+3. With Playwright: wait for `text=Algo salió mal`, intercept the POST to
+   `/monitoring`, and read the envelope.
 
-El túnel (`tunnelRoute`) devolvió **HTTP 200** en todos los envíos, o sea que la
-ingesta de Sentry aceptó los sobres. Los eventos de prueba quedaron como issues
-reales en el proyecto (región EU); conviene cerrarlos.
+The tunnel (`tunnelRoute`) returned **HTTP 200** on every send, so Sentry's
+ingest accepted the envelopes. The test events remained as real issues
+in the project (EU region); they should be closed.
 
-### NO verificado
+### NOT verified
 
-- **Nada de esto corrió en Railway.** Los `ARG` del Dockerfile están validados
-  por documentación y por el comportamiento del plugin en local, no por un
-  deploy real.
-- **El camino de error de cliente NO se probó en un build de producción** (solo
-  contra `npm run dev`). El *transporte* del cliente en producción sí está
-  verificado (§6), pero disparar un error de render en producción requeriría
-  shipear una página que falle; no hay forma de provocarlo a demanda.
-- **El desminificado de los stack traces del cliente.** El cliente ya lleva
-  `release` (ver §10), y los mapas se suben bajo ese release, así que debería
-  resolver. Pero **no se comprobó con un error real en producción**, y para
-  provocarlo hace falta que falle código del bundle: no hay forma desde la
-  consola de DevTools, porque esos errores nacen fuera de los chunks.
+- **None of this ran on Railway.** The Dockerfile `ARG`s are validated
+  by documentation and by the plugin's behavior locally, not by a
+  real deploy.
+- **The client error path was NOT tested on a production build** (only
+  against `npm run dev`). The client *transport* in production is
+  verified (§6), but firing a render error in production would require
+  shipping a page that fails; there is no way to provoke it on demand.
+- **Unminifying client stack traces.** The client already carries
+  `release` (see §10), and the maps are uploaded under that release, so it should
+  resolve. But **it was not checked with a real error in production**, and
+  provoking it requires bundle code to fail: there is no way from the
+  DevTools console, because those errors are born outside the chunks.
 
-  Ojo con el muestreo al probar: en producción el cliente muestrea trazas al
-  **10%** (`tracesSampleRate: 0.1`), así que cargar la página una vez
-  probablemente **no** genere transacción. Los eventos de error, en cambio, no
-  están sujetos a ese muestreo: son la sonda determinista.
-- **Tres categorías de `dataCollection` siguen sin auditar**: `cookies`,
-  `urlQueryParams` y `httpHeaders.response`. `httpBodies` se auditó sin fuga
-  (§3.6.1) y `genAI` resultó inerte por construcción, verificado (§3.6.2). Ver
+  Watch the sampling when testing: in production the client samples traces at
+  **10%** (`tracesSampleRate: 0.1`), so loading the page once
+  probably does **not** generate a transaction. Error events, by contrast, are not
+  subject to that sampling: they are the deterministic probe.
+- **Three `dataCollection` categories are still unaudited**: `cookies`,
+  `urlQueryParams`, and `httpHeaders.response`. `httpBodies` was audited with no leak
+  (§3.6.1) and `genAI` turned out inert by construction, verified (§3.6.2). See
   §3.6.3.
-- **El tope de 1000 spans por traza con `static`** no se ejercitó: no hay trazas
-  que se acerquen. Si algún día una ruta genera cientos de spans, es el primer
-  sitio donde mirar.
-- **La rama de arrays anidados de `scrub()` en `extra` es inerte hoy** (§9.9):
-  no se puede verificar un camino que ningún call site produce.
+- **The cap of 1000 spans per trace with `static`** was not exercised: there are no traces
+  that come close. If some day a route generates hundreds of spans, that is the first
+  place to look.
+- **The nested-array branch of `scrub()` on `extra` is inert today** (§9.9):
+  a path that no call site produces cannot be verified.
 
 ---
 
-## 9. Hallazgos
+## 9. Findings
 
-1. **No existía ningún `error.tsx`.** Los errores de render del cliente no
-   llegaban a Sentry en absoluto.
-2. **El leak del cuerpo del proveedor.** Real, no teórico. Resuelto.
-3. **El `catch` de `/api/enriquecer` es prácticamente inalcanzable** ante fallos
-   de Tavily: `enriquecerConTavily` aísla cada punto con su propio `try/catch`
-   por diseño "best effort". El reporte ahí es defensivo, no una vía viva.
-4. **Una clave sensible redacta el valor completo**, no elemento por elemento:
-   `traza: [a, b]` queda como `"[Filtered]"`. Deliberado — no queda ni cuántos
-   pasos tenía el razonamiento.
-5. **`.dockerignore` excluye `.git`**, lo que rompe la detección automática de
-   release y la vinculación de commits en producción. De ahí el punto 6.
-6. **El flag "experimental" de Turbopack para source maps ya no aplica.** Desde
-   `@sentry/nextjs@10.13.0` es comportamiento por defecto. Verificado contra la
-   documentación y contra el log real del build.
-7. **`beforeSendTransaction` no se ejecutaba** (con el default `"stream"`), y
-   ahora sí. **Resuelto** poniendo `traceLifecycle: "static"`; el análisis
-   completo del trade-off y lo que se pierde, en §3.8. Verificado con una
-   transacción real y centinelas, no por ausencia del warning.
-   **Deuda declarada:** `beforeSendTransaction` se elimina en la **v12** del SDK,
-   así que esta solución tiene fecha. Migrar a `beforeSendSpan` (que en
-   `"stream"` recibe `StreamedSpanJSON`) es trabajo pendiente, antes de subir a
-   v12. Es una decisión para el mantenedor, no un detalle de implementación.
-8. **La IP salía por cuatro canales y por dos mecanismos distintos**, no por uno.
-   Ver §3.6 — es el hallazgo central de esta fase.
-9. **Alcance real del scrub recursivo en `extra`: la rama de arrays anidados es
-   INERTE hoy, no una defensa activa.** Se auditó a fondo y hay dos razones
-   independientes:
+1. **There was no `error.tsx` at all.** Client render errors did not
+   reach Sentry at all.
+2. **The provider-body leak.** Real, not theoretical. Resolved.
+3. **The `/api/enriquecer` `catch` is practically unreachable** on Tavily
+   failures: `enriquecerConTavily` isolates each point with its own `try/catch`
+   by "best effort" design. The report there is defensive, not a live path.
+4. **A sensitive key redacts the whole value**, not element by element:
+   `traza: [a, b]` becomes `"[Filtered]"`. Deliberate — not even how many
+   steps the reasoning had remains.
+5. **`.dockerignore` excludes `.git`**, which breaks automatic
+   release detection and commit linking in production. Hence point 6.
+6. **The "experimental" Turbopack flag for source maps no longer applies.** Since
+   `@sentry/nextjs@10.13.0` it is the default behavior. Verified against the
+   documentation and against the real build log.
+7. **`beforeSendTransaction` was not running** (with the `"stream"` default), and
+   now it does. **Resolved** by setting `traceLifecycle: "static"`; the full
+   trade-off analysis and what is lost are in §3.8. Verified with a real
+   transaction and sentinels, not by the absence of the warning.
+   **Declared debt:** `beforeSendTransaction` is removed in **v12** of the SDK,
+   so this solution has a date. Migrating to `beforeSendSpan` (which in
+   `"stream"` receives `StreamedSpanJSON`) is pending work, before upgrading to
+   v12. It is a decision for the maintainer, not an implementation detail.
+8. **The IP left through four channels and two different mechanisms**, not one.
+   See §3.6 — it is the central finding of this phase.
+9. **Real scope of the recursive scrub on `extra`: the nested-array branch is
+   INERT today, not an active defense.** It was audited in depth and there are two
+   independent reasons:
 
-   - **Ningún call site la produce.** Los cinco `reportarFallo` del proyecto
-     pasan contextos planos (`{ proveedor }`, `{ proveedor, nivel }`), y `src/` no
-     usa `setContext`, `setExtra` ni `addBreadcrumb`.
-   - **Aunque existiera, Sentry la normaliza antes.** Verificado por la vía real
-     (`captureException` con hint, la que usa `reportarFallo`): un
-     `extra.analisis.rubrica` con `{ comentario }` adentro llega al sobre como
-     `["[Object]"]`. O sea que `scrub()` no recibe los objetos anidados: recibe un
-     array con el string `"[Object]"`.
+   - **No call site produces it.** The project's five `reportarFallo` calls
+     pass flat contexts (`{ proveedor }`, `{ proveedor, nivel }`), and `src/` does not
+     use `setContext`, `setExtra`, or `addBreadcrumb`.
+   - **Even if it existed, Sentry normalizes it first.** Verified on the real path
+     (`captureException` with a hint, the one `reportarFallo` uses): an
+     `extra.analisis.rubrica` with `{ comentario }` inside arrives at the envelope as
+     `["[Object]"]`. That is, `scrub()` does not receive the nested objects: it receives an
+     array with the string `"[Object]"`.
 
-   **Qué sí protege de verdad en `extra`, y no hay que restarle mérito:** la
-   recursión en **objetos planos** funciona y es la que actúa. Verificado en el
-   mismo sobre: `extra.analisis.transcripcion` y `veredicto_corto` salieron
-   `[Filtered]` mientras `score` sobrevivió. Eso es lo que corta el texto del
-   usuario en el nivel donde realmente viaja.
+   **What it does protect for real in `extra`, and that should not be discounted:**
+   recursion on **flat objects** works and is what acts. Verified on the
+   same envelope: `extra.analisis.transcripcion` and `veredicto_corto` came out
+   `[Filtered]` while `score` survived. That is what cuts the user's text
+   at the level where it actually travels.
 
-   **Dónde la rama de arrays SÍ es carga viva:** en `breadcrumbs`. Ahí los arrays
-   NO se normalizan — la fuga de §3.7 viajó precisamente dentro de
-   `data.arguments`, un array cuyo objeto interno conservó `message` y `stack`
-   completos hasta el sobre. Esa rama es la que procesa esos breadcrumbs (y por
-   eso el descarte de los de consola es una regla aparte y no un efecto del
-   scrub). Para `request.data` y `contexts` la rama sigue siendo teórica: el
-   primero llega vacío en estas rutas (§3.6.1) y los segundos no se usan.
+   **Where the array branch IS a live load:** in `breadcrumbs`. There, arrays
+   are NOT normalized — the §3.7 leak traveled precisely inside
+   `data.arguments`, an array whose inner object kept `message` and `stack`
+   complete all the way to the envelope. That branch is what processes those breadcrumbs (and
+   that is why dropping the console ones is a separate rule and not an effect of the
+   scrub). For `request.data` and `contexts` the branch is still theoretical: the
+   first arrives empty on these routes (§3.6.1) and the second are not used.
 
-   Conclusión honesta: la rama de arrays del filtro **no está de más** (es lo que
-   cubre breadcrumbs), pero **no es lo que protege a `extra`**. La documentación
-   anterior daba a entender lo segundo.
-10. **Fuga real y reproducida por breadcrumb de consola.** El pitch llegaba a
-    Sentry dentro de `breadcrumbs[].data.arguments[1].message` y `.stack`, por el
-    `console.error` de los `catch`, que graba el `ErrorModelo` completo —y ese
-    mensaje arrastra el cuerpo del proveedor—. **Cerrada** descartando los
-    breadcrumbs de consola en `beforeSend`/`beforeSendTransaction`. Detalle en
-    §3.7. Es el hallazgo más importante de esta fase después de la IP.
-11. **El dev server de Next 16 responde 403 a los assets de desarrollo si se
-    pide por `127.0.0.1`.** Fue lo que hizo fracasar el primer intento de
-    verificar el error de cliente: sin assets no hay hidratación, sin hidratación
-    no corre ningún efecto, y el resultado parece un boundary roto sin serlo. Con
-    `localhost` funciona. Anotado en §8.
-12. **`consoleIntegration` tiene un `filter`, pero no sirve para esto.** Filtra
-    por patrón sobre el primer argumento y, además, **silencia la llamada de la
-    consola real** (`if (!isFiltered || debug) log(...)`). Usarlo habría matado el
-    log local que el proyecto quiere conservar. Por eso el corte va en
-    `beforeSend`. Anotado para que nadie lo "simplifique" hacia allá.
-13. **`genAI` es inerte hoy, pero con una trampa latente.** Solo instrumenta SDKs
-    de IA por paquete/versión/archivo exacto, no por URL, y el proyecto llama a
-    los proveedores por `fetch` crudo — así que no captura nada. Pero las
-    integraciones de IA **se registran igual por defecto**: si se migra
-    `proveedor-nebius.ts` al paquete `openai` (plausible, Nebius es
-    OpenAI-compatible), `genAI` se enciende con defaults permisivos y el prompt
-    viaja a Sentry como atributo de span, sin pasar por `beforeSend`. Ver §3.6.2.
-14. **El cliente de producción no llevaba `release`, y la causa era asimétrica.**
-    Síntoma: 50 spans de servidor con release y 240 de navegador sin él.
+   Honest conclusion: the filter's array branch **is not superfluous** (it is what
+   covers breadcrumbs), but **it is not what protects `extra`**. The previous
+   documentation implied the second.
+10. **Real, reproduced leak through a console breadcrumb.** The pitch reached
+    Sentry inside `breadcrumbs[].data.arguments[1].message` and `.stack`, because of the
+    `console.error` in the `catch` blocks, which records the full `ErrorModelo` — and that
+    message carries the provider body. **Closed** by dropping console
+    breadcrumbs in `beforeSend`/`beforeSendTransaction`. Detail in
+    §3.7. It is the most important finding of this phase after the IP.
+11. **The Next 16 dev server responds 403 to development assets if they are
+    requested via `127.0.0.1`.** That is what made the first attempt to
+    verify the client error fail: without assets there is no hydration, without hydration
+    no effect runs, and the result looks like a broken boundary when it is not. With
+    `localhost` it works. Noted in §8.
+12. **`consoleIntegration` has a `filter`, but it does not serve this.** It filters
+    by pattern on the first argument and, in addition, **silences the call on the
+    real console** (`if (!isFiltered || debug) log(...)`). Using it would have killed the
+    local log the project wants to keep. That is why the cut is in
+    `beforeSend`. Noted so nobody "simplifies" it in that direction.
+13. **`genAI` is inert today, but with a latent trap.** It only instruments AI
+    SDKs by exact package/version/file, not by URL, and the project calls
+    the providers with raw `fetch` — so it captures nothing. But the
+    AI integrations **are still registered by default**: if
+    `proveedor-nebius.ts` is migrated to the `openai` package (plausible; Nebius is
+    OpenAI-compatible), `genAI` turns on with permissive defaults and the prompt
+    travels to Sentry as a span attribute, without passing through `beforeSend`. See §3.6.2.
+14. **The production client did not carry `release`, and the cause was asymmetric.**
+    Symptom: 50 server spans with a release and 240 browser spans without one.
 
-    Causa: el release del cliente se resuelve en **build-time**
-    (`releaseName = release.name ?? getSentryRelease() ?? getGitRevision()`). En
-    un build por Dockerfile no hay `.git`, y `getSentryRelease()` —en
-    `@sentry/node/build/cjs/sdk/api.js`— busca primero `SENTRY_RELEASE` y después
-    una lista larga de variables de CI entre las que está
-    **`RAILWAY_GIT_COMMIT_SHA`**. Ninguna de las dos llegaba al build: la primera
-    no existía como variable, y la segunda no estaba declarada como `ARG`.
+    Cause: the client release is resolved at **build time**
+    (`releaseName = release.name ?? getSentryRelease() ?? getGitRevision()`). In
+    a Dockerfile build there is no `.git`, and `getSentryRelease()` — in
+    `@sentry/node/build/cjs/sdk/api.js` — looks first for `SENTRY_RELEASE` and then
+    a long list of CI variables that includes
+    **`RAILWAY_GIT_COMMIT_SHA`**. Neither reached the build: the first
+    did not exist as a variable, and the second was not declared as an `ARG`.
 
-    **Por qué el servidor sí lo tenía:** lo resuelve en **runtime**, donde Railway
-    sí inyecta `RAILWAY_GIT_COMMIT_SHA` en el contenedor. El servidor nunca
-    necesitó configuración, y eso hacía que el problema se viera como "el cliente
-    está roto" en vez de "falta declarar el `ARG`".
+    **Why the server did have it:** it resolves it at **runtime**, where Railway
+    does inject `RAILWAY_GIT_COMMIT_SHA` into the container. The server never
+    needed configuration, and that made the problem look like "the client
+    is broken" instead of "the `ARG` was not declared".
 
-    **Fix (commit `90fa3e5`):** `ARG RAILWAY_GIT_COMMIT_SHA` en la etapa
-    `builder`. Se eligió eso en lugar de crear una variable `SENTRY_RELEASE` con
-    referencia `${{RAILWAY_GIT_COMMIT_SHA}}`, que en el editor de Railway
-    quedaba vacía; el SDK reconoce la variable de Railway directamente.
+    **Fix (commit `90fa3e5`):** `ARG RAILWAY_GIT_COMMIT_SHA` in the
+    `builder` stage. That was chosen instead of creating a `SENTRY_RELEASE` variable with
+    a `${{RAILWAY_GIT_COMMIT_SHA}}` reference, which in the Railway editor
+    came out empty; the SDK recognizes the Railway variable directly.
 
-    **Verificación:** el bundle desplegado contiene `release:"90fa3e56…"` como
-    literal (antes era una lectura sin definición detrás), y Sentry muestra un
-    release con ese nombre creado por el plugin en build-time.
+    **Verification:** the deployed bundle contains `release:"90fa3e56…"` as a
+    literal (before it was a read with no definition behind it), and Sentry shows a
+    release with that name created by the plugin at build time.
 
-    **Moraleja transferible:** cualquier valor que el SDK necesite en
-    **build-time** tiene que llegar por `ARG`, y los del servidor no sirven como
-    evidencia de que llegó — el servidor puede estar resolviéndolo en runtime.
-
----
-
-## 10. Lo que queda pendiente
-
-- **Migrar a `beforeSendSpan` antes de subir a la v12 del SDK** (§9.7). Hoy el
-  filtro de transacciones funciona vía `beforeSendTransaction` + `static`, pero
-  esa opción se elimina en v12. En `"stream"` el callback recibe
-  `StreamedSpanJSON` (otra forma de datos) y **no puede descartar spans
-  devolviendo `null`**. Es la decisión de diseño que quedó abierta.
-- **Auditar las tres categorías de `dataCollection` que siguen activas**
-  (`cookies`, `urlQueryParams`, `httpHeaders.response`). `httpBodies` ya se
-  auditó sin fuga (§3.6.1) y `genAI` es inerte mientras no se use un SDK de IA
-  (§3.6.2). Ver §3.6.3 — no afirmar que están cubiertas.
-- **Si algún día se migra `proveedor-nebius.ts` al paquete `openai`**, poner
-  `dataCollection.genAI: { inputs: false, outputs: false }` **antes** del cambio:
-  es lo único que impide que los prompts —con la transcripción— viajen a Sentry
-  como atributos de span, que no pasan por `beforeSend`. Ver §3.6.2.
-- **Decidido: `docs/sentry.md` entra a la rama.** Es el registro de decisión de
-  la fase; el resumen corto y estable vive en `docs/status.md` §5. Si en algún
-  momento divergen, manda `status.md`.
+    **Transferable lesson:** any value the SDK needs at
+    **build time** has to arrive through `ARG`, and the server's values are not
+    evidence that it arrived — the server may be resolving it at runtime.
 
 ---
 
-## 11. Qué mirar antes del merge
+## 10. What is still pending
 
-Por orden de riesgo:
+- **Migrate to `beforeSendSpan` before upgrading to v12 of the SDK** (§9.7). Today the
+  transaction filter works via `beforeSendTransaction` + `static`, but
+  that option is removed in v12. In `"stream"` the callback receives
+  `StreamedSpanJSON` (another data shape) and **cannot drop spans
+  by returning `null`**. That is the design decision left open.
+- **Audit the three `dataCollection` categories that are still active**
+  (`cookies`, `urlQueryParams`, `httpHeaders.response`). `httpBodies` was already
+  audited with no leak (§3.6.1) and `genAI` is inert as long as an AI SDK is not used
+  (§3.6.2). See §3.6.3 — do not claim they are covered.
+- **If `proveedor-nebius.ts` is ever migrated to the `openai` package**, set
+  `dataCollection.genAI: { inputs: false, outputs: false }` **before** the change:
+  it is the only thing that stops prompts — with the transcript — from traveling to Sentry
+  as span attributes, which do not pass through `beforeSend`. See §3.6.2.
+- **Decided: `docs/sentry.md` goes on the branch.** It is the decision record of
+  the phase; the short, stable summary lives in `docs/status.md` §5. If they
+  ever diverge, `status.md` wins.
 
-1. **`src/lib/sentry-scrub.ts`** — el filtro completo, línea por línea. Es la
-   pieza que evita que algo sensible se filtre a un tercero. Mirar en particular
-   el descarte de breadcrumbs de consola (§3.7) y su test de regresión.
-2. **`src/lib/sentry-options.ts`, `TRACE_LIFECYCLE`** — la decisión con fecha de
-   vencimiento (§3.8). Es lo único de esta rama que hay que revisar antes de un
-   upgrade mayor del SDK.
-3. **`src/lib/sentry-reporte.ts`** — la sanitización del error del proveedor. Si
-   alguien la reemplaza por un `captureException(error)` directo, el leak vuelve.
-   Ojo: sanitiza la excepción, **no** los breadcrumbs — de eso se encarga el
-   filtro.
-4. **`next.config.ts` + `Dockerfile`** — la config de source maps, que el brief
-   pedía dejar fuera. Decidir si se queda.
-5. **`NODE_ENV` como fallback de entorno** — desviación del brief; el default
-   documentado sigue siendo `production`.
-6. **Los tags `elevenlabs`/`tavily`** en `tts`/`enriquecer` — desviación del
-   brief, que pedía `nebius`/`gemini`.
+---
 
-### Comandos para verificar por tu cuenta
+## 11. What to look at before the merge
+
+In order of risk:
+
+1. **`src/lib/sentry-scrub.ts`** — the full filter, line by line. It is the
+   piece that keeps something sensitive from leaking to a third party. Look in particular
+   at the dropping of console breadcrumbs (§3.7) and its regression test.
+2. **`src/lib/sentry-options.ts`, `TRACE_LIFECYCLE`** — the decision with an expiration
+   date (§3.8). It is the only thing on this branch that has to be reviewed before a
+   major SDK upgrade.
+3. **`src/lib/sentry-reporte.ts`** — sanitization of the provider error. If
+   someone replaces it with a direct `captureException(error)`, the leak returns.
+   Note: it sanitizes the exception, **not** the breadcrumbs — the
+   filter does that.
+4. **`next.config.ts` + `Dockerfile`** — the source map config, which the brief
+   asked to leave out. Decide whether it stays.
+5. **`NODE_ENV` as the environment fallback** — a deviation from the brief; the documented
+   default is still `production`.
+6. **The `elevenlabs`/`tavily` tags** on `tts`/`enriquecer` — a deviation from the
+   brief, which asked for `nebius`/`gemini`.
+
+### Commands to verify on your own
 
 ```bash
 git log --oneline main..feature/sentry

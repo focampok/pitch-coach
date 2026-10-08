@@ -1,130 +1,130 @@
-# Fichas — visualizador de audio
+# Sheets — audio visualizer
 
-Capturas en `01-visualizador-audio/`. Columnas: **motivo** (forma del
-visualizador) · **reacción al audio** · **en reposo** (sin audio) · **composición**
-(dónde se ubica respecto de botón / timer / título) · **390px**.
+Captures in `01-visualizador-audio/`. Columns: **motif** (visualizer
+shape) · **reaction to audio** · **at rest** (no audio) · **composition**
+(where it sits relative to the button / timer / title) · **390px**.
 
-`✔` verificado mirando la imagen · `~` afirmado en la ficha original, no verificado · `⚠` advertencia
+`✔` verified by looking at the image · `~` claimed in the original sheet, not verified · `⚠` warning
 
-## Demos de librería
+## Library demos
 
-| Archivo | Motivo | Reacción al audio | En reposo | Composición | 390px |
+| File | Motif | Reaction to audio | At rest | Composition | 390px |
 |---|---|---|---|---|---|
-| `wavesurfer-1280-ecualizador.png` | **barras (faders)** | La onda se complementa con **9 barras verticales con perilla** — bandas de EQ ✔ | Onda cargada sigue visible; faders en neutro | Onda arriba, reproductor y faders debajo ✔ | no capturado |
-| `wavesurfer-1280-mic-permiso.png` | onda (vacía) | Al grabar dibuja onda continua o scrolling; cronómetro en 00:00 | **Panel de onda VACÍO** + "Press Record to start recording" ✔ | Botón Record + select mic + checkbox arriba; panel vacío debajo ✔ | no capturado |
-| `wavesurfer-1280-escuchando.png` | onda | Onda estática magenta de audio pre-cargado | Queda la onda de referencia | Onda ocupa el panel; controles no dominan | no capturado |
-| `wavesurfer-390-escuchando.png` | onda | Onda pre-cargada en módulo compacto; estática | Igual, sin recorte vivo | Onda manda; nav y aviso se apilan | ✔ panel estrecho, onda recortada/scrollable |
-| `peaksjs-1280-escuchando.png` | onda + línea | Waveform principal con overview y línea superior, tiempo y play | Forma gris, play en 00:00 | Visualizador ocupa casi toda la pantalla | no capturado |
-| `howlerjs-1280-reproductor.png` | onda | Onda suave como indicador de progreso de pista | Conserva línea y controles en pausa | Reproductor y play/pause son foco | no capturado |
+| `wavesurfer-1280-ecualizador.png` | **bars (faders)** | The wave is complemented by **9 vertical bars with a knob** — EQ bands ✔ | Loaded wave stays visible; faders at neutral | Wave on top, player and faders below ✔ | not captured |
+| `wavesurfer-1280-mic-permiso.png` | wave (empty) | While recording it draws a continuous or scrolling wave; timer at 00:00 | **EMPTY wave panel** + "Press Record to start recording" ✔ | Record button + mic select + checkbox above; empty panel below ✔ | not captured |
+| `wavesurfer-1280-escuchando.png` | wave | Static magenta wave of preloaded audio | The reference wave remains | The wave fills the panel; controls do not dominate | not captured |
+| `wavesurfer-390-escuchando.png` | wave | Preloaded wave in a compact module; static | Same, with no live crop | The wave leads; nav and notice stack | ✔ narrow panel, wave cropped/scrollable |
+| `peaksjs-1280-escuchando.png` | wave + line | Main waveform with overview and a top line, time, and play | Gray shape, play at 00:00 | The visualizer takes almost the whole screen | not captured |
+| `howlerjs-1280-reproductor.png` | wave | Soft wave as a track-progress indicator | Keeps the line and the controls while paused | The player and play/pause are the focus | not captured |
 
-**Notas de las demos:**
+**Demo notes:**
 
-- ⚠ Las dos capturas de `wavesurfer` son **páginas de documentación**, no UI de
-  producto: dos tercios de la pantalla son un editor de código y hay un aviso
-  publicitario. La ficha original describía el panel de demo y omitía esto.
-  **No usarlas como referencia de composición** — sí como referencia del *elemento*.
-- `~` La ficha original afirma que en `mic-permiso` el botón Record "queda
-  deshabilitado". En la imagen se ve como un botón normal. No verificado.
-- **El aporte real de `wavesurfer-1280-ecualizador`:** 9 barras verticales con
-  perilla — un visualizador de barras que *además es control*. El indicador y el
-  control son el mismo elemento.
+- ⚠ The two `wavesurfer` captures are **documentation pages**, not product
+  UI: two thirds of the screen is a code editor, and there is an advertising
+  notice. The original sheet described the demo panel and left this out.
+  **Do not use them as a composition reference** — do use them as a reference for the *element*.
+- `~` The original sheet claims that on `mic-permiso` the Record button "stays
+  disabled". In the image it looks like a normal button. Not verified.
+- **The real contribution of `wavesurfer-1280-ecualizador`:** 9 vertical bars with
+  a knob — a bar visualizer that *is also a control*. The indicator and the
+  control are the same element.
 
-## Analizador FFT (audioMotion)
+## FFT analyzer (audioMotion)
 
-| Archivo | Motivo | Reacción al audio | En reposo | Composición | 390px |
+| File | Motif | Reaction to audio | At rest | Composition | 390px |
 |---|---|---|---|---|---|
-| `audiomotion-1280-activo.png` | barras / medidor | Oscilador de prueba A4: **pico estrecho en la banda central** ✔ | — | Analizador arriba, controles y test tone debajo | no capturado |
-| `audiomotion-1280-sin-audio.png` | barras / medidor | — | **Canvas negro completamente vacío** + escala de frecuencias ✔ | El canvas domina; controles secundarios | no capturado |
-| `audiomotion-1280-radial-contra-ejemplo.png` | anillo / barras radiales | Preset radial: rayo radial sobre fondo animado ✔ | Anillo y rayo mínimos sobre fondo oscuro | Visualizador domina por completo | no capturado |
+| `audiomotion-1280-activo.png` | bars / meter | A4 test oscillator: **narrow peak in the center band** ✔ | — | Analyzer on top, controls and test tone below | not captured |
+| `audiomotion-1280-sin-audio.png` | bars / meter | — | **Completely empty black canvas** + frequency scale ✔ | The canvas dominates; secondary controls | not captured |
+| `audiomotion-1280-radial-contra-ejemplo.png` | ring / radial bars | Radial preset: a radial ray on an animated background ✔ | Minimal ring and ray on a dark background | The visualizer dominates completely | not captured |
 
-**Notas del analizador:**
+**Analyzer notes:**
 
-- ⚠ **Marcado de contra-ejemplo incompleto en la ficha original.** Las tres
-  capturas usan el **mismo gradiente rainbow por frecuencia** (rojo → naranja →
-  verde → azul). La original marcó como contra-ejemplo solo la radial. Si el
-  gradiente es señal de contra-ejemplo, **aplica a la familia entera**.
-- **El hallazgo más útil del lote:** el par `activo` / `sin-audio` responde la
-  pregunta del estado de reposo. **Reposo = plano vacío**, no un pulso de espera.
+- ⚠ **The counterexample marking was incomplete in the original sheet.** All three
+  captures use the **same rainbow frequency gradient** (red → orange →
+  green → blue). The original marked only the radial one as a counterexample. If the
+  gradient is a counterexample signal, **it applies to the whole family**.
+- **The most useful finding in the batch:** the `activo` / `sin-audio` pair answers
+  the rest-state question. **Rest = an empty plane**, not a waiting pulse.
 
-## Producto
+## Product
 
-| Archivo | Motivo | Reacción al audio | En reposo | Composición | 390px |
+| File | Motif | Reaction to audio | At rest | Composition | 390px |
 |---|---|---|---|---|---|
-| `zencastr-1280-grabando.png` | **botón de grabación** | **No hay visualizador de amplitud.** Es un **botón circular magenta** junto al timer 01:01 ✔ | no capturado | Mockup de teléfono dentro de una landing | ver versión 390 |
-| `zencastr-390-grabando.png` | **botón de grabación** | Igual: botón + timer 01:02, CTA fijo inferior | no capturado | Mockup móvil + CTA sticky | ✔ header minimal, mockup apilado |
+| `zencastr-1280-grabando.png` | **record button** | **There is no amplitude visualizer.** It is a **magenta circular button** next to the timer 01:01 ✔ | not captured | Phone mockup inside a landing | see the 390 version |
+| `zencastr-390-grabando.png` | **record button** | Same: button + timer 01:02, fixed bottom CTA | not captured | Mobile mockup + sticky CTA | ✔ minimal header, stacked mockup |
 
-**Notas de producto:**
+**Product notes:**
 
-- ⚠ **Corrección importante.** La ficha original clasificaba `zencastr` como
-  `anillo/medidor` y describía un "aro rojo de grabación". Verificado: es una
-  **landing de marketing con un mockup de teléfono**, y lo que hay dentro es un
-  **botón de grabación circular**, no un anillo de amplitud. Sirve como referencia
-  del *estado grabando* (botón + timer juntos) y **no** como precedente del motivo
-  anillo.
-- El fondo es un degradado azul — fuera de nuestra dirección.
+- ⚠ **Important correction.** The original sheet classified `zencastr` as
+  `ring/meter` and described a "red recording ring". Verified: it is a
+  **marketing landing with a phone mockup**, and what sits inside is a
+  **circular record button**, not an amplitude ring. It works as a reference
+  for the *recording state* (button + timer together) and **not** as a precedent for the
+  ring motif.
+- The background is a blue gradient — outside our direction.
 
-## Precedente formal (no es app de audio)
+## Formal precedent (not an audio app)
 
-| Archivo | Motivo | Nota |
+| File | Motif | Note |
 |---|---|---|
-| `wealthsimple-com.png` | línea de señal | **Línea blanca de ancho completo** que enhebra tarjetas fotográficas y termina en un pico agudo. Aporta el motivo "línea tipo mercado". También sirve de referencia de color y de serif editorial. |
+| `wealthsimple-com.png` | signal line | **Full-width white line** that threads through photographic cards and ends in a sharp peak. It contributes the "market-style line" motif. It also serves as a color reference and as an editorial-serif reference. |
 
-## Balance del barrido
+## Sweep balance
 
-Se capturaron 22 pantallas; **11 eran landings de producto sin visualizador vivo**
-y se descartaron (riverside ×2, descript ×2, otter, fireflies, tldv ×2, podcastle,
-adobe podcast, howlerjs inicio). Dos pantallas de transcripción se movieron a
+22 screens were captured; **11 were product landings with no live visualizer**
+and were discarded (riverside ×2, descript ×2, otter, fireflies, tldv ×2, podcastle,
+adobe podcast, howlerjs inicio). Two transcription screens were moved to
 `04-jerarquia-resultado/`.
 
-**Conclusión del primer barrido: las landings públicas de productos de grabación
-no exponen su visualizador.** El material vino de demos de librería (`wavesurfer`,
-`peaksjs`, `audiomotion`) y de un mockup (`zencastr`). Eso se resolvió después con
-los dos barridos de abajo.
+**Conclusion of the first sweep: public landings of recording products
+do not expose their visualizer.** The material came from library demos (`wavesurfer`,
+`peaksjs`, `audiomotion`) and from a mockup (`zencastr`). That was resolved later with
+the two sweeps below.
 
-## Capturas propias — estados en vivo (`vivo/`)
+## In-house captures — live states (`vivo/`)
 
-Capturadas con Chromium automatizado y **micrófono sintético habilitado**
-(`--use-fake-device-for-media-stream`), o sea con señal real corriendo.
+Captured with automated Chromium and a **synthetic microphone enabled**
+(`--use-fake-device-for-media-stream`), so a real signal is running.
 
-| Archivo | Qué muestra |
+| File | What it shows |
 |---|---|
-| `audiomotion-index-1440-vivo.png` | Los **cuatro motivos corriendo a la vez**: barras lineales, **anillo radial segmentado**, área rellena, matriz de barras |
-| `audiomotion-index-390-vivo.png` | Lo mismo a ancho de teléfono |
-| `audiomotion-minimal-1440-vivo.png` | **Espectro completo en vivo.** El hallazgo más útil: barras delgadas sobre línea base **con LED de pico sostenido** arriba — los puntos que quedan flotando un instante tras el pico |
-| `audiomotion-minimal-390-vivo.png` | A ancho de teléfono |
-| `mdn-voice-visualizer-1440-vivo.png` | App real de micrófono (MDN), barras desde línea base. Señal débil por el dispositivo sintético, pero es una implementación real |
+| `audiomotion-index-1440-vivo.png` | **All four motifs running at once**: linear bars, **segmented radial ring**, filled area, bar matrix |
+| `audiomotion-index-390-vivo.png` | The same at phone width |
+| `audiomotion-minimal-1440-vivo.png` | **Full live spectrum.** The most useful finding: thin bars on a baseline **with a held peak LED** above — the dots that stay floating for an instant after the peak |
+| `audiomotion-minimal-390-vivo.png` | At phone width |
+| `mdn-voice-visualizer-1440-vivo.png` | A real microphone app (MDN), bars rising from a baseline. The signal is weak because of the synthetic device, but it is a real implementation |
 
-⚠ Las cinco usan el **gradiente rainbow** por frecuencia. Sirven como referencia de
-**forma y movimiento**, no de color.
+⚠ All five use the **rainbow gradient** by frequency. They serve as a reference for
+**shape and motion**, not for color.
 
-**La idea aprovechable es el LED de pico sostenido:** es literalmente "reposo con
-memoria" — el pico queda un instante y cae. Resuelve el estado de reposo **sin
-necesidad de un pulso decorativo**, que es justo lo que buscábamos.
+**The usable idea is the held peak LED:** it is literally "rest with
+memory" — the peak stays for an instant and then falls. It solves the rest state **without
+needing a decorative pulse**, which is exactly what we were looking for.
 
-## Capturas nativas — apps reales (`nativas/`)
+## Native captures — real apps (`nativas/`)
 
-Bajadas de la ficha de Google Play a resolución completa (1080×1920).
+Downloaded from the Google Play listing at full resolution (1080×1920).
 
-| Archivo | Qué muestra |
+| File | What it shows |
 |---|---|
-| `app-recorder-grabando.png` | **El mejor hallazgo del barrido nativo.** Timer gigante como héroe (`0H 00M 00S`), botón de micrófono circular con halo, y **waveform de ancho completo, simétrico sobre una línea central**, al pie de la pantalla |
-| `app-otter-grabando.png` | El timer **en línea, flanqueado por dos mitades de waveform**: `00:14` entre barras espejadas. Arriba, tabs Summary / Transcript / AI Chat — el patrón de nuestras secciones colapsables |
-| `app-recorder-prerecord.png` | Estado previo a grabar: "is ready to start" + botón circular. El reposo como pantalla vacía con un solo control |
-| `app-recorder-lista.png` | Jerarquía de lista: nombre + duración + formato + peso por fila, **con el ítem activo marcado con el color de acento** |
+| `app-recorder-grabando.png` | **The best finding of the native sweep.** A giant timer as the hero (`0H 00M 00S`), a circular microphone button with a halo, and a **full-width waveform, symmetric about a center line**, at the foot of the screen |
+| `app-otter-grabando.png` | The timer **inline, flanked by two waveform halves**: `00:14` between mirrored bars. Above, Summary / Transcript / AI Chat tabs — the pattern for our collapsible sections |
+| `app-recorder-prerecord.png` | Pre-record state: "is ready to start" + a circular button. Rest as an empty screen with a single control |
+| `app-recorder-lista.png` | List hierarchy: name + duration + format + size per row, **with the active item marked in the accent color** |
 
-**Dato convergente:** de los íconos que bajé y descarté, **los cinco eran barras o
-waveform**. El motivo barras/waveform es el idioma universal de las apps de
-grabación — lo cual valida nuestra elección y a la vez advierte que hay que darle
-**tratamiento propio**, porque es el default de todos.
+**Convergent data point:** of the icons downloaded and then discarded, **all five were bars or
+a waveform**. The bars/waveform motif is the universal language of recording
+apps — which validates our choice and, at the same time, warns that it needs
+**its own treatment**, because it is everyone's default.
 
-## Estado del hueco
+## Gap status
 
-**Cerrado en lo esencial.** Tenemos: forma y movimiento en vivo (`vivo/`),
-composición del estado de grabación en producto real (`nativas/`), el estado de
-reposo resuelto por evidencia (plano vacío + LED de pico), y los tres motivos
-respaldados por captura (barras, anillo, línea).
+**Closed in the essentials.** We have: live shape and motion (`vivo/`),
+the composition of the recording state in a real product (`nativas/`), the rest
+state settled by evidence (empty plane + peak LED), and the three motifs
+backed by a capture (bars, ring, line).
 
-Lo que **no** hay, y ya no hace falta buscar: un precedente de producto para el
-anillo en nuestra dirección — el anillo aparece en `audiomotion-index` (radial) y
-en tu `color.png`, pero siempre en otro registro de color. Es una decisión de
-diseño nuestra, no una copia.
+What there is **not**, and what no longer needs searching: a product precedent for the
+ring in our direction — the ring shows up in `audiomotion-index` (radial) and
+in your `color.png`, but always in another color register. It is our own design
+decision, not a copy.

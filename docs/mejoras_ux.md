@@ -1,248 +1,248 @@
-# Pitch Coach — mejoras UX/UI
+# Pitch Coach — UX/UI improvements
 
-Revisión del **5 oct 2026** (America/Guatemala), sobre el árbol local en
+Review of **5 Oct 2026** (America/Guatemala), on the local tree at
 `/home/focampo/Proyectos/pitch-coach`, HEAD `48519996` (`feat(ui): propuesta de
-valor en masthead y pie con atribución`). Incluye los cambios **sin commitear**
-del mismo día en `src/components/DashboardResultado.tsx` y
+valor en masthead y pie con atribución`). It includes the **uncommitted** changes
+from the same day in `src/components/DashboardResultado.tsx` and
 `src/styles/dashboard-resultado.css`.
 
-**No se modificó nada del proyecto en este pase.** Solo hubo lecturas, un
-cálculo local de contraste WCAG 2.x sobre los tokens y una búsqueda web sobre
-Emergent. No se levantó el dev server, no se hizo commit y no se desplegó nada.
+**Nothing in the project was modified in this pass.** There were only reads, a
+local WCAG 2.x contrast calculation on the tokens, and a web search about
+Emergent. The dev server was not started, nothing was committed, and nothing was deployed.
 
-## 1. Veredicto
+## 1. Verdict
 
-El diseño **no necesita una revisión de estilo**. El sistema «El Acta» es
-coherente, disciplinado y está por encima de la media: tokens reales, modo
-oscuro por reasignación de roles, contraste de texto que pasa AA en ambos modos,
-objetivos táctiles de 44 px forzados en CSS, manejo de foco y anuncios de
-`aria-live`. El trabajo pendiente es de **acabado**, no de dirección, y se
-concentra en tres cosas: **deriva entre `DESIGN.md` y el código**, **semántica de
-accesibilidad en los selectores** y **legibilidad de los filetes**.
+The design **does not need a style overhaul**. The "El Acta" system is
+coherent, disciplined, and above average: real tokens, dark mode by reassigning
+roles, text contrast that passes AA in both modes,
+44 px touch targets forced in CSS, focus handling, and `aria-live`
+announcements. The remaining work is **finish**, not direction, and it
+concentrates on three things: **drift between `DESIGN.md` and the code**, **accessibility
+semantics in the selectors**, and **hairline legibility**.
 
-Sobre los 10 créditos de Emergent: **no sirven para mejorar esta app** (§7).
+On the 10 Emergent credits: **they are not useful for improving this app** (§7).
 
-## 2. Alcance y método
+## 2. Scope and method
 
-Leído en este pase:
+Read in this pass:
 
-- `DESIGN.md`, `docs/README.md`, `PRODUCT.md` (contexto).
-- `src/app/globals.css`, `src/styles/dashboard-resultado.css` (tokens y estilos).
+- `DESIGN.md`, `docs/README.md`, `PRODUCT.md` (context).
+- `src/app/globals.css`, `src/styles/dashboard-resultado.css` (tokens and styles).
 - `src/app/page.tsx`, `src/app/layout.tsx`.
 - `src/components/DashboardResultado.tsx`, `GrabadorVoz.tsx`, `AnilloSenal.tsx`,
   `SelectorTipoPitch.tsx`, `PiePagina.tsx`.
-- `git log` de `DESIGN.md` y `DashboardResultado.tsx`; mtimes de los archivos.
+- `git log` of `DESIGN.md` and `DashboardResultado.tsx`; file mtimes.
 
-Verificado de forma reproducible:
+Verified in a reproducible way:
 
-- Contraste WCAG de 23 pares de tokens (claro y oscuro) con un script local
-  (fórmula de luminancia relativa). Resultados en §5.
-- Semántica ARIA de los selectores por inspección (`grep` de `aria-pressed`,
+- WCAG contrast of 23 token pairs (light and dark) with a local script
+  (relative luminance formula). Results in §5.
+- ARIA semantics of the selectors by inspection (`grep` of `aria-pressed`,
   `role`, `aria-checked`).
-- Presencia del fallback de TTS por inspección de `ReproductorVeredicto.tsx`.
+- Presence of the TTS fallback by inspection of `ReproductorVeredicto.tsx`.
 
-**No cubierto por este pase:** no se levantó la app ni se probó con lector de
-pantalla real, ni con un audit automático (axe/Lighthouse). No se verificó
-rendimiento, ni comportamiento en dispositivos físicos.
+**Not covered by this pass:** the app was not started and was not tested with a real
+screen reader, nor with an automated audit (axe/Lighthouse). Performance was not
+verified, nor behavior on physical devices.
 
-## 3. Lo que ya está bien (no tocar)
+## 3. What is already in good shape (leave it alone)
 
-Verificado en el código, no asumido:
+Verified in the code, not assumed:
 
-- **Contraste de texto: pasa AA en ambos modos en todos los pares medidos.** Los
-  16 pares de texto dieron ≥ 4.87:1 (la mayoría AAA). El anillo de foco `2px` en
-  señal da **7.86:1** en claro y **9.91:1** en oscuro.
-- **Tokens de verdad:** no hay hex sueltos en los componentes; el modo oscuro
-  reasigna roles, no invierte la paleta. La regla «The One Hue Rule» se respeta:
-  el olivo es el único matiz y la teja solo aparece en conteos y errores.
-- **Objetivos táctiles de 44 px forzados en CSS** con la norma citada
-  (`src/app/globals.css:92`), incluso en las píldoras de transporte
+- **Text contrast: passes AA in both modes on every pair measured.** The
+  16 text pairs came out ≥ 4.87:1 (most of them AAA). The `2px` focus ring on
+  signal is **7.86:1** in light and **9.91:1** in dark.
+- **Tokens are real:** there are no loose hex values in the components; dark mode
+  reassigns roles, it does not invert the palette. The "The One Hue Rule" holds:
+  olive is the only hue, and terracotta appears only in counts and errors.
+- **44 px touch targets forced in CSS** with the cited rule
+  (`src/app/globals.css:92`), including the transport pills
   (`.pc-transporte-btn`, `min-width/min-height: 44px`).
-- **Manejo de foco y anuncios:** `role="status"` / `role="alert"`, `aria-live`
-  para el mensaje del coach (`GrabadorVoz.tsx:463`), y `scrollIntoView` al llegar
-  el resultado y el análisis Ultra que **respeta `prefers-reduced-motion`**
+- **Focus handling and announcements:** `role="status"` / `role="alert"`, `aria-live`
+  for the coach message (`GrabadorVoz.tsx:463`), and `scrollIntoView` when the
+  result and the Ultra analysis arrive, which **respects `prefers-reduced-motion`**
   (`DashboardResultado.tsx:471-492`).
-- **La caja de transcripción con scroll** lleva `role="region"` +
-  `aria-labelledby` + `tabIndex=0` con el porqué comentado
-  (`DashboardResultado.tsx:737-749`): es enfocable con teclado y tiene nombre.
-- **Tipografías por `next/font`** (la cara que se carga es la que se usa,
-  `layout.tsx:12-21`), y las transiciones se desactivan con movimiento reducido
+- **The scrolling transcript box** has `role="region"` +
+  `aria-labelledby` + `tabIndex=0`, with the reason commented
+  (`DashboardResultado.tsx:737-749`): it is keyboard-focusable and it has a name.
+- **Typefaces via `next/font`** (the face that loads is the face that is used,
+  `layout.tsx:12-21`), and transitions are disabled under reduced motion
   (`globals.css:203-208`, `dashboard-resultado.css:331-336`).
 
-Es un sistema con criterio. El trabajo pendiente es de acabado.
+It is a system with a point of view. The remaining work is finish.
 
-## 4. Hallazgos priorizados
+## 4. Prioritized findings
 
-### P1 — Deriva entre documentación y código (dos instancias)
+### P1 — Drift between documentation and code (two instances)
 
-`CLAUDE.md` declara que `DESIGN.md` es «fuente de verdad del diseño», y
-`docs/README.md:7-11` insiste: «Ante cualquier discrepancia visual, manda
-`DESIGN.md`». Pero el doc contradice al código en la fila de rúbrica:
+`CLAUDE.md` declares that `DESIGN.md` is the "source of truth for the design", and
+`docs/README.md:7-11` insists: "If there is any visual discrepancy, `DESIGN.md`
+wins". But the doc contradicts the code on the rubric row:
 
-- `DESIGN.md:273` — «**La primera rúbrica incumplida** lleva la clase abierta:
-  fondo tinte… **Cumplido o no no cambia el color del punto.**»
-- `DESIGN.md:286` — Do: «marcar la primera rúbrica que **falta** con el tinte».
+- `DESIGN.md:273` — "**The first unmet rubric** carries the open class:
+  tint background… **Met or not does not change the point's color.**"
+- `DESIGN.md:286` — Do: "mark the first rubric that is **missing** with the tint".
 
-El código hace lo contrario:
+The code does the opposite:
 
 - `dashboard-resultado.css:184` — `.pc-rubrica-item.cumplido { background: var(--signal-tint) }`
-- `dashboard-resultado.css:198-201` — la marca **sí** cambia a `--field`/`--bone`
-  cuando está cumplida.
-- `DashboardResultado.tsx:93-110` — check para cumplido, punto para pendiente.
+- `dashboard-resultado.css:198-201` — the mark **does** change to `--field`/`--bone`
+  when the point is met.
+- `DashboardResultado.tsx:93-110` — a check for met, a dot for pending.
 
-Los mtimes lo confirman: `DESIGN.md` es del 02-oct; la fila «cumplido» viene del
-commit `fc6f081` (`feat(resultado): mark covered rubric points`, 04-oct) y de las
-ediciones sin commitear de hoy (`dashboard-resultado.css` y
-`DashboardResultado.tsx`, 05-oct 09:01).
+The mtimes confirm it: `DESIGN.md` is from 02 Oct; the "met" row comes from
+commit `fc6f081` (`feat(resultado): mark covered rubric points`, 04 Oct) and from
+today's uncommitted edits (`dashboard-resultado.css` and
+`DashboardResultado.tsx`, 05 Oct 09:01).
 
-**Riesgo:** un agente futuro que siga `CLAUDE.md` al pie de la letra va a
-«corregir» el código para que coincida con el doc, y borrará la feature de puntos
-cumplidos. Es la misma trampa que `CLAUDE.md` advierte con el inglés.
+**Risk:** a future agent that follows `CLAUDE.md` to the letter will
+"correct" the code so it matches the doc, and will delete the covered-points
+feature. It is the same trap `CLAUDE.md` warns about with English.
 
-**Segunda instancia:** `docs/README.md:36` describe `DESIGN.md` como «(hoy
-pre-rediseño, anti-referencia)», mientras las líneas 7-11 del **mismo archivo** lo
-declaran el «único destino formal del sistema visual». Se contradice consigo
-mismo: el doc ya describe «El Acta» y dice que «el mundo anterior queda retirado».
+**Second instance:** `docs/README.md:36` describes `DESIGN.md` as "(today
+pre-redesign, anti-reference)", while lines 7-11 of the **same file**
+declare it the "only formal home of the visual system". It contradicts
+itself: the doc already describes "El Acta" and says "the previous world is retired".
 
-**Acción recomendada:** el cambio de código es *mejor* que lo documentado — el
-estado se lee por **forma** (check vs. punto), no solo por color, que es lo que
-exige la propia regla `color-not-only`. Por eso: actualizar `DESIGN.md`
-(§Components → *Rubric row* + una Named Rule «The Covered Mark Rule») y corregir
-`docs/README.md:36`. Alternativa: revertir el código. Que dejen de contradecirse.
+**Recommended action:** the code change is *better* than what is documented — the
+state is read by **shape** (check vs. dot), not only by color, which is what
+the `color-not-only` rule itself requires. So: update `DESIGN.md`
+(§Components → *Rubric row* + a Named Rule "The Covered Mark Rule") and correct
+`docs/README.md:36`. Alternative: revert the code. They should stop contradicting each other.
 
-### P1 — Los selectores son single-select anunciados como toggles
+### P1 — The selectors are single-select announced as toggles
 
-`SelectorTipoPitch.tsx:37`, `SelectorDuracion.tsx:28` y `SelectorIdioma.tsx:38`
-usan `aria-pressed` sobre botones independientes. Para una elección mutuamente
-excluyente, el contrato correcto es `role="radiogroup"` + `role="radio"` con
-`aria-checked` (o inputs nativos). Hoy:
+`SelectorTipoPitch.tsx:37`, `SelectorDuracion.tsx:28`, and `SelectorIdioma.tsx:38`
+use `aria-pressed` on independent buttons. For a mutually
+exclusive choice, the correct contract is `role="radiogroup"` + `role="radio"` with
+`aria-checked` (or native inputs). Today:
 
-- El lector de pantalla dice «pulsado / no pulsado» en vez de «3 de 4,
-  seleccionado».
-- **No hay navegación con flechas** dentro del grupo (solo Tab).
+- The screen reader says "pressed / not pressed" instead of "3 of 4,
+  selected".
+- **There is no arrow-key navigation** inside the group (Tab only).
 
-Es categoría CRITICAL en la guía UX (`keyboard-nav`, `nav-label-icon`). El
-arreglo es local y no cambia el aspecto.
+It is a CRITICAL category in the UX guide (`keyboard-nav`, `nav-label-icon`). The
+fix is local and does not change the look.
 
-### P2 — El filete es lo único que delimita los paneles, y es casi invisible
+### P2 — The hairline is the only thing delimiting the panels, and it is almost invisible
 
-- `--border` contra su superficie = **1.42:1** en claro y **1.55:1** en oscuro.
-  WCAG 1.4.11 pide 3:1 para límites que identifican componentes.
-- El escalón «hundido» es apenas perceptible: `ground #f9f8f6` vs.
+- `--border` against its surface = **1.42:1** in light and **1.55:1** in dark.
+  WCAG 1.4.11 asks for 3:1 for boundaries that identify components.
+- The "sunken" step is barely perceptible: `ground #f9f8f6` vs.
   `sunken #f1f0ed` ≈ **1.1:1**.
 
-La profundidad del sistema («por hundimiento, sin sombra») descansa entonces
-sobre un filete de 1.42:1. Es una decisión deliberada, pero el hundimiento es
-demasiado sutil para cargar solo. Opciones: subir el filete a ~3:1, o ampliar el
-delta ground/sunken. No rompe el «Acta».
+The system's depth ("by sinking, without shadow") then rests
+on a 1.42:1 hairline. It is a deliberate decision, but the sinking is
+too subtle to carry it alone. Options: raise the hairline to ~3:1, or widen the
+ground/sunken delta. It does not break "El Acta".
 
-### P2 — Textarea sin nombre accesible
+### P2 — Textarea without an accessible name
 
-`GrabadorVoz.tsx:517-524`: el `<textarea>` del respaldo tiene `placeholder` y un
-`<p>` de ayuda encima, pero **nada asociado programáticamente** (ni `<label>`, ni
-`aria-label`, ni `aria-describedby`). El placeholder no es etiqueta. Arreglo de
-una línea.
+`GrabadorVoz.tsx:517-524`: the fallback `<textarea>` has a `placeholder` and a
+help `<p>` above it, but **nothing associated programmatically** (no `<label>`, no
+`aria-label`, no `aria-describedby`). The placeholder is not a label. A
+one-line fix.
 
-### P2 — La voz del veredicto degrada a SpeechSynthesis
+### P2 — The verdict voice falls back to SpeechSynthesis
 
-`ReproductorVeredicto.tsx:88-118` cae a `window.speechSynthesis` cuando ElevenLabs
-falla. Según verificación previa, `/api/tts` da 402 en el free tier, así que el
-fallback es lo que suena. Es **el mayor riesgo de calidad percibida de la UI**: el
-producto promete «veredicto hablado» y una voz robótica del navegador pesa más en
-la percepción que cualquier contraste de borde. La decisión de dejarlo está
-tomada; se anota como el primer sitio donde invertiría calidad si sube el plan.
+`ReproductorVeredicto.tsx:88-118` falls back to `window.speechSynthesis` when ElevenLabs
+fails. According to a previous check, `/api/tts` returns 402 on the free tier, so the
+fallback is what the user hears. It is **the biggest perceived-quality risk in the UI**: the
+product promises a "spoken verdict", and a robotic browser voice weighs more on
+perception than any border contrast. The decision to leave it is
+made; it is noted as the first place where quality would be spent if the plan is upgraded.
 
-### P3 — Menores
+### P3 — Minor
 
-- **Scroll anidado:** `.pc-transcripcion-cuerpo` (14rem + `overflow-y:auto`,
-  `dashboard-resultado.css:264-276`) dentro del scroll de página es una trampa de
-  scroll en móvil. El doc lo quiere fijo; en `< 640px` un disclosure «expandir»
-  sería mejor.
-- **Anuncio duplicado del score:** `AnilloSenal` lleva `aria-label` con el score
-  (`DashboardResultado.tsx:184`) y al lado está el número visible `{score}` +
-  `/100` (`:186-187`). El lector lo dice dos veces. Marcar la leyenda con
+- **Nested scroll:** `.pc-transcripcion-cuerpo` (14rem + `overflow-y:auto`,
+  `dashboard-resultado.css:264-276`) inside the page scroll is a scroll
+  trap on mobile. The doc wants it fixed; below `< 640px` an "expand"
+  disclosure would be better.
+- **Duplicate score announcement:** `AnilloSenal` has an `aria-label` with the score
+  (`DashboardResultado.tsx:184`) and next to it is the visible number `{score}` +
+  `/100` (`:186-187`). The reader says it twice. Mark the legend with
   `aria-hidden`.
-- **Chrome de demo en la UI:** «Acta de comité» muestra el `jobId` crudo
-  (`DashboardResultado.tsx:608-613`) y hace polling cada 20 s. Para la demo del
-  hackathon tiene sentido; para un producto público es ruido de desarrollador.
-- **`--elevated` no se usa** (`globals.css:11,30`; ya admitido en `DESIGN.md:174`).
+- **Demo chrome in the UI:** "Acta de comité" shows the raw `jobId`
+  (`DashboardResultado.tsx:608-613`) and polls every 20 s. It makes sense for the
+  hackathon demo; for a public product it is developer noise.
+- **`--elevated` is unused** (`globals.css:11,30`; already admitted in `DESIGN.md:174`).
 
-## 5. Datos de contraste (reproducibles)
+## 5. Contrast data (reproducible)
 
-Medidos con un script local sobre los valores de `:root` en `globals.css`.
-Umbrales WCAG: AA = 4.5:1 (texto normal), AAA = 7:1, UI/large = 3:1.
+Measured with a local script against the `:root` values in `globals.css`.
+WCAG thresholds: AA = 4.5:1 (normal text), AAA = 7:1, UI/large = 3:1.
 
-| Par | Claro | Oscuro |
+| Pair | Light | Dark |
 | --- | --- | --- |
-| Texto principal / lienzo | 16.55 AAA | 17.28 AAA |
-| Tinta baja / lienzo | 5.23 AA | 7.35 AAA |
-| Tinta baja / hundido (comentario rúbrica, chips, fecha) | 4.87 AA | 6.68 AA |
-| Señal / lienzo (línea de sesión, links) | 7.86 AAA | 9.91 AAA |
-| Señal / hundido | 7.32 AAA | 9.01 AAA |
-| Señal / tinte (fila cumplida, muletilla) | 6.75 AA | 5.99 AA |
-| Atención / hundido (error, conteo de muletilla) | 5.28 AA | 5.45 AA |
-| Atención / lienzo | 5.67 AA | 6.00 AA |
-| Hueso / campo (botón primario) | 10.45 AAA | 10.45 AAA |
-| Hueso / pico (hover primario, solo claro) | 12.86 AAA | — |
-| **Filete / lienzo** | **1.42 FALLA** | **1.55 FALLA** |
-| **Filete / hundido** | **1.32 FALLA** | — |
-| Reposo / lienzo (barra de tiempo, arco en reposo) | — | 3.99 UI |
+| Primary text / canvas | 16.55 AAA | 17.28 AAA |
+| Low ink / canvas | 5.23 AA | 7.35 AAA |
+| Low ink / sunken (rubric comment, chips, date) | 4.87 AA | 6.68 AA |
+| Signal / canvas (session line, links) | 7.86 AAA | 9.91 AAA |
+| Signal / sunken | 7.32 AAA | 9.01 AAA |
+| Signal / tint (met row, filler word) | 6.75 AA | 5.99 AA |
+| Attention / sunken (error, filler-word count) | 5.28 AA | 5.45 AA |
+| Attention / canvas | 5.67 AA | 6.00 AA |
+| Bone / field (primary button) | 10.45 AAA | 10.45 AAA |
+| Bone / peak (primary hover, light only) | 12.86 AAA | — |
+| **Hairline / canvas** | **1.42 FAIL** | **1.55 FAIL** |
+| **Hairline / sunken** | **1.32 FAIL** | — |
+| Rest / canvas (time bar, arc at rest) | — | 3.99 UI |
 
-Lectura: **todo el texto pasa.** El único incumplimiento es el filete, que es un
-borde de componente, no texto (ver P2).
+Reading: **all text passes.** The only failure is the hairline, which is a
+component boundary, not text (see P2).
 
-## 6. Plan de acción ordenado
+## 6. Ordered action plan
 
-1. **Actualizar `DESIGN.md`** a la fila «cumplido» (o revertir el código) y
-   corregir `docs/README.md:36`. Que la fuente de verdad deje de contradecir al
-   código.
-2. **`role="radiogroup"` + flechas** en los tres selectores.
-3. **Subir el contraste del filete** o ampliar el escalón hundido.
-4. **`<label>` asociado** al textarea de respaldo.
-5. **Capturas nuevas del README** y cierre de la fase UX/UI (el screenshot actual
-   está deliberadamente desactualizado).
+1. **Update `DESIGN.md`** to the "met" row (or revert the code) and
+   correct `docs/README.md:36`. The source of truth should stop contradicting the
+   code.
+2. **`role="radiogroup"` + arrow keys** on the three selectors.
+3. **Raise the hairline contrast** or widen the sunken step.
+4. **An associated `<label>`** on the fallback textarea.
+5. **New README screenshots** and close-out of the UX/UI phase (the current screenshot
+   is deliberately out of date).
 
-Los pasos 1-4 son cambios locales, sin rediseño. El paso 5 depende de que 1-4
-estén hechos.
+Steps 1-4 are local changes, with no redesign. Step 5 depends on 1-4
+being done.
 
-## 7. Sobre los 10 créditos de Emergent
+## 7. On the 10 Emergent credits
 
-**Recomendación: no gastarlos en esta app.** Tres razones concretas:
+**Recommendation: do not spend them on this app.** Three concrete reasons:
 
-1. **Genera una app nueva, no mejora la tuya.** Emergent produce
-   React/Next.js + FastAPI + MongoDB desde cero. No lee `DESIGN.md`, no conoce
-   «El Acta», no respeta la rampa olivo. Mejor caso: un lenguaje visual paralelo
-   que no se puede mergear.
-2. **El tier de 10 créditos es de evaluación, no de entrega.** No despliega (los
-   preview links caducan a los 30 min) y no tiene integración con GitHub ni
-   dominios propios.
-3. **Los números no dan.** Cada run consume ~5 créditos por defecto → **10
-   créditos ≈ 2 generaciones**. Un deploy son **50 créditos/mes**: no alcanza ni
-   para uno. Con 2 runs no se itera nada.
+1. **It generates a new app; it does not improve yours.** Emergent produces
+   React/Next.js + FastAPI + MongoDB from scratch. It does not read `DESIGN.md`, it does not know
+   "El Acta", and it does not respect the olive ramp. Best case: a parallel visual language
+   that cannot be merged.
+2. **The 10-credit tier is for evaluation, not for delivery.** It does not deploy (the
+   preview links expire after 30 min) and it has no GitHub integration or
+   custom domains.
+3. **The numbers do not work.** Each run consumes ~5 credits by default → **10
+   credits ≈ 2 generations**. A deploy is **50 credits/month**: that does not cover even
+   one. With 2 runs nothing gets iterated.
 
-**Único uso con sentido:** quemarlos a propósito en un artefacto **desechable**
-donde «app nueva» *es* el objetivo — por ejemplo un prototipo de una sola página
-(teaser o landing para la entrega del hackathon). Se trata como **boceto**: se
-captura lo que salió, se descarta, y se reimplementa en el repo con el sistema
-existente.
+**The only use that makes sense:** burn them on purpose on a **throwaway**
+artifact where "new app" *is* the goal — for example a single-page prototype
+(a teaser or landing page for the hackathon submission). Treat it as a **sketch**:
+capture what came out, discard it, and reimplement it in the repo with the existing
+system.
 
-**Lo que da gratis dentro del repo:** hacer los pasos 1-5 de §6. No cuesta
-créditos y mueve la aguja de verdad.
+**What is free inside the repo:** do steps 1-5 of §6. It costs no
+credits and it actually moves the needle.
 
-Fuentes consultadas (el pricing de Emergent cambia; contrastar con la página viva):
+Sources consulted (Emergent pricing changes; check them against the live page):
 
 - [Emergent Credits Explained: What a Run, a Deploy and a Chatbot Cost](https://rationalgo.ai/resources/app-builder/pricing-guides/how-emergent-credits-work)
 - [Emergent Deployment Cost: What 50 Credits Buys, and Why Preview Costs Nothing](https://rationalgo.ai/resources/app-builder/pricing-guides/emergent-deployment-credit-cost)
 - [Emergent Free Trial: How Long It Lasts and What 10 Credits Cover](https://rationalgo.ai/resources/app-builder/pricing-guides/emergent-free-trial)
 - [Emergent pricing in 2026: plans, credits and what an app really costs](https://cadrant.ai/blog/emergent-pricing)
 
-## 8. Lo que este pase no cerró
+## 8. What this pass did not close
 
-- No se corrió la app ni un audit automático (axe/Lighthouse) ni se probó con
-  lector de pantalla real: los hallazgos de semántica son por inspección de
-  código, no por prueba con usuario.
-- No se verificó rendimiento (LCP/CLS), ni el comportamiento del fallback de TTS
-  en un navegador concreto.
-- El contraste se midió sobre los tokens de `:root`; no sobre cada par
-  fondo/texto que resulta de las combinaciones en runtime (p. ej. píldora sobre
-  tarjeta hundida). Los valores cubren los pares que el CSS declara.
+- The app was not run, nor an automated audit (axe/Lighthouse), nor a test with a
+  real screen reader: the semantics findings come from code inspection,
+  not from a user test.
+- Performance was not verified (LCP/CLS), nor the TTS fallback behavior
+  in a specific browser.
+- Contrast was measured on the `:root` tokens; not on every
+  background/text pair that results from combinations at runtime (for example a pill on a
+  sunken card). The values cover the pairs the CSS declares.

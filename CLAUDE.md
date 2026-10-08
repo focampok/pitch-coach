@@ -1,98 +1,102 @@
-# Pitch Coach — Guía de trabajo para agentes
+# Pitch Coach — Working guide for agents
 
-> Este archivo aplica tanto para **Claude Code** como para **Roo Code**. Ambos agentes deben seguir estas reglas al trabajar dentro de este codebase.
+> This file applies to **Claude Code** and **Roo Code**. Both agents follow these rules inside this codebase. Project documentation is written in English. The product UI stays bilingual (Spanish and English).
 
-## Entorno de desarrollo
+## Development environment
 
-- **Todo el desarrollo se realiza en Linux Mint nativo.** No se usa Docker ni contenedores de ningún tipo durante el desarrollo local.
-- **No generar `docker-compose.yml` ni instrucciones que asuman contenedores** para correr el proyecto en local (ej. "levanta el contenedor", "entra al container"). Los comandos deben asumir ejecución directa en el sistema (`npm run dev`, `npm install`, etc.).
-- El único uso de Docker en todo el proyecto es un **`Dockerfile` exclusivo para producción en Railway**. Este Dockerfile:
-  - No se usa ni se ejecuta en local.
-  - Su único propósito es que Railway pueda construir y desplegar la aplicación.
-  - No debe asumirse como parte del flujo de desarrollo diario ni como herramienta de debugging.
-- Cualquier instrucción de instalación, testing o ejecución que el agente proponga debe funcionar directamente sobre el sistema operativo (Linux Mint), sin pasos intermedios de contenedores.
+- **All development happens on native Linux Mint.** Docker and containers are not used for local development.
+- **Do not generate `docker-compose.yml` or instructions that assume containers** to run the project locally (for example "start the container" or "shell into the container"). Commands assume a direct run on the system (`npm run dev`, `npm install`, and so on).
+- The only Docker use in the project is a **`Dockerfile` reserved for production on Railway**. This Dockerfile:
+  - Is not used or run locally.
+  - Exists so Railway can build and deploy the application.
+  - Is not part of the daily development flow and is not a debugging tool.
+- Any install, test, or run instructions an agent proposes must work directly on the operating system (Linux Mint), with no container step in between.
 
-## Configuración de Next.js — agentRules: false
+## Next.js configuration — agentRules: false
 
-`next.config.ts` incluye `agentRules: false`. Esto es intencional, no un valor por defecto.
+`next.config.ts` sets `agentRules: false`. This is intentional, not a leftover default.
 
-**Qué hace**: Next.js 16 incluye una función que, al correr `npm run dev`, genera o modifica automáticamente un archivo de reglas para agentes de IA en la raíz del proyecto — por defecto intenta usar `CLAUDE.md` para esto, inyectándole un bloque de contenido genérico de Next.js.
+**What it does:** Next.js 16 can, on `npm run dev`, generate or edit an AI-agent rules file at the repo root. By default it tries to use `CLAUDE.md` and inject a generic Next.js block.
 
-**Por qué está desactivado**: al crear el proyecto, esta función reemplazó `CLAUDE.md` por un puntero de una línea a un `AGENTS.md` generado automáticamente, y en arranques posteriores seguía modificando el archivo agregándole contenido no solicitado. Dado que `CLAUDE.md` es la fuente de verdad de las reglas de trabajo del proyecto (leída también por Roo Code vía symlink en `.roo/rules/`), esto representaba riesgo de diluir o sobrescribir las reglas del proyecto sin aviso en cada arranque del servidor.
+**Why it is off:** when the project was created, that feature replaced `CLAUDE.md` with a one-line pointer to a generated `AGENTS.md`, and later startups kept appending unsolicited content. `CLAUDE.md` is the source of truth for working rules (Roo Code reads it through the symlink in `.roo/rules/`). Leaving the feature on risked diluting or overwriting those rules on every server start.
 
-**Regla para agentes**: no reactivar `agentRules` ni eliminar esta configuración sin que se solicite explícitamente. Si en el futuro se necesita que Next.js gestione un archivo de reglas de agentes, debe hacerse apuntando a un archivo distinto de `CLAUDE.md` (por ejemplo, dejando que gestione su propio `AGENTS.md` de forma independiente), nunca sobre `CLAUDE.md` directamente.
+**Rule for agents:** do not turn `agentRules` back on or remove this setting unless someone asks for it explicitly. If Next.js later needs to manage an agent-rules file, point it at a file other than `CLAUDE.md` (for example its own `AGENTS.md`), never at `CLAUDE.md` itself.
 
-## Variables de entorno
+## Environment variables
 
-- Todas las credenciales y claves (API key de Gemini, y cualquier otra futura) se manejan **exclusivamente** mediante variables de entorno. Nunca se hardcodean en el código, ni siquiera "temporalmente para probar".
-- Archivo `.env.local` en la raíz del proyecto para desarrollo local — **nunca se comitea a git**. Debe estar en `.gitignore` desde el primer commit.
-- Archivo `.env.example` sí se comitea, con las mismas keys pero sin valores reales (o con placeholders), para que quede documentado qué variables necesita el proyecto.
-- Variables esperadas (ir actualizando esta lista conforme se agreguen):
- - `MODEL_PROVIDER` — `nebius` (por defecto) o `gemini`.
- - `NEBIUS_API_KEY` — análisis con Nebius Token Factory (requerida con el proveedor por defecto). Solo server-side.
- - `NEBIUS_BASE_URL`, `NEBIUS_MODEL_ULTRA`, `NEBIUS_MODEL_NANO` — opcionales; ver `.env.example`.
- - `MODEL`, `MODEL_FALLBACK_MODELS`, `MODEL_MAX_TOKENS`, `MODEL_TEMPERATURE`, `MODEL_RETRY_*` — configuración neutra del modelo (compartida entre proveedores).
- - `GEMINI_API_KEY` — clave de la API de Gemini, solo si `MODEL_PROVIDER=gemini`. Server-side.
- - `ELEVENLABS_API_KEY` — clave de ElevenLabs (TTS del veredicto y STT Scribe), usada únicamente en API routes (server-side), nunca expuesta al cliente.
- - `ELEVENLABS_VOICE_ID_MALE` — Voice ID de la voz de hombre en español (VoiceLab). Solo server-side.
- - `ELEVENLABS_VOICE_ID_FEMALE` — Voice ID de la voz de mujer en español (VoiceLab). Solo server-side.
- - `ELEVENLABS_VOICE_ID_EN_MALE` — Voice ID de la voz de hombre en inglés. Solo server-side.
- - `ELEVENLABS_VOICE_ID_EN_FEMALE` — Voice ID de la voz de mujer en inglés. Solo server-side.
- - `ELEVENLABS_SCRIBE_MODEL` — modelo batch de Scribe (default `scribe_v2`). Solo server-side.
- - `TAVILY_API_KEY` — clave de Tavily (búsqueda de estadísticas para sugerencias), usada únicamente en API routes (server-side), nunca expuesta al cliente.
- - `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_*` — monitoreo opcional; ver `.env.example` y `docs/sentry.md`. El DSN del cliente es ingesta pública por diseño de Sentry; `SENTRY_AUTH_TOKEN` nunca lleva prefijo `NEXT_PUBLIC_`.
- - En Railway, las variables de entorno se configuran directamente en el panel del proyecto (Settings → Variables), replicando las mismas keys que en `.env.local`.
- - Cualquier variable que empiece con `NEXT_PUBLIC_` queda expuesta al navegador — **nunca usar ese prefijo para API keys o secretos**.
+- All credentials and keys (Gemini, and any later key) live **only** in environment variables. Never hardcode them, not even "just to try".
+- `.env.local` at the repo root is for local development — **never commit it**. It belongs in `.gitignore` from the first commit.
+- `.env.example` is committed, with the same keys and no real values (or with placeholders), so the required variables stay documented.
+- Expected variables (keep this list current as keys are added):
+  - `MODEL_PROVIDER` — `nebius` (default) or `gemini`.
+  - `NEBIUS_API_KEY` — analysis with Nebius Token Factory (required with the default provider). Server-side only.
+  - `NEBIUS_BASE_URL`, `NEBIUS_MODEL_ULTRA`, `NEBIUS_MODEL_NANO` — optional; see `.env.example`.
+  - `MODEL`, `MODEL_FALLBACK_MODELS`, `MODEL_MAX_TOKENS`, `MODEL_TEMPERATURE`, `MODEL_RETRY_*` — provider-neutral model settings.
+  - `GEMINI_API_KEY` — Gemini API key, only if `MODEL_PROVIDER=gemini`. Server-side.
+  - `ELEVENLABS_API_KEY` — ElevenLabs key (verdict TTS and Scribe STT), used only in API routes (server-side), never exposed to the client.
+  - `ELEVENLABS_VOICE_ID_MALE` — male Spanish voice id (VoiceLab). Server-side only.
+  - `ELEVENLABS_VOICE_ID_FEMALE` — female Spanish voice id (VoiceLab). Server-side only.
+  - `ELEVENLABS_VOICE_ID_EN_MALE` — male English voice id. Server-side only.
+  - `ELEVENLABS_VOICE_ID_EN_FEMALE` — female English voice id. Server-side only.
+  - `ELEVENLABS_SCRIBE_MODEL` — Scribe batch model (default `scribe_v2`). Server-side only.
+  - `TAVILY_API_KEY` — Tavily key (statistics for suggestions, the room objection, and the spoken-figure check), used only in API routes (server-side), never exposed to the client.
+  - `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_*` — optional monitoring; see `.env.example` and `docs/sentry.md`. The client DSN is public ingest by Sentry's design; `SENTRY_AUTH_TOKEN` never uses the `NEXT_PUBLIC_` prefix.
+  - On Railway, set the same keys in the project panel (Settings → Variables) as in `.env.local`.
+  - Any variable that starts with `NEXT_PUBLIC_` is exposed to the browser — **never use that prefix for API keys or secrets**.
 
-## Estructura de carpetas (scaffolding)
+## Folder structure (scaffolding)
 
-Proyecto Next.js (App Router) con todo en un solo repositorio, sin backend separado:
+Next.js (App Router) in one repository, no separate backend:
 
 ```
 pitch-coach/
 ├── CLAUDE.md
 ├── README.md
-├── PRODUCT.md              # capa de producto (sin tokens) — fuente de verdad del producto
-├── DESIGN.md               # sistema visual y tokens — fuente de verdad del diseño
+├── PRODUCT.md              # product layer (no tokens) — product source of truth
+├── DESIGN.md               # visual system and tokens — design source of truth
 ├── .roo/
 │   └── rules/
-│       └── CLAUDE.md -> symlink a ../../CLAUDE.md
+│       └── CLAUDE.md -> symlink to ../../CLAUDE.md
 ├── docs/
-│   ├── README.md           # índice de documentación
-│   ├── alcance.md          # producto y reglas de negocio
-│   ├── status.md           # implementación ↔ código
-│   ├── sentry.md           # decisiones de monitoreo y privacidad
-│   ├── pre-nebius.md       # baseline histórico (antes de Nebius)
-│   ├── post-nebius.md      # estado post-migración Nebius
+│   ├── README.md           # documentation index
+│   ├── alcance.md          # product and business rules
+│   ├── status.md           # implementation ↔ code
+│   ├── sentry.md           # monitoring and privacy decisions
+│   ├── pre-nebius.md       # historical baseline (before Nebius)
+│   ├── post-nebius.md      # state after the Nebius migration
 │   ├── guia-integracion-*.md
-│   └── referencias-ui/     # evidencia y dirección visual propuesta (no contrato)
-├── .env.local              # no se commitea
+│   └── referencias-ui/     # proposed visual evidence (not a contract)
+├── .env.local              # not committed
 ├── .env.example
-├── Dockerfile              # solo para build/deploy en Railway, no se usa en local
-├── railway.toml            # builder Dockerfile + healthcheck para Railway
+├── Dockerfile              # Railway build/deploy only, not used locally
+├── railway.toml            # Dockerfile builder + healthcheck for Railway
 ├── .dockerignore
 ├── package.json
 ├── next.config.ts
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx                 # selector + grabación + transcripción + muletillas
+│   │   ├── page.tsx                 # selector + recording + transcript + fillers
 │   │   ├── layout.tsx
 │   │   ├── globals.css
 │   │   └── api/
-│   │       ├── analizar-pitch/       # análisis (Nebius/Gemini)
+│   │       ├── analizar-pitch/       # analysis (Nebius/Gemini)
 │   │       ├── transcribir/          # Scribe STT
 │   │       ├── tts/
 │   │       ├── enriquecer/           # Tavily
-│   │       └── sparring/             # resolver hallazgos
+│   │       ├── linea-tiempo/         # covered points on the audio
+│   │       ├── segunda-toma/         # 45-second retake
+│   │       └── sparring/             # resolve findings
 │   ├── components/
 │   │   ├── SelectorTipoPitch.tsx, SelectorDuracion.tsx, SelectorIdioma.tsx
-│   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe + indicador
+│   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe + indicator
 │   │   ├── DashboardResultado.tsx, SparringCoach.tsx, PanelProgreso.tsx
+│   │   ├── SegundaToma.tsx
 │   │   └── ReproductorVeredicto.tsx  # ElevenLabs TTS + SpeechSynthesis
 │   ├── lib/
 │   │   ├── modelo.ts, proveedor-nebius.ts, proveedor-gemini.ts
 │   │   ├── rubricas.ts, muletillas.ts, prompts.ts, prompts-sparring.ts
 │   │   ├── diccionario-es.ts, diccionario-en.ts, idiomas.ts
+│   │   ├── salas.ts, objecion-sala.ts, cifras-dichas.ts, linea-tiempo.ts
 │   │   └── mensajes-coach.ts
 │   └── types/
 │       └── pitch.ts
@@ -101,32 +105,33 @@ pitch-coach/
 
 ### README.md
 
-El proyecto debe tener un `README.md` en la raíz, con al menos:
+The repo has a root `README.md` with at least:
 
-- Nombre del proyecto y una línea que explique qué hace (ver `docs/alcance.md` sección 2, "Concepto").
-- Licencia (MIT) y que el proyecto es open source.
-- Stack técnico resumido (Next.js, Nebius/Gemini, MediaRecorder, ElevenLabs Scribe/TTS, Tavily, Railway).
-- Instrucciones de setup local:
-  - Clonar el repo.
+- The project name and one line on what it does (see `docs/alcance.md` section 2, "Concept").
+- The MIT license and that the project is open source.
+- A short stack (Next.js, Nebius/Gemini, MediaRecorder, ElevenLabs Scribe/TTS, Tavily, Railway).
+- Local setup:
+  - Clone the repo.
   - `npm install`.
-  - Copiar `.env.example` a `.env.local` y completar las keys documentadas ahí (`NEBIUS_API_KEY` con el proveedor por defecto; el resto degrada con fallback).
-  - `npm run dev` para levantar en local (sin Docker, ejecución nativa).
-- Nota explícita de que el `Dockerfile` es solo para el deploy y no se usa en desarrollo local.
-- Se actualiza conforme el proyecto avanza — no es un documento estático.
+  - Copy `.env.example` to `.env.local` and fill in the keys documented there (`NEBIUS_API_KEY` with the default provider; the rest degrades with a fallback).
+  - `npm run dev` to run locally (no Docker, native execution).
+- An explicit note that the `Dockerfile` is for deploy only and is not used in local development.
+- It is updated as the project moves. It is not a static document.
+- It is written in English, like the rest of the markdown in this repo.
 
 ### .gitignore
 
-Debe incluir, como mínimo:
+It includes at least:
 
 ```
-# dependencias
+# dependencies
 node_modules/
 
-# build de Next.js
+# Next.js build
 .next/
 out/
 
-# variables de entorno (nunca se comitean)
+# environment variables (never committed)
 .env
 .env.local
 .env*.local
@@ -136,29 +141,31 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# sistema operativo / editor
+# operating system / editor
 .DS_Store
 *.pem
 
-# Railway (si genera archivos locales de config)
+# Railway (if it generates local config files)
 .railway/
 ```
 
-`.env.example` es la única excepción de archivo de entorno que **sí** se comitea, ya que no contiene valores reales.
+`.env.example` is the only environment file that **is** committed, because it has no real values.
 
-Notas sobre la estructura:
-- La lógica de negocio (rúbricas, detección de muletillas, construcción de prompts) vive en `src/lib/`, separada de los componentes de UI — facilita que el agente edite una cosa sin tocar la otra.
-- El análisis del pitch vive en `/api/analizar-pitch`. El TTS de ElevenLabs y (si aplica) Scribe serán API routes adicionales server-side; no exponer keys al cliente.
-- El `Dockerfile` y `railway.toml` viven en la raíz porque Railway los espera ahí — no implica que se usen en desarrollo (ver regla de entorno de desarrollo arriba).
+Notes on the structure:
 
-## Convención de idioma
+- Business logic (rubrics, filler detection, prompt construction) lives in `src/lib/`, separate from UI components, so an agent can edit one without touching the other.
+- Pitch analysis lives in `/api/analizar-pitch`. ElevenLabs TTS and Scribe are additional server-side API routes. Do not expose keys to the client.
+- `Dockerfile` and `railway.toml` live at the root because Railway expects them there. That does not mean they are used in development (see the development-environment rule above).
 
-- **El producto es bilingüe (es / en).** El mercado sigue siendo LATAM. Lo que el usuario final ve está en el idioma de la sesión: textos de UI, mensajes de error, rúbricas, veredictos hablados y escritos, y el feedback del modelo.
-- **El idioma de la sesión es el parámetro `idioma` (`'es' | 'en'`).** Viaja en la API (cuerpo de la petición; cabecera `X-Idioma` cuando el cuerpo todavía no se puede leer). En el cliente se resuelve en `src/lib/idiomas.ts`: primero el valor guardado en `localStorage` (clave `pitch-coach:idioma`) y, si no hay, `navigator.language` / `navigator.languages`. Si no hay ninguna señal, el fallback es `'es'`.
-- **Textos de interfaz.** `src/lib/diccionarios.ts` expone la interfaz `Diccionario` y el selector `diccionario(idioma)`. El contenido está en `src/lib/diccionario-es.ts` y `src/lib/diccionario-en.ts`. La forma se deriva del español (`export type Diccionario = typeof es` en `diccionario-es.ts`); el inglés se tipa contra esa forma, así que una clave que falta o sobra no compila.
-- **Prompts.** El prompt a cada proveedor debe pedir la respuesta en el idioma de la sesión, no siempre en español. En `src/lib/prompts.ts` el esquema es por idioma: un constructor de `system` y otro de `user` por cada idioma (`CONSTRUCTORES_SYSTEM`, `CONSTRUCTORES_USER`). El mismo criterio aplica a `src/lib/prompts-sparring.ts`.
-- **No "corregir" el inglés.** Un agente futuro NO debe reescribir a español una salida, un texto de UI, un veredicto o un prompt en inglés asumiendo que el proyecto es solo en español. Si `idioma` es `en`, esa salida en inglés es la correcta.
-- **El código se escribe en inglés**, siguiendo convención estándar de la industria:
-  - Nombres de variables, funciones, tipos, y archivos técnicos genéricos (ej. `route.ts`, `page.tsx`) en inglés.
-  - Comentarios en el código pueden ir en español si aclaran contexto de negocio específico (ej. explicar una rúbrica), pero la lógica general se comenta en inglés cuando es puramente técnica.
-- **Excepción intencional**: los nombres de archivo/componentes directamente ligados a conceptos de negocio en español (como se ve en el scaffolding arriba: `SelectorTipoPitch.tsx`, `rubricas.ts`) se mantienen en español porque reflejan directamente el dominio del producto y facilitan que el agente entienda el propósito sin ambigüedad. Si en algún punto se prefiere consistencia total en inglés para el código, esta sección debe actualizarse antes de que el agente empiece a generar archivos nuevos.
+## Language convention
+
+- **The product is bilingual (es / en).** The market is still LATAM. What the end user sees follows the session language: UI copy, error messages, rubrics, spoken and written verdicts, and model feedback.
+- **The session language is the `idioma` parameter (`'es' | 'en'`).** It travels on the API (request body; `X-Idioma` header when the body cannot be read yet). On the client it is resolved in `src/lib/idiomas.ts`: first the value stored in `localStorage` (key `pitch-coach:idioma`), otherwise `navigator.language` / `navigator.languages`. If there is no signal, the fallback is `'es'`.
+- **Interface copy.** `src/lib/diccionarios.ts` exposes the `Diccionario` interface and the `diccionario(idioma)` selector. The content lives in `src/lib/diccionario-es.ts` and `src/lib/diccionario-en.ts`. The shape comes from Spanish (`export type Diccionario = typeof es` in `diccionario-es.ts`). English is typed against that shape, so a missing or extra key fails the build.
+- **Prompts.** Each provider prompt asks for the answer in the session language, not always in Spanish. In `src/lib/prompts.ts` the schema is per language: a `system` constructor and a `user` constructor per language (`CONSTRUCTORES_SYSTEM`, `CONSTRUCTORES_USER`). The same rule applies to `src/lib/prompts-sparring.ts`.
+- **Do not "fix" the English.** A later agent must not rewrite an English output, UI string, verdict, or prompt into Spanish on the assumption that the project is Spanish-only. If `idioma` is `en`, the English output is the correct one.
+- **Documentation is English.** Markdown in this repo (README, `docs/`, `PRODUCT.md`, `DESIGN.md`, `CLAUDE.md`) is written in English. Do not translate those files back to Spanish.
+- **Code is written in English**, following ordinary industry convention:
+  - Names of variables, functions, types, and generic technical files (for example `route.ts`, `page.tsx`) are English.
+  - Comments may be in Spanish when they explain a specific business context (for example a rubric). Purely technical logic is commented in English.
+- **Intentional exception:** file and component names tied directly to Spanish business concepts (as in the scaffolding above: `SelectorTipoPitch.tsx`, `rubricas.ts`) stay in Spanish because they name the product domain and keep the purpose unambiguous. If full English consistency is wanted for code names, update this section before generating new files.

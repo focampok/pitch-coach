@@ -8,300 +8,300 @@ web
 
 ## Users
 
-Cuatro perfiles, **deliberadamente sin usuario primario**: builders/emprendedores
-(pitch de capital), docentes y estudiantes (pitch educativo), perfiles técnicos
-(pitch de tecnología) y quien presenta una propuesta (pitch de innovación).
+Four profiles, **deliberately with no primary user**: builders/founders
+(capital pitch), teachers and students (education pitch), technical profiles
+(technology pitch), and anyone presenting a proposal (innovation pitch).
 
-La situación es la misma para todos: **van a presentar frente a una audiencia real
-y quieren practicar en voz alta antes**, con retroalimentación objetiva en lugar de
-la del espejo, la grabación sin analizar o la opinión de alguien sin estructura.
+The situation is the same for all of them: **they are about to present to a real
+audience and want to practice out loud first**, with objective feedback instead of
+the mirror, an unanalyzed recording, or someone's unstructured opinion.
 
-La **única segmentación es el tipo de pitch**, que el usuario elige al empezar. No
-hay segmentación por rol, plan, ni nivel de experiencia, y los cuatro tipos pesan
-igual: ningún perfil puede volverse el camino principal del producto.
+The **only segmentation is the pitch type**, which the user chooses at the start.
+There is no segmentation by role, plan, or experience level, and the four types
+weigh the same: no profile can become the product's main path.
 
-Mercado: **LATAM**, con interfaz y feedback en español e inglés.
+Market: **LATAM**, with interface and feedback in Spanish and English.
 
-La **narrativa de la submission** (video y texto de Devpost) muestra un solo caso,
-de punta a punta: alguien en LATAM ensayando en voz alta un pitch de capital, la
-noche anterior, sin coach. Eso no cambia la segmentación: los cuatro tipos siguen
-pesando igual en la interfaz. El detalle está en Hackathon.
+The **submission narrative** (Devpost video and text) shows a single case,
+end to end: someone in LATAM rehearsing a capital pitch out loud, the night
+before, without a coach. That does not change the segmentation: the four types
+still weigh the same in the interface. The detail is in Hackathon.
 
 ## Product Purpose
 
-**Pitch Coach** es una herramienta de práctica de pitch. El usuario habla en voz
-alta frente al micrófono; el sistema transcribe, evalúa el contenido contra la
-rúbrica del tipo elegido, cuenta muletillas y muestra un dashboard con el detalle.
-El veredicto corto se puede escuchar cuando el usuario quiera.
+**Pitch Coach** is a pitch-practice tool. The user speaks out loud into the
+microphone; the system transcribes, evaluates the content against the rubric of
+the chosen type, counts filler words, and shows a dashboard with the detail.
+The short verdict can be heard when the user asks for it.
 
-La idea central:
+The central idea:
 
-> Practica en voz alta. Recibe feedback concreto — escrito primero, hablado si lo
-> pides — como si un coach te estuviera escuchando.
+> Practice out loud. Get concrete feedback — written first, spoken if you ask
+> for it — as if a coach were listening.
 
-El éxito es que alguien pueda **practicar y saber qué le falta** en un minuto, sin
-ceremonia previa y con algo accionable al final.
+Success is that someone can **practice and know what is missing** in a minute,
+with no prior ceremony and with something actionable at the end.
 
 ## Positioning
 
-**El diferenciador principal: la rúbrica está atada al tipo de pitch.** Cada tipo
-—capital, educación, innovación, tecnología— tiene cinco puntos fijos que la
-evaluación busca. Un coach genérico evalúa "comunicación"; este evalúa si
-realmente cubriste el problema, el mercado, el ask.
+**The main differentiator: the rubric is tied to the pitch type.** Each type
+— capital, educacion, innovacion, tecnologia — has five fixed points the
+evaluation looks for. A generic coach evaluates "communication"; this one
+evaluates whether you actually covered the problem, the market, the ask.
 
-**Segundo diferenciador: inmediatez sin cuenta.** Práctica en voz alta con
-resultado objetivo en un minuto. Sin registro, sin subir archivos, sin ceremonia.
+**Second differentiator: immediacy without an account.** Out-loud practice with
+an objective result in a minute. No sign-up, no file upload, no ceremony.
 
-Un producto vecino —tipo Yoodli— no puede copiar esto honestamente sin adoptar el
-mismo modelo: rúbrica por tipo como contrato con el usuario, y resultado inmediato
-sin fricción de acceso.
+A neighboring product — something like Yoodli — cannot honestly copy this
+without adopting the same model: a rubric per type as the contract with the
+user, and an immediate result with no access friction.
 
 ## Operating Context
 
-**Loop principal:** elegir idioma, tipo de pitch y duración máxima (presets de 1 a
-7 minutos) → grabar en voz alta → la grabación **se corta sola** al llegar al
-límite → el servidor transcribe (ElevenLabs Scribe) → se cuentan muletillas sobre
-la transcripción → el modelo evalúa contra la rúbrica → dashboard con score,
-puntos cumplidos y faltantes, transcripción resaltada y veredicto.
+**Main loop:** choose language, pitch type, and maximum duration (presets from 1
+to 7 minutes) → record out loud → the recording **stops itself** at the limit →
+the server transcribes (ElevenLabs Scribe) → filler words are counted on the
+transcript → the model evaluates against the rubric → dashboard with score,
+covered and missing points, highlighted transcript, and verdict.
 
-**La misma sesión, en cadena — no son adornos:** escuchar el veredicto (TTS);
-**cifra citada** (Tavily, solo si un punto de rúbrica no se cumplió); **Análisis
-Ultra** (reanálisis con razonamiento extendido y traza, a pedido); **Resolver
-hallazgos** (hasta 3 preguntas de seguimiento sobre puntos no cumplidos,
-respondidas por voz o texto); **guion descargable** con marcas de tiempo por
-frase, si se grabó; **Tu progreso** (historial local).
+**The same session, in a chain — these are not decorations:** listen to the
+verdict (TTS); **cited figure** (Tavily, only if a rubric point was missed);
+**Ultra analysis** (re-analysis with extended reasoning and a trace, on
+request); **Resolve findings** (up to 3 follow-up questions on missed points,
+answered by voice or text); **downloadable script** with a time mark per
+sentence, if it was recorded; **Your progress** (local history).
 
-**Contrato de visibilidad del resultado.** En la primera vista, sin un clic,
-conviven tres cosas: el score, el punto de rúbrica que faltó, y la cifra citada
-que se puede decir en voz alta, con fuente. Ultra sigue siendo un paso deliberado
-—es más lento y se reserva para el razonamiento serio— pero el pedido es obvio, y
-una vez corrido la traza queda junto al score. Los nombres de modelo son
-procedencia corta, no el titular. El detalle de por qué este contrato existe está
-en Hackathon.
+**Result visibility contract.** On the first view, with no click, three things
+sit together: the score, the rubric point that was missed, and the cited figure
+that can be said out loud, with its source. Ultra stays a deliberate step — it
+is slower and is reserved for serious reasoning — but the request is obvious,
+and once it has run the trace sits next to the score. Model names are short
+provenance, not the headline. Why this contract exists is in Hackathon.
 
-**Entorno real de uso:** navegador moderno con micrófono, HTTPS fuera de
-localhost. Sesión **anónima**. El ritual es hablar en voz alta, no escribir.
+**Real environment of use:** a modern browser with a microphone, HTTPS outside
+localhost. **Anonymous** session. The ritual is speaking out loud, not typing.
 
 ## Capabilities and Constraints
 
-**Implementado:** selector de tipo (4 opciones fijas) y de duración (1–7 min);
-grabación con corte automático; transcripción (MediaRecorder + Scribe) con campo
-de **texto de respaldo** si no hay micrófono o se niega el permiso; detección de
-muletillas por conteo (21 patrones de oratoria LATAM en español; lista propia en
-inglés, que evita marcar "like"/"so"/"right" por la palabra suelta); evaluación
-contra rúbrica vía el proveedor activo (Nebius por defecto, Gemini de
-contingencia), con JSON estructurado; score calculado en el servidor; TTS del
-veredicto con SpeechSynthesis como fallback obligatorio; dashboard; cifra citada
-con Tavily en puntos no cumplidos; objeción de la sala pública del tipo; contraste
-de una cifra ya dicha; línea de tiempo de los puntos cubiertos; segunda toma de
-45 segundos; Análisis Ultra; Resolver hallazgos; historial local de las últimas
-20 prácticas, con el delta de cobertura.
+**Implemented:** type selector (4 fixed options) and duration selector (1–7 min);
+recording with automatic stop; transcription (MediaRecorder + Scribe) with a
+**fallback text field** if there is no microphone or permission is denied;
+filler-word detection by count (21 LATAM public-speaking patterns in Spanish; a
+separate English list, which avoids marking "like"/"so"/"right" from the bare
+word); evaluation against the rubric through the active provider (Nebius by
+default, Gemini as contingency), with structured JSON; score calculated on the
+server (the model does not set the score); verdict TTS with SpeechSynthesis as
+a mandatory fallback; dashboard; cited figure with Tavily on missed points;
+public-room objection for the type; check of one figure already spoken; timeline
+of covered points; 45-second second take; Ultra analysis; Resolve findings;
+local history of the last 20 practices, with the coverage delta.
 
-**Ruteo de modelos en Nebius Token Factory** (el hecho que el resultado debe
-poder mostrar como procedencia, y que el video y el README tienen que narrar):
+**Model routing on Nebius Token Factory** (the fact the result must be able to
+show as provenance, and that the video and the README have to narrate):
 
-| Nivel | Modelo | Para qué |
+| Level | Model | What it is for |
 |---|---|---|
-| `estandar` | Nemotron 3 Super | El score del minuto, contra la rúbrica |
-| `ultra` | Nemotron 3 Ultra | Reanálisis a pedido, con traza de 4 a 8 pasos |
-| `rapido` | Nemotron 3 Nano | Sparring, entidades, reescritura de la consulta, validación y frase hablada de la cifra, objeción de sala, contraste de la cifra dicha, línea de tiempo y segunda toma |
+| `estandar` | Nemotron 3 Super | Analyzes every take: the minute's score, against the rubric |
+| `ultra` | Nemotron 3 Ultra | Re-analysis on request, with a 4-to-8-step trace |
+| `rapido` | Nemotron 3 Nano | Sparring, short entities, search-query writing, citation checks and the spoken phrase for the figure, the public-room objection, the check on one figure the speaker already said, the timeline, and the 45-second retake |
 
-Gemini es contingencia manual e **ignora el nivel**. No es la historia de la
-entrega. Tavily corre en puntos no cumplidos (estadística y, en el primero, la
-objeción de la sala) y también contrasta una cifra que el pitch ya dijo.
-**La transcripción nunca se envía a Tavily.** Si no hay key o falla, el resto
-del resultado sigue.
+Gemini is a manual contingency and **ignores the level**. It is not the story
+of the submission. Tavily runs on missed points (a statistic and, on the first
+one, the room objection) and also checks a figure the pitch already said.
+**The transcript is never sent to Tavily.** If there is no key or it fails, the
+rest of the result continues.
 
-**Restricciones que el diseño debe respetar:**
+**Constraints the design must respect:**
 
-- **Los ids de los puntos de rúbrica son un contrato.** Viajan por la API y quedan
-  guardados en el historial: renombrar uno rompe datos ya persistidos.
-- **Sin persistencia en servidor.** El historial vive en `localStorage` de ese
-  navegador y no guarda transcripción, comentarios, traza de Ultra, preguntas,
-  respuestas ni audio.
-- **El audio se procesa en memoria y se descarta.** No se escribe a disco ni se
-  adjunta a logs, breadcrumbs o Sentry.
-- **Bilingüe por contrato.** Un único valor `idioma` (`'es' | 'en'`) gobierna
-  interfaz, rúbricas, prompts, mensajes de error, el par de voces, el hint de STT
-  y las muletillas. Agregar un idioma debe ser agregar datos, no tocar
-  componentes. Ausente vale `'es'`; cualquier otro valor es 400.
-- **Nunca depender de un solo canal.** Si un servicio externo falla, el loop no se
-  corta: TTS cae a SpeechSynthesis, y sin micrófono hay texto de respaldo.
-- **Sin STT en vivo.** El flujo es grabar → detener → transcribir el clip completo.
-- **Fuera de alcance en esta versión:** cuentas/login, sincronización entre
-  dispositivos, comparar dos intentos en la misma sesión, rúbricas custom, idiomas
-  más allá de es/en, análisis de video o lenguaje corporal, backend separado.
-- **Sin dato de negocio decidido:** precio, modelo de negocio y métricas de uso no
-  están definidos y no deben inventarse.
+- **Rubric-point ids are a contract.** They travel through the API and stay
+  stored in history: renaming one breaks data already persisted. Five stable
+  ids per type.
+- **No server persistence.** History lives in that browser's `localStorage` and
+  does not store the transcript, comments, the Ultra trace, questions, answers,
+  or audio.
+- **Audio is processed in memory and discarded.** It is not written to disk and
+  is not attached to logs, breadcrumbs, or Sentry.
+- **Bilingual by contract.** A single `idioma` value (`'es' | 'en'`) governs
+  the interface, rubrics, prompts, error messages, the voice pair, the STT hint,
+  and filler words. Adding a language must mean adding data, not touching
+  components. Absent means `'es'`; any other value is 400.
+- **Never depend on a single channel.** If an external service fails, the loop
+  does not stop: TTS falls back to SpeechSynthesis, and without a microphone
+  there is fallback text.
+- **No live STT.** The flow is record → stop → transcribe the full clip.
+- **Out of scope in this version:** accounts/login, sync across devices,
+  comparing two attempts in the same session, custom rubrics, languages beyond
+  es/en, video or body-language analysis, a separate backend.
+- **No decided business data:** price, business model, and usage metrics are
+  undefined and must not be invented.
 
 ## Brand Commitments
 
-- **Nombre:** Pitch Coach.
-- **Open source, licencia MIT.** El proyecto se puede usar, forkear y madurar.
-- **El humor va en el copy, no en el dibujo.** (§5.1) El tono puede ser
-  conversacional y con guiño —"ese 'o sea' sonó fuerte— van 12"— pero eso vive en
-  el texto, no en el lenguaje visual.
-- **Bilingüe es identidad, no traducción.** El español latino es caso de primera
-  clase, no una localización posterior.
-- **Dirección visual comprometida, aún en fase propuesta.** La dirección y la
-  paleta viven en `docs/referencias-ui/README.md` como **propuesta de trabajo**
-  (no contrato cerrado) y todavía no son un sistema visual en código. El
-  **único destino formal** de los tokens aprobados es `DESIGN.md`; ante
-  cualquier discrepancia visual, manda `DESIGN.md`. Acá se registra **como
-  puntero, sin expandirla**: el mundo visual es materia de `DESIGN.md` y del
-  flujo de new-work, no de este documento.
-- **Anti-orbe.** La dirección visual descarta explícitamente la esfera/orbe
-  brillante como representación del coach; el reemplazo es un indicador en vivo
-  que reacciona al audio, con un solo matiz.
-- **Sin muro de logos.** Los nombres de modelo (Nebius/Nemotron, Tavily) son
-  procedencia, no el titular del dashboard.
+- **Name:** Pitch Coach.
+- **Open source, MIT license.** The project can be used, forked, and matured.
+- **Humor lives in the copy, not in the drawing.** (§5.1) The tone can be
+  conversational and with a wink — "that 'you know' landed hard — that's 12" —
+  but that lives in the text, not in the visual language.
+- **Bilingual is identity, not a translation pass.** Latin American Spanish is a
+  first-class case, not a later localization.
+- **Committed visual direction.** The direction and the palette are recorded in
+  `docs/referencias-ui/README.md` as working evidence. The **only formal home**
+  of the approved tokens is `DESIGN.md`; on any visual discrepancy, `DESIGN.md`
+  wins. This document registers that **as a pointer, without expanding it**:
+  the visual world belongs to `DESIGN.md` and to the new-work flow, not to this
+  document.
+- **Anti-orb.** The visual direction explicitly discards the glowing
+  sphere/orb as the representation of the coach; the replacement is a live
+  indicator that reacts to the audio, with a single hue.
+- **No logo wall.** Model names (Nebius/Nemotron, Tavily) are provenance, not
+  the dashboard headline.
 
 ## Evidence on Hand
 
-**Real y disponible:**
+**Real and available:**
 
-- Documentación de producto y contrato: `docs/alcance.md`, `docs/status.md`,
+- Product and contract documentation: `docs/alcance.md`, `docs/status.md`,
   `docs/README.md`.
-- Demo en línea funcionando:
-  `https://pitch-coach-production-1c0c.up.railway.app`.
-- Capturas del estado actual en `public/screenshots/` (`01.png` selección,
-  `02.png` coach, `03.png` dashboard) — **del mundo visual vigente (rediseño
-  "Acta")**; alimentan el README y el material de submission.
-- Material de dirección visual y referencias en `docs/referencias-ui/`.
-- **No existe el video de submission.** Es requisito (YouTube público, ≤3 min,
-  inglés, con audio). No inventar un enlace.
-- **No está escrito el delta del periodo de submission.** El proyecto es anterior
-  al 26 de agosto de 2026; la explicación es obligatoria y todavía no existe.
+- Working live demo:
+  `https://pitch-coach.focampo.com`.
+- Screenshots of the current state in `public/screenshots/` (`01.png` selection,
+  `02.png` coach, `03.png` dashboard) — **of the current visual world (the
+  Record redesign)**; they feed the README and the submission material.
+- Visual-direction material and references in `docs/referencias-ui/`.
+- **The submission video does not exist.** It is a requirement (public YouTube,
+  ≤3 min, English, with audio). Do not invent a link.
+- **The submission-period delta is not written.** The project predates August
+  26, 2026; the explanation is mandatory and does not exist yet.
 
-**Ausencias que el trabajo futuro NO debe fabricar:** no hay testimonios, clientes,
-casos de estudio, métricas de uso, benchmarks, prensa, ni precio. Cualquier prueba
-social o número de tracción sería inventado.
+**Absences future work must NOT fabricate:** there are no testimonials,
+customers, case studies, usage metrics, benchmarks, press, or a price. Any
+social proof or traction number would be invented.
 
 ## Hackathon
 
-Pitch Coach se entrega a la **Nebius x NVIDIA Global AI Hackathon** (Devpost).
-Esta sección es contexto de entrega, vigente hasta el cierre. No reescribe los
-principios de producto: los cuatro tipos de pitch siguen pesando igual en la
-interfaz.
+Pitch Coach is submitted to the **Nebius x NVIDIA Global AI Hackathon**
+(Devpost). This section is delivery context, in force until close. It does not
+rewrite the product principles: the four pitch types still weigh the same in
+the interface.
 
-**Track confirmado:** Best Apps and Agents. Construir una app o un agente que
-alguien usaría de verdad, con modelos Nemotron en Nebius vía Token Factory.
-Ultra para el razonamiento serio; Nano o Super para lo rápido, para que la app
-siga respondiendo. Serverless Endpoints y Serverless Jobs están alentados y **no
-son requisito**. No migrar el hosting para marcar esa casilla: la inferencia ya
-corre en Token Factory y la demo vive en Railway.
+**Confirmed track:** Best Apps and Agents. Build an app or an agent that
+someone would actually use, with Nemotron models on Nebius via Token Factory.
+Ultra for serious reasoning; Nano or Super for the fast path, so the app keeps
+responding. Serverless Endpoints and Serverless Jobs are encouraged and **are
+not a requirement**. Do not migrate hosting to tick that box: inference already
+runs on Token Factory and the demo lives on Railway.
 
-**Fechas:**
+**Dates:**
 
-- Submission: 26 de agosto de 2026, 9:00 PT – **30 de octubre de 2026, 10:00 PDT**.
-- Juzgamiento: 1–15 de diciembre de 2026. Ganadores alrededor del 11 de enero de 2027.
-- El proyecto es **anterior** al 26 de agosto. Hay que explicar por escrito qué
-  cambió en el periodo. El rediseño es parte de esa explicación. No presentar la
-  app como si hubiera nacido en la hackathon.
+- Submission: August 26, 2026, 9:00 PT – **October 30, 2026, 10:00 PDT**.
+- Judging: December 1–15, 2026. Winners around January 11, 2027.
+- The project **predates** August 26. What changed during the period has to be
+  explained in writing. The redesign is part of that explanation. Do not
+  present the app as if it had been born in the hackathon.
 
-**Stage one** es pasa/no pasa: encaje real con el track, no un rebrand superficial.
-**Stage two** puntúa 1–5, peso igual, en este orden (el mismo orden desempata):
+**Stage one** is pass/fail: real fit with the track, not a superficial rebrand.
+**Stage two** scores 1–5, equal weight, in this order (the same order breaks
+ties):
 
-1. **Technological Implementation** — qué tan bien está construido y qué tan
-   efectivamente usa Token Factory (o AI Cloud) y Nemotron.
-2. **Design** — experiencia de producto completa y coherente, no una prueba de
-   concepto.
-3. **Potential Impact** — un caso creíble y específico de un problema real para
-   una audiencia real, y que lo demostrado lo ataque de verdad.
-4. **Quality of the Idea** — uso creativo y no obvio de los modelos, y
-   comprensión genuina del problema.
+1. **Technological Implementation** — how well it is built and how effectively
+   it uses Token Factory (or AI Cloud) and Nemotron.
+2. **Design** — a complete, coherent product experience, not a proof of
+   concept.
+3. **Potential Impact** — a credible, specific case of a real problem for a
+   real audience, and that what is demonstrated actually attacks it.
+4. **Quality of the Idea** — creative, non-obvious use of the models, and a
+   genuine understanding of the problem.
 
-Lo que el track pide ver más allá de lo básico: **un flujo de varios pasos que
-encadena herramientas**, no una sola llamada a un modelo. Pitch Coach ya es esa
-cadena (voz → transcripción → rúbrica con Super → cifra citada y objeción de
-sala con Tavily → contraste de una cifra dicha → traza con Ultra si se pide →
-sparring con Nano → segunda toma de un punto → veredicto hablado). El rediseño
-tiene que hacer esa cadena legible. Esconderla compite como "un LLM que da
-feedback".
+What the track asks to see beyond the basics: **a multi-step flow that chains
+tools**, not a single model call. Pitch Coach already is that chain (voice →
+transcription → rubric with Super → cited figure and room objection with
+Tavily → check of a spoken figure → trace with Ultra if requested → sparring
+with Nano → second take on one point → spoken verdict). The redesign has to
+make that chain legible. Hiding it competes as "an LLM that gives feedback."
 
-**Los jueces no están obligados a abrir la app.** Pueden puntuar solo con el
-texto, las imágenes y el video. Lo que se muestra en pantallas y en el video es
-superficie de evaluación. El video no puede mostrar una traza o una cifra que la
-app no produzca de verdad.
+**Judges are not required to open the app.** They can score from the text, the
+images, and the video alone. What appears on screens and in the video is
+evaluation surface. The video cannot show a trace or a figure the app does not
+actually produce.
 
-**Paquete de juzgamiento, en inglés.** Video, descripción e instrucciones de
-prueba van en inglés, o traen traducción. La app sigue bilingüe; el español
-latino sigue siendo caso de primera clase. El video y las capturas de la
-submission usan la interfaz en inglés.
+**Judging package, in English.** Video, description, and test instructions are
+in English, or include a translation. The app stays bilingual; Latin American
+Spanish stays a first-class case. The submission video and screenshots use the
+English interface.
 
-**Video (todavía no existe):** YouTube público, **≤3 minutos** (no miran más),
-con la app funcionando. Se trata como un pitch, no como un tutorial: problema,
-solución andando, para quién es, y **en voz alta** cómo usa Nebius Token Factory
-y Nemotron — una mención de pasada no alcanza. Muestra un solo tipo de punta a
-punta (pitch de capital, LATAM, la noche anterior). Los otros tres tipos quedan
-en la app y en una frase del texto.
+**Video (does not exist yet):** public YouTube, **≤3 minutes** (they do not
+watch more), with the app working. Treat it as a pitch, not a tutorial:
+problem, solution running, who it is for, and **out loud** how it uses Nebius
+Token Factory and Nemotron — a passing mention is not enough. It shows a single
+type end to end (capital pitch, LATAM, the night before). The other three types
+stay in the app and in one sentence of the text.
 
-**README y descripción** tienen que decir qué modelo Nemotron hace qué, dónde
-Token Factory acelera el flujo, y qué otros servicios de Nebius entran. La
-licencia MIT ya es visible y el README de setup ya existe.
+**README and description** have to say which Nemotron model does what, where
+Token Factory speeds the flow, and which other Nebius services are involved.
+The MIT license is already visible and the setup README already exists.
 
-**Tavily es parte de la solución, no un extra escondido.** Best Use of Tavily
-son USD 3.000. La elegibilidad es una llamada real a la API dentro de la
-solución (ya está). Ganarlo depende de que el uso sea evidente y cargue peso:
-el punto de rúbrica que faltó recibe una cifra que se puede decir, con fuente.
-Se puede ganar **junto con el premio del track** (un Jetson Orin Nano) y no junto
-con un premio general (USD 20.000 / 10.000 / 6.000): es un premio general, o
-track más un bonus.
+**Tavily is part of the solution, not a hidden extra.** Best Use of Tavily is
+USD 3,000. Eligibility is a real API call inside the solution (already there).
+Winning it depends on the use being obvious and carrying weight: the missed
+rubric point receives a figure that can be said, with a source. It can be won
+**together with the track prize** (a Jetson Orin Nano) and not together with a
+general prize (USD 20,000 / 10,000 / 6,000): it is a general prize, or track
+plus a bonus.
 
-**Feedback escrito, obligatorio, y no es una pantalla.** Para Token Factory y
-cada modelo: para qué se usó, qué funcionó, qué no, cómo fue de cero al primer
-llamado, y si se volvería a construir con ellos. Hay un premio aparte chico
-(USD 100, 10 ganadores) por feedback específico. No diseñar un widget de feedback
-dentro del producto.
+**Written feedback, mandatory, and it is not a screen.** For Token Factory and
+each model: what it was used for, what worked, what did not, what zero to the
+first call was like, and whether you would build with them again. There is a
+separate small prize (USD 100, 10 winners) for specific feedback. Do not design
+a feedback widget inside the product.
 
-**Premio de ciudad (USD 500): no es input de diseño.** Las reglas oficiales
-exigen haber asistido a un Builders & Brews; la página de recursos dice que basta
-con estar asociado a una ciudad, y ante el conflicto mandan las reglas. No consta
-asistencia. Ciudad de México ya pasó (23 de septiembre de 2026).
+**City prize (USD 500): not a design input.** The official rules require having
+attended a Builders & Brews; the resources page says it is enough to be
+associated with a city, and where they conflict the rules win. Attendance is
+not on record. Mexico City already happened (September 23, 2026).
 
-**Lo que el rediseño no debe hacer:**
+**What the redesign must not do:**
 
-- Colapsar la cifra citada, ni la traza de Ultra una vez corrida.
-- Convertir el dashboard en un muro de logos de Nebius o Tavily. Los nombres de
-  modelo son procedencia, no el titular. Eso protege el criterio Design.
-- Reducir el producto a un solo tipo de pitch para perseguir Potential Impact.
-- Inventar tracción, testimonios, precio o métricas.
-- Agregar cuentas, Serverless, o un formulario de feedback de la hackathon.
+- Collapse the cited figure, or the Ultra trace once it has run.
+- Turn the dashboard into a wall of Nebius or Tavily logos. Model names are
+  provenance, not the headline. That protects the Design criterion.
+- Reduce the product to a single pitch type in pursuit of Potential Impact.
+- Invent traction, testimonials, price, or metrics.
+- Add accounts, Serverless, or a hackathon feedback form.
 
-**Fuentes (mandan las reglas oficiales si un post las contradice):**
+**Sources (the official rules win if a post contradicts them):**
 
 - https://nebiusglobalaihackathon.devpost.com/rules
 - https://nebiusglobalaihackathon.devpost.com/updates/46204-here-s-how-judging-works
 - https://nebiusglobalaihackathon.devpost.com/updates/46205-how-to-build-a-winning-project
 - https://nebiusglobalaihackathon.devpost.com/resources
 
-Los extractos locales en `oficina-agente/salidas/md/` cortan esos dos updates.
-`perks.md` de esa carpeta es de Shipaton / RevenueCat y no aplica acá.
+The local excerpts in `oficina-agente/salidas/md/` cut those two updates.
+`perks.md` in that folder is from Shipaton / RevenueCat and does not apply here.
 
 ## Product Principles
 
-1. **El tipo de pitch es la única segmentación, y los cuatro pesan igual.** Ningún
-   perfil ni tipo puede volverse el camino principal del diseño.
-2. **La evaluación es específica, nunca genérica.** Cada punto de rúbrica es
-   concreto y auditable; el feedback que serviría para cualquier pitch no sirve.
-3. **Fricción casi cero.** Practicar en voz alta y obtener resultado sin cuenta,
-   sin subir nada y sin ceremonia previa.
-4. **Nunca un solo canal.** Voz y visual se sostienen mutuamente; si un servicio
-   externo falla, el loop sigue.
-5. **Nada sale del navegador por defecto.** Audio descartado, historial local,
-   sesión anónima.
+1. **The pitch type is the only segmentation, and the four weigh the same.** No
+   profile or type can become the main path of the design.
+2. **The evaluation is specific, never generic.** Each rubric point is concrete
+   and auditable; feedback that would serve any pitch does not serve.
+3. **Friction near zero.** Practice out loud and get a result with no account,
+   nothing to upload, and no prior ceremony.
+4. **Never a single channel.** Voice and visual hold each other up; if an
+   external service fails, the loop continues.
+5. **Nothing leaves the browser by default.** Audio discarded, local history,
+   anonymous session.
 
 ## Accessibility & Inclusion
 
-**Estándar adoptado: WCAG 2.2 AA** — contraste, foco visible, navegación por
-teclado y tamaño de objetivo táctil, verificable en auditoría.
+**Adopted standard: WCAG 2.2 AA** — contrast, visible focus, keyboard
+navigation, and touch-target size, verifiable in an audit.
 
-Necesidades de producto ya establecidas:
+Product needs already established:
 
-- **Bilingüe es/en** con selección automática por navegador y preferencia
-  guardada; el idioma gobierna también lo que se escucha.
-- **Voz primero, pero con alternativa real.** El flujo depende de hablar en voz
-  alta, así que el campo de texto de respaldo y las alternativas al audio son
-  parte del diseño, no un parche.
-- **La interfaz muestra y además dice.** El resultado nunca depende solo del audio:
-  el dashboard es el canal principal y el TTS es a pedido.
+- **Bilingual es/en** with automatic selection from the browser and a saved
+  preference; the language also governs what is heard.
+- **Voice first, with a real alternative.** The flow depends on speaking out
+  loud, so the fallback text field and the alternatives to audio are part of
+  the design, not a patch.
+- **The interface shows and also says.** The result never depends on audio
+  alone: the dashboard is the main channel and TTS is on request.

@@ -1,124 +1,124 @@
-# Pitch Coach — revisión para el Nebius x NVIDIA Global AI Hackathon
+# Pitch Coach — review for the Nebius x NVIDIA Global AI Hackathon
 
-Revisión del **4 oct 2026** (America/Guatemala). Código leído en la máquina local, path `/home/focampo/Proyectos/pitch-coach`, HEAD `48519996` (`feat(ui): propuesta de valor en masthead y pie con atribución`, 2 oct 2026 20:37 GT). No se modificó ese árbol, no se hizo commit, no se inscribió a nadie y no se desplegó nada.
+Review of **4 Oct 2026** (America/Guatemala). Code read on the local machine, path `/home/focampo/Proyectos/pitch-coach`, HEAD `48519996` (`feat(ui): propuesta de valor en masthead y pie con atribución`, 2 Oct 2026 20:37 GT). That tree was not modified, nothing was committed, nobody was registered, and nothing was deployed.
 
-Páginas vivas de este pase: [overview](https://nebiusglobalaihackathon.devpost.com/), [official rules](https://nebiusglobalaihackathon.devpost.com/rules), [fechas](https://nebiusglobalaihackathon.devpost.com/details/dates), [recursos](https://nebiusglobalaihackathon.devpost.com/resources) (el fetch devolvió poco markdown; el detalle de créditos se contrasta con el extract del mismo día), [kickoff](https://nebiusglobalaihackathon.devpost.com/updates/46203-kickoff-tips), hilo del foro sin respuesta visible [45215](https://nebiusglobalaihackathon.devpost.com/forum_topics/45215-can-one-project-win-an-overall-award-and-best-use-of-tavily). Primitiva de jobs: [docs.nebius.com/serverless/overview](https://docs.nebius.com/serverless/overview) y [docs.nebius.com/serverless/jobs/manage](https://docs.nebius.com/serverless/jobs/manage). Notas previas del mismo evento: `/workspace/hackathon-scout/nebius-global-ai-hackathon/extract.md` (4 oct ~08:10 GT) y `/workspace/hackathon-scout/nebius-nvidia-2026/` (28 sep–3 oct). Si una frase de recursos contradice las rules, mandan las rules (§11.4).
+Live pages for this pass: [overview](https://nebiusglobalaihackathon.devpost.com/), [official rules](https://nebiusglobalaihackathon.devpost.com/rules), [dates](https://nebiusglobalaihackathon.devpost.com/details/dates), [resources](https://nebiusglobalaihackathon.devpost.com/resources) (the fetch returned little markdown; the credit detail is checked against the same day's extract), [kickoff](https://nebiusglobalaihackathon.devpost.com/updates/46203-kickoff-tips), forum thread with no visible reply [45215](https://nebiusglobalaihackathon.devpost.com/forum_topics/45215-can-one-project-win-an-overall-award-and-best-use-of-tavily). Jobs primitive: [docs.nebius.com/serverless/overview](https://docs.nebius.com/serverless/overview) and [docs.nebius.com/serverless/jobs/manage](https://docs.nebius.com/serverless/jobs/manage). Earlier notes from the same event: `/workspace/hackathon-scout/nebius-global-ai-hackathon/extract.md` (4 Oct ~08:10 GT) and `/workspace/hackathon-scout/nebius-nvidia-2026/` (28 Sep–3 Oct). If a sentence on the resources page contradicts the rules, the rules win (§11.4).
 
-## 1. Veredicto
+## 1. Verdict
 
-Pitch Coach es un coach de pitch hablado, anónimo y bilingüe (es/en). El usuario elige tipo (capital, educación, innovación, tecnología) y duración, graba o pega texto, y recibe score, rúbrica de cinco puntos, muletillas, veredicto escuchable y, si falta un punto, una cifra citada. Encaja en **Best Apps and Agents**, no en Coding (no escribe ni testea código), no en Personal AI (el historial es `localStorage` de esta sesión de navegador, no un asistente que actúa) y no en Physical AI.
+Pitch Coach is an anonymous, bilingual (es/en) coach for spoken pitches. The user picks a type (capital, education, innovation, technology) and a duration, records or pastes text, and receives a score, a five-point rubric, filler words, a listenable verdict and, if a point is missing, a cited figure. It fits **Best Apps and Agents**, not Coding (it does not write or test code), not Personal AI (the history is `localStorage` for this browser session, not an assistant that acts), and not Physical AI.
 
-La regla dura de runtime **sí está en el código**: con `MODEL_PROVIDER` vacío o `nebius`, el servidor llama a `https://api.tokenfactory.nebius.com/v1/chat/completions` y los defaults son tres Nemotron 3 (Super, Ultra, Nano). Tavily también es una llamada real, no un mock, pero solo para como máximo dos puntos. La demo [pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/) respondió el 4 oct con la home. No se verificó que ese deploy tenga `NEBIUS_API_KEY` ni `TAVILY_API_KEY`: no se leyó `.env.local` y no se envió un pitch.
+The hard runtime rule **is in the code**: with `MODEL_PROVIDER` empty or `nebius`, the server calls `https://api.tokenfactory.nebius.com/v1/chat/completions` and the defaults are three Nemotron 3 models (Super, Ultra, Nano). Tavily is also a real call, not a mock, but only for at most two points. The demo [pitch-coach-production-1c0c.up.railway.app](https://pitch-coach-production-1c0c.up.railway.app/) responded on 4 Oct with the home page. It was not verified that this deploy has `NEBIUS_API_KEY` or `TAVILY_API_KEY`: `.env.local` was not read and no pitch was sent.
 
-El fetch público sin login de `https://github.com/focampok/pitch-coach` ahora devuelve 200: el 404 está corregido y la página marca el repositorio como público. El HTML público también muestra la etiqueta `MIT license`; la licencia MIT debe seguir visible en el About. El repo ya no es el bloqueo que describía la revisión anterior. La mejora que más cambia el producto, y no solo el hosting, es un **Serverless Job** (VM sin GPU) que arma un acta de comité sobre los cinco puntos y sale. Un Endpoint que rehospede el Next actual no añade eso.
+The public fetch without login of `https://github.com/focampok/pitch-coach` now returns 200: the 404 is fixed and the page marks the repository as public. The public HTML also shows the `MIT license` label; the MIT license must stay visible in About. The repo is no longer the blocker the previous review described. The improvement that changes the product the most, and not only the hosting, is a **Serverless Job** (VM without a GPU) that builds a committee record on the five points and exits. An Endpoint that rehosts the current Next app does not add that.
 
-## 2. Reglas que importan para este repo
+## 2. Rules that matter for this repo
 
-Fuente principal: [official rules](https://nebiusglobalaihackathon.devpost.com/rules), leídas el 4 oct 2026. El widget del overview dice lo mismo sobre el cierre: «Oct 30, 2026 @ 10:00am PDT» y «October 30 at 1:00pm EDT». Guatemala no cambia de horario (UTC-6).
+Primary source: [official rules](https://nebiusglobalaihackathon.devpost.com/rules), read on 4 Oct 2026. The overview widget says the same about the close: "Oct 30, 2026 @ 10:00am PDT" and "October 30 at 1:00pm EDT". Guatemala does not change clocks (UTC-6).
 
-| Hito | Hora oficial | GT |
+| Milestone | Official time | GT |
 |---|---|---|
-| Apertura | mié 26 ago 2026, 9:00am PDT | mié 26 ago 2026, 10:00 |
-| Cierre de submissions | vie 30 oct 2026, 10:00am PDT | **vie 30 oct 2026, 11:00** |
-| Judging | mar 1 dic 2026 9:00am PST → mar 15 dic 2026 12:00pm PST | 1 dic 11:00 → 15 dic 14:00 |
-| Ganadores | «on or around» lun 11 ene 2027, 12:00pm Pacific | ~11 ene 2027, 14:00 |
-| Mantenimiento Devpost (banner en /details/dates) | 7 oct 2026, 6:00 UTC / 2:00am ET | mié 7 oct 2026, 00:00 |
+| Opening | Wed 26 Aug 2026, 9:00am PDT | Wed 26 Aug 2026, 10:00 |
+| Submission close | Fri 30 Oct 2026, 10:00am PDT | **Fri 30 Oct 2026, 11:00** |
+| Judging | Tue 1 Dec 2026 9:00am PST → Tue 15 Dec 2026 12:00pm PST | 1 Dec 11:00 → 15 Dec 14:00 |
+| Winners | "on or around" Mon 11 Jan 2027, 12:00pm Pacific | ~11 Jan 2027, 14:00 |
+| Devpost maintenance (banner on /details/dates) | 7 Oct 2026, 6:00 UTC / 2:00am ET | Wed 7 Oct 2026, 00:00 |
 
-Desde el domingo 4 oct 2026 quedan 26 días hasta ese viernes 11:00. El judging no pide más build.
+From Sunday 4 Oct 2026 there are 26 days until that Friday at 11:00. Judging does not ask for more build.
 
-**Premios en cash, tal como están en rules y en el overview.** Grand $20,000, 2.º $10,000, 3.º $6,000, los cuatro tracks un Jetson Orin Nano cada uno (sin valor en USD en las rules), Best Use of Tavily **$3,000**, City Winner $500 × 20, Most Valuable Feedback $100 × 10 más «NVIDIA swag pack». El overview dice «$50,000 in cash» y «$50,000+ in prizes». La suma 20+10+6+3+20×500+10×100 da 50,000; el «+» son los Jetson y el swag. No hay otra bolsa publicada en esas páginas.
+**Cash prizes, as they stand in the rules and in the overview.** Grand $20,000, 2nd $10,000, 3rd $6,000, the four tracks one Jetson Orin Nano each (no USD value in the rules), Best Use of Tavily **$3,000**, City Winner $500 × 20, Most Valuable Feedback $100 × 10 plus "NVIDIA swag pack". The overview says "$50,000 in cash" and "$50,000+ in prizes". The sum 20+10+6+3+20×500+10×100 gives 50,000; the "+" is the Jetsons and the swag. There is no other purse published on those pages.
 
-**Un premio, no varios.** Texto de las rules: «Each Project is eligible for one (1) Overall Award OR one (1) Track Award and one (1) Bonus Award.» Tavily, City y Feedback están en la tabla bajo Bonus Awards. El hilo 45215 pregunta si un Overall sigue pudiendo llevar Tavily y si Feedback cuenta como bono; el fetch no mostró respuesta del organizador. Hasta que la haya, leer la tabla: un solo bono, y Feedback entra en esa lista. Para este repo el bono que el código ya persigue es Tavily. City no aplica desde Guatemala: las rules exigen haber **attended** un Builders & Brews y la lista no incluye Guatemala (sí Mexico City). La página de recursos dice que basta asociar el envío a una ciudad; §11.4 dice que mandan las rules.
+**One prize, not several.** Rules text: "Each Project is eligible for one (1) Overall Award OR one (1) Track Award and one (1) Bonus Award." Tavily, City, and Feedback are in the table under Bonus Awards. Thread 45215 asks whether an Overall can still carry Tavily and whether Feedback counts as a bonus; the fetch showed no organizer reply. Until there is one, read the table: a single bonus, and Feedback is on that list. For this repo the bonus the code already pursues is Tavily. City does not apply from Guatemala: the rules require having **attended** a Builders & Brews and the list does not include Guatemala (it does include Mexico City). The resources page says it is enough to associate the submission with a city; §11.4 says the rules win.
 
-**Regla dura de plataforma.** «A working software application that runs on either Nebius Token Factory or Nebius AI Cloud and uses at least one NVIDIA open source model.» «Runs on…» significa llamada en **runtime** al API de inferencia de Token Factory, **o** deploy/ejecución en AI Cloud (Serverless Jobs, Serverless Endpoints o DevPods). El kickoff nombra Nemotron, GR00T, Cosmos o Sonic. El track Best Apps pide Nemotron en Token Factory: Ultra para razonamiento pesado, Nano o Super para lo rápido, y **anima** (no obliga) a Serverless Endpoints o Jobs.
+**Hard platform rule.** "A working software application that runs on either Nebius Token Factory or Nebius AI Cloud and uses at least one NVIDIA open source model." "Runs on…" means a **runtime** call to the Token Factory inference API, **or** deploy/execution on AI Cloud (Serverless Jobs, Serverless Endpoints, or DevPods). The kickoff names Nemotron, GR00T, Cosmos, or Sonic. The Best Apps track asks for Nemotron on Token Factory: Ultra for heavy reasoning, Nano or Super for the fast path, and it **encourages** (it does not require) Serverless Endpoints or Jobs.
 
-**Tavily.** El bono de $3,000 es para «a functional, runtime call to the Tavily API as part of its solution». No pide un SDK con un nombre distinto de esa API. Una key en el README sin la llamada no alcanza. Este repo ya llama `search` y `extract` desde el servidor (`src/lib/tavily.ts`, `src/lib/tavily-extract.ts`, `src/app/api/enriquecer/route.ts`).
+**Tavily.** The $3,000 bonus is for "a functional, runtime call to the Tavily API as part of its solution". It does not ask for an SDK with a name other than that API. A key in the README without the call is not enough. This repo already calls `search` and `extract` from the server (`src/lib/tavily.ts`, `src/lib/tavily-extract.ts`, `src/app/api/enriquecer/route.ts`).
 
-**Elegibilidad.** Mayoría de edad en el país de residencia; Guatemala no está en la lista de exclusión (Brazil, Quebec, Russia, Crimea, Cuba, Iran, North Korea, y sanciones integrales de OFAC). El proyecto no puede haber recibido financiamiento o licencia comercial del sponsor o de Devpost. Materiales del envío en inglés, o con traducción del video, la descripción y las instrucciones. Varios envíos solo si son sustancialmente distintos.
+**Eligibility.** Age of majority in the country of residence; Guatemala is not on the exclusion list (Brazil, Quebec, Russia, Crimea, Cuba, Iran, North Korea, and comprehensive OFAC sanctions). The project cannot have received funding or a commercial license from the sponsor or from Devpost. Submission materials in English, or with a translation of the video, the description, and the instructions. Several submissions only if they are substantially different.
 
-**Proyecto previo.** Si existía antes del Submission Period, «must have been significantly updated» después del 26 ago 2026, 9:00am PDT, y el envío debe explicar por escrito qué cambió. Las rules no definen un diff mínimo. El git de esta máquina sí muestra que la cláusula aplica: el primer commit es `6409d7c`, 18 ago 2026 16:52 GT, autor Francisco Ocampo. El último commit anterior al periodo es `416c873`, 25 ago 2026 08:46 GT, mensaje `pre-evento`. A partir de `dc555e3` (27 ago, cliente Gemini) el historial es del periodo: Tavily y dashboard (30 ago), proveedor Nebius (25 sep, `ea1c55e`), sparring y Ultra (27 sep), bilingüe (28 sep), Tavily con extract y validación (1 oct), STT con marcas de tiempo y el rediseño Acta (2 oct). Eso es más que un rebrand. No se reescribió la historia.
+**Prior project.** If it existed before the Submission Period, it "must have been significantly updated" after 26 Aug 2026, 9:00am PDT, and the submission must explain in writing what changed. The rules do not define a minimum diff. The git on this machine does show that the clause applies: the first commit is `6409d7c`, 18 Aug 2026 16:52 GT, author Francisco Ocampo. The last commit before the period is `416c873`, 25 Aug 2026 08:46 GT, message `pre-evento`. From `dc555e3` (27 Aug, Gemini client) the history is inside the period: Tavily and dashboard (30 Aug), Nebius provider (25 Sep, `ea1c55e`), sparring and Ultra (27 Sep), bilingual mode (28 Sep), Tavily with extract and validation (1 Oct), STT with time marks and the Acta redesign (2 Oct). That is more than a rebrand. History was not rewritten.
 
-**Criterios, igual peso, después de un stage 1 pass/fail** (fit real al track y a las APIs; un rebrand superficial no pasa): Technological Implementation, Design, Potential Impact, Quality of the Idea. Desempate en ese orden.
+**Criteria, equal weight, after a stage 1 pass/fail** (real fit to the track and the APIs; a superficial rebrand does not pass): Technological Implementation, Design, Potential Impact, Quality of the Idea. Tie-break in that order.
 
-El catálogo público de Token Factory no se volvió a descargar en este pase. El extract de esta mañana (4 oct ~08:10 GT) listaba solo Nemotron 3 Nano 30B, Super 120B, Ultra 550B y Nemotron 3.5 Lightning, y no veía GR00T, Cosmos ni Sonic. El código no usa Lightning.
+The public Token Factory catalog was not downloaded again in this pass. This morning's extract (4 Oct ~08:10 GT) listed only Nemotron 3 Nano 30B, Super 120B, Ultra 550B, and Nemotron 3.5 Lightning, and did not see GR00T, Cosmos, or Sonic. The code does not use Lightning.
 
-## 3. Qué hace el código hoy
+## 3. What the code does today
 
-Stack real de este árbol, no una suposición para ideas nuevas: **Next.js 16.3.1** (App Router), **React 19.2.8**, **TypeScript**, **Tailwind CSS 4**, **Vitest 3**. Sin base de datos. Sin Nest. `package.json` no declara cliente de Nebius, de Tavily ni de ElevenLabs: las llamadas son `fetch` propio.
+Real stack of this tree, not a guess for new ideas: **Next.js 16.3.1** (App Router), **React 19.2.8**, **TypeScript**, **Tailwind CSS 4**, **Vitest 3**. No database. No Nest. `package.json` does not declare a Nebius, Tavily, or ElevenLabs client: the calls are its own `fetch`.
 
-La inferencia **no** corre en una GPU de Nebius ni en un Endpoint. Corre en el proceso Node del servidor Next (local con `npm run dev`, o el contenedor de Railway). `Dockerfile` es solo de producción (Node 24 Alpine, output standalone) y `railway.toml` apunta ese Dockerfile con healthcheck `/`. El navegador no ve la API key.
+Inference does **not** run on a Nebius GPU or on an Endpoint. It runs in the Node process of the Next server (local with `npm run dev`, or the Railway container). The `Dockerfile` is production-only (Node 24 Alpine, standalone output) and `railway.toml` points that Dockerfile at a healthcheck `/`. The browser does not see the API key.
 
-| Qué | Dónde | A quién llama |
+| What | Where | Who it calls |
 |---|---|---|
-| Análisis estándar | `src/app/api/analizar-pitch/route.ts` → `src/lib/analisis-modelo.ts` → `src/lib/modelo.ts` → `src/lib/proveedor-nebius.ts` | Token Factory, default `nvidia/nemotron-3-super-120b-a12b`, `enable_thinking: false`, timeout 20 s |
-| Análisis Ultra | mismo ruta, `nivel=ultra` | default `nvidia/Nemotron-3-Ultra-550b-a55b`, sin apagar thinking, timeout 90 s, traza de 4–8 pasos |
-| Sparring, entidades, query y validación de cifra | `src/app/api/sparring/*/route.ts`, `src/lib/entidades-tavily.ts`, `src/lib/query-tavily.ts`, `src/lib/validar-sugerencia.ts` | nivel `rapido`, default `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` |
+| Standard analysis | `src/app/api/analizar-pitch/route.ts` → `src/lib/analisis-modelo.ts` → `src/lib/modelo.ts` → `src/lib/proveedor-nebius.ts` | Token Factory, default `nvidia/nemotron-3-super-120b-a12b`, `enable_thinking: false`, timeout 20 s |
+| Ultra analysis | same route, `nivel=ultra` | default `nvidia/Nemotron-3-Ultra-550b-a55b`, thinking left on, timeout 90 s, trace of 4–8 steps |
+| Sparring, entities, query, and figure validation | `src/app/api/sparring/*/route.ts`, `src/lib/entidades-tavily.ts`, `src/lib/query-tavily.ts`, `src/lib/validar-sugerencia.ts` | tier `rapido`, default `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` |
 | STT | `src/app/api/transcribir/route.ts`, `src/lib/elevenlabs.ts` | ElevenLabs Scribe, default `scribe_v2` |
-| TTS | `src/app/api/tts/route.ts` | ElevenLabs; el cliente cae a SpeechSynthesis |
-| Cifras | `src/app/api/enriquecer/route.ts`, `src/lib/tavily.ts` | `https://api.tavily.com` search y extract, más Nano |
-| Contingencia | `src/lib/proveedor-gemini.ts` | Gemini solo si `MODEL_PROVIDER=gemini` |
+| TTS | `src/app/api/tts/route.ts` | ElevenLabs; the client falls back to SpeechSynthesis |
+| Figures | `src/app/api/enriquecer/route.ts`, `src/lib/tavily.ts` | `https://api.tavily.com` search and extract, plus Nano |
+| Contingency | `src/lib/proveedor-gemini.ts` | Gemini only if `MODEL_PROVIDER=gemini` |
 
-`src/lib/proveedor-nebius.ts` fija la base `https://api.tokenfactory.nebius.com/v1` si `NEBIUS_BASE_URL` viene vacía, pide `response_format.json_schema` con `strict: true`, y reintenta una vez si `finish_reason` es `length`. El score y los nombres de los puntos no los inventa el modelo: la rúbrica vive en `src/lib/rubricas.ts` (4 tipos × 5) y el servidor recalcula muletillas en `src/lib/muletillas.ts`.
+`src/lib/proveedor-nebius.ts` sets the base `https://api.tokenfactory.nebius.com/v1` if `NEBIUS_BASE_URL` comes in empty, asks for `response_format.json_schema` with `strict: true`, and retries once if `finish_reason` is `length`. The score and the point names are not invented by the model: the rubric lives in `src/lib/rubricas.ts` (4 types × 5) and the server recomputes filler words in `src/lib/muletillas.ts`.
 
-Tavily está acotado a propósito. `MAX_PUNTOS_ENRIQUECIDOS = 2` en `src/lib/tavily.ts`. La transcripción no se manda a Tavily; solo entidades cortas y el nombre del punto. Sin `TAVILY_API_KEY` la ruta responde 200 con `sugerencias: []`. Rate limit en memoria: 5 peticiones / 10 min en `/api/enriquecer`, 10 / 10 min en el resto (`src/lib/rate-limit.ts`). No hay cola ni trabajo que sobreviva al request.
+Tavily is capped on purpose. `MAX_PUNTOS_ENRIQUECIDOS = 2` in `src/lib/tavily.ts`. The transcript is not sent to Tavily; only short entities and the point name. Without `TAVILY_API_KEY` the route responds 200 with `sugerencias: []`. In-memory rate limit: 5 requests / 10 min on `/api/enriquecer`, 10 / 10 min on the rest (`src/lib/rate-limit.ts`). There is no queue and no work that survives the request.
 
-No hay Serverless Endpoint, Job, DevPod ni Sandbox en el árbol. No hay llamada a `api.nebius.cloud`. El historial (`src/lib/historial-sesiones.ts`) guarda como máximo 20 prácticas en `localStorage` y no guarda transcripción, veredicto ni audio.
+There is no Serverless Endpoint, Job, DevPod, or Sandbox in the tree. There is no call to `api.nebius.cloud`. The history (`src/lib/historial-sesiones.ts`) stores at most 20 practices in `localStorage` and does not store the transcript, the verdict, or audio.
 
-El loop de producto está cerrado en `docs/status.md` (snapshot 2 oct 2026) y en la UI: `src/app/page.tsx`, `src/components/GrabadorVoz.tsx`, `src/components/DashboardResultado.tsx`, `src/components/SparringCoach.tsx`, `src/components/PanelProgreso.tsx`. Tests de API con fetch mockeado; el micrófono no tiene test de UI.
+The product loop is closed in `docs/status.md` (snapshot 2 Oct 2026) and in the UI: `src/app/page.tsx`, `src/components/GrabadorVoz.tsx`, `src/components/DashboardResultado.tsx`, `src/components/SparringCoach.tsx`, `src/components/PanelProgreso.tsx`. API tests with mocked fetch; the microphone has no UI test.
 
-## 4. Fortalezas
+## 4. Strengths
 
-- Cumple el mínimo de Token Factory con tres tamaños de Nemotron en el mismo producto, que es justo el reparto que el track Best Apps describe (Super en cada grabación, Ultra solo si se pide, Nano en lo barato). El esquema restringido y el score server-side hacen la implementación menos frágil que un prompt único.
-- Es un producto usable, no un notebook: selectores, grabación con corte, texto de respaldo, dashboard, voz a pedido, bilingüe, historial local y demo que carga.
-- Tavily no muestra el primer hit. Extract más un validador Nano que exige cifra, cita y relevancia, y si no hay dato no hay sugerencia. Eso es uso real del API, no un badge.
-- La privacidad está pensada: claves solo server-side, transcripción fuera de Tavily, Sentry con scrub (`src/lib/sentry-scrub.ts`), historial sin el texto del pitch.
-- La actualización dentro del periodo es demostrable con fechas de git.
+- It meets the Token Factory minimum with three Nemotron sizes in the same product, which is exactly the split the Best Apps track describes (Super on every recording, Ultra only if asked, Nano on the cheap path). The restricted schema and the server-side score make the implementation less fragile than a single prompt.
+- It is a usable product, not a notebook: selectors, recording with a cutoff, fallback text, dashboard, voice on demand, bilingual, local history, and a demo that loads.
+- Tavily does not show the first hit. Extract plus a Nano validator that requires a figure, a citation, and relevance, and if there is no datum there is no suggestion. That is real use of the API, not a badge.
+- Privacy is thought through: keys only server-side, transcript kept out of Tavily, Sentry with scrub (`src/lib/sentry-scrub.ts`), history without the pitch text.
+- The update inside the period can be shown with git dates.
 
-## 5. Debilidades
+## 5. Weaknesses
 
-Frente a los cuatro criterios, no frente a una lista de features.
+Against the four criteria, not against a feature list.
 
-**Implementación.** La llamada a Token Factory es correcta y testeada con mocks (`test/proveedor-nebius.test.ts`), pero todo el «agente» cabe en el timeout del request: 20 s estándar, 90 s Ultra. No hay workflow que siga cuando el usuario cierra la pestaña. AI Cloud no aparece. Un juez que busque Jobs o Endpoints no los encuentra; la rule no los exige, el brief del track sí los señala como el paso siguiente.
+**Implementation.** The Token Factory call is correct and tested with mocks (`test/proveedor-nebius.test.ts`), but the whole "agent" fits inside the request timeout: 20 s standard, 90 s Ultra. There is no workflow that continues when the user closes the tab. AI Cloud does not appear. A judge looking for Jobs or Endpoints does not find them; the rule does not require them, and the track brief does point at them as the next step.
 
-**Producto vs demo.** La experiencia de una práctica está cerrada. Lo que no está es la segunda vuelta: hoy «Resolver hallazgos» hace hasta tres preguntas (`SparringCoach.tsx`) y Tavily cubre dos puntos. No sale un guion reescrito contra la duración elegida ni un acta que se pueda leer sin volver a grabar. El coach visual sigue siendo texto; `docs/status.md` lo marca como temporal. Eso no tumba el stage 1, pero el criterio Design compara con un producto completo.
+**Product vs demo.** The experience of one practice is closed. What is missing is the second pass: today "Resolve findings" asks up to three questions (`SparringCoach.tsx`) and Tavily covers two points. There is no rewritten script fitted to the chosen duration and no record that can be read without recording again. The visual coach is still text; `docs/status.md` marks it as temporary. That does not fail stage 1, but the Design criterion compares against a complete product.
 
-**Impacto.** La audiencia está dicha (quien practica un pitch de capital, educación, innovación o tecnología, LATAM, sin cuenta). El demo muestra feedback de una toma. No muestra que alguien llegue a una reunión con el hueco cerrado. En un overview que en este fetch marcó 17,291 participantes —el extract de la misma mañana ya avisó que ese contador no es estable entre fetches— un coach de voz más es fácil de archivar si el juez no ve la cifra citada y el id del modelo.
+**Impact.** The audience is stated (someone practicing a capital, education, innovation, or technology pitch, LATAM, with no account). The demo shows feedback from one take. It does not show someone arriving at a meeting with the gap closed. In an overview that this fetch marked at 17,291 participants — the same morning's extract already warned that counter is not stable across fetches — one more voice coach is easy to file away if the judge does not see the cited figure and the model id.
 
-**No obviedad.** Rúbrica fija más STT más LLM es un género lleno. Lo menos obvio que ya existe es el contrato (el modelo no pone el score, Tavily no recibe el monólogo, la cifra se tira si es de otro sector). Eso está en el código y casi no se ve en la superficie. El id del modelo no vuelve al cliente; vive en logs del servidor.
+**Non-obviousness.** A fixed rubric plus STT plus an LLM is a crowded genre. The least obvious thing that already exists is the contract (the model does not set the score, Tavily does not receive the monologue, the figure is thrown out if it is from another sector). That is in the code and almost invisible on the surface. The model id does not come back to the client; it lives in server logs.
 
-**Configuración de producción.** Las claves del deploy de Railway no están comprobadas: si producción estuviera en `MODEL_PROVIDER=gemini`, el runtime de Nebius no se estaría ejerciendo aunque el default del código sea Nebius. La home cargó; no se corrió un análisis.
+**Production configuration.** The Railway deploy's keys are not checked: if production were on `MODEL_PROVIDER=gemini`, the Nebius runtime would not be exercised even though the code default is Nebius. The home page loaded; an analysis was not run.
 
-## 6. Mejoras priorizadas (~26 días)
+## 6. Prioritized improvements (~26 days)
 
-No se propone otro producto ni otro stack. El árbol sigue en Next. Lo nuevo es un trabajo que el request actual no puede terminar.
+Another product and another stack are not proposed. The tree stays on Next. What is new is work the current request cannot finish.
 
-### 1. Job «acta de comité» en Nebius Serverless AI
+### 1. "Committee record" job on Nebius Serverless AI
 
-Un **Job**, no un Endpoint.
+A **Job**, not an Endpoint.
 
-Un Endpoint sirve una URL mientras está encendido y, según [la overview de Serverless AI](https://docs.nebius.com/serverless/overview), el disco del contenedor se borra al pararlo. Railway ya sirve la app. Rehospedarla no cambia lo que el usuario recibe y sí añade una VM encendida. Hospedar otro Nemotron en una GPU propia duplica lo que Token Factory ya sirve (`proveedor-nebius.ts`) y no está en el presupuesto de estos días.
+An Endpoint serves a URL while it is on and, according to [the Serverless AI overview](https://docs.nebius.com/serverless/overview), the container disk is erased when it stops. Railway already serves the app. Rehosting it does not change what the user receives and it does add a VM that stays on. Hosting another Nemotron on a GPU of one's own duplicates what Token Factory already serves (`proveedor-nebius.ts`) and is not in the budget of these days.
 
-Un Job corre hasta terminar y entonces suelta la VM. Encaja con un acta que no cabe en 20–90 s ni en `MAX_PUNTOS_ENRIQUECIDOS = 2`. La consola de jobs deja elegir VM **sin GPU** («VMs without GPUs only support the regular type», en [Managing jobs](https://docs.nebius.com/serverless/jobs/manage)). El worker es un cliente HTTP en Python. No hace falta la imagen CUDA del ejemplo de esa página (`gpu-l40s-a`, `1gpu-8vcpu-32gb`); copiar ese ejemplo sería pagar una GPU para hacer `fetch`.
+A Job runs until it finishes and then releases the VM. It fits a record that does not fit in 20–90 s or in `MAX_PUNTOS_ENRIQUECIDOS = 2`. The jobs console lets you choose a VM **without a GPU** ("VMs without GPUs only support the regular type", in [Managing jobs](https://docs.nebius.com/serverless/jobs/manage)). The worker is an HTTP client in Python. The CUDA image from that page's example is not needed (`gpu-l40s-a`, `1gpu-8vcpu-32gb`); copying that example would mean paying for a GPU to do `fetch`.
 
-Qué haría que la app de hoy no hace:
+What it would do that today's app does not:
 
-1. El dashboard manda la sesión ya analizada (transcripción, tipo, idioma, duración, ids de puntos no cumplidos). Tope 64 KiB: es el límite de un injected file.
-2. `POST https://api.nebius.cloud/ai/v1/jobs` crea el job. El token de AI Cloud no es `NEBIUS_API_KEY` de Token Factory. Timeout `3600s`, el mínimo que documenta esa página (el máximo es 168 h; el default es 24 h). El worker tiene que salir solo: si se cuelga, la VM puede vivir hasta esa hora.
-3. Dentro del contenedor, una llamada Super redacta un acta JSON: una objeción por punto no cumplido (hasta cinco, no dos) y un guion hablado que quepa en la duración elegida. Cada objeción que necesite un dato pasa por Tavily search + extract. Nano acepta o rechaza la cifra. Ultra no entra en este job: ya existe el botón de Ultra y su timeout de 90 s. Meter Ultra aquí quema crédito y alarga el video.
-4. La transcripción va a Token Factory, igual que hoy. A Tavily solo van entidades cortas y el nombre del punto, la misma regla de `src/lib/tavily.ts`. El acta se escribe en un volumen montado (`spec.volumes` o `s3://…` en la CLI). El disco del job se borra al terminar; sin volumen no hay acta.
-5. La UI no bloquea la práctica. Muestra el id del job. La página de manage documenta logs en consola y CLI (`nebius ai job logs`), no un GET de logs en el fragmento REST leído. No inventar un poller de logs. La lectura del acta es el objeto en el bucket.
+1. The dashboard sends the session already analyzed (transcript, type, language, duration, ids of unmet points). Cap 64 KiB: that is the limit of an injected file.
+2. `POST https://api.nebius.cloud/ai/v1/jobs` creates the job. The AI Cloud token is not the Token Factory `NEBIUS_API_KEY`. Timeout `3600s`, the minimum that page documents (the maximum is 168 h; the default is 24 h). The worker has to exit on its own: if it hangs, the VM can live until that hour.
+3. Inside the container, one Super call drafts a JSON record: one objection per unmet point (up to five, not two) and a spoken script that fits the chosen duration. Each objection that needs a datum goes through Tavily search + extract. Nano accepts or rejects the figure. Ultra does not enter this job: the Ultra button and its 90 s timeout already exist. Putting Ultra here burns credit and lengthens the video.
+4. The transcript goes to Token Factory, the same as today. Only short entities and the point name go to Tavily, the same rule as `src/lib/tavily.ts`. The record is written to a mounted volume (`spec.volumes` or `s3://…` in the CLI). The job disk is erased when it finishes; without a volume there is no record.
+5. The UI does not block the practice. It shows the job id. The manage page documents logs in the console and the CLI (`nebius ai job logs`), not a GET of logs in the REST fragment that was read. Do not invent a log poller. Reading the record is the object in the bucket.
 
-El Job es el argumento de implementación y de producto, no el ticket de entrada: si el proyecto AI Cloud, la cuota o el registry no están listos, la regla dura ya se cumple con Token Factory. Debe existir antes del último día; el cierre sigue siendo el viernes 30 oct 2026 a las 11:00 GT, no el momento de crear el proyecto.
+The Job is the implementation and product argument, not the entry ticket: if the AI Cloud project, the quota, or the registry are not ready, the hard rule is already met with Token Factory. It should exist before the last day; the close is still Friday 30 Oct 2026 at 11:00 GT, not the moment the project is created.
 
-### 2. Cerrar la segunda vuelta del coach sin bloquear la práctica
+### 2. Close the coach's second pass without blocking the practice
 
-El producto debe conservar la primera práctica rápida y añadir el paso que hoy falta: convertir los puntos no cumplidos en objeciones y en un guion que quepa en la duración elegida. El Job anterior es el lugar para el acta larga; la UI muestra su `jobId` y no sustituye el análisis en vivo. Mantener el límite de Tavily y la separación de la transcripción descritos en `src/lib/tavily.ts`.
+The product should keep the first quick practice and add the step that is missing today: turn unmet points into objections and into a script that fits the chosen duration. The Job above is the place for the long record; the UI shows its `jobId` and does not replace the live analysis. Keep the Tavily limit and the transcript separation described in `src/lib/tavily.ts`.
 
-**Dejar fuera de estos 26 días:** cuentas, sync entre dispositivos, STT en vivo, animación del coach, rúbricas editables, mudanza de Railway a un Endpoint, Sandboxes de Token Factory (van al track de Coding y siguen en beta), NemoClaw / OpenShell / Hermes, y servir Nemotron en una GPU propia. Tampoco reimplementar dentro del worker todo `tavily.ts`: el worker valida con un esquema corto; la calidad fina de entidades sigue viviendo en el servidor Next, que es quien arma el JSON inyectado.
+**Leave out of these 26 days:** accounts, sync across devices, live STT, coach animation, editable rubrics, moving Railway to an Endpoint, Token Factory Sandboxes (they go to the Coding track and are still in beta), NemoClaw / OpenShell / Hermes, and serving Nemotron on a GPU of one's own. Also do not reimplement all of `tavily.ts` inside the worker: the worker validates with a short schema; the fine quality of entities still lives on the Next server, which is what builds the injected JSON.
 
-## 7. Diff propuesto, no aplicado
+## 7. Proposed diff, not applied
 
-Propuesta de revisión. **No está aplicada** en `/home/focampo/Proyectos/pitch-coach`. No sustituye archivos existentes; suma cuatro archivos. Los platform y preset salen de variables: no se copia el ejemplo con GPU de la doc.
+Review proposal. **It is not applied** in `/home/focampo/Proyectos/pitch-coach`. It does not replace existing files; it adds four files. Platform and preset come from variables: the doc's GPU example is not copied.
 
 ```diff
 diff --git a/jobs/comite/Dockerfile b/jobs/comite/Dockerfile
@@ -126,25 +126,25 @@ new file mode 100644
 --- /dev/null
 +++ b/jobs/comite/Dockerfile
 @@ -0,0 +1,8 @@
-+# Imagen del Job. Cliente HTTP, sin CUDA.
-+# El preset de la VM se elige al crear el job, no aquí.
++# Job image. HTTP client, no CUDA.
++# The VM preset is chosen when the job is created, not here.
 +FROM python:3.12-slim
 +WORKDIR /app
 +COPY worker.py .
-+# /output es el volumen que se monta al crear el job.
-+# Sin ese volumen el disco del job se borra al salir.
++# /output is the volume mounted when the job is created.
++# Without that volume the job disk is erased on exit.
 +CMD ["python", "worker.py"]
 diff --git a/jobs/comite/worker.py b/jobs/comite/worker.py
 new file mode 100644
 --- /dev/null
 +++ b/jobs/comite/worker.py
 @@ -0,0 +1,112 @@
-+"""Acta de comité. Una corrida y sale.
++"""Committee record. One run, then exit.
 +
-+Lee /mnt/files/sesion.json (injected file, tope 64 KiB en la doc de jobs).
-+Llama a Token Factory. A Tavily no le manda la transcripción.
-+Escribe /output/acta.json y termina. Si falta una clave, sale con código 1
-+para no dejar la VM colgada hasta el timeout mínimo de 1 h.
++Reads /mnt/files/sesion.json (injected file, 64 KiB cap in the jobs docs).
++Calls Token Factory. Does not send the transcript to Tavily.
++Writes /output/acta.json and exits. If a key is missing, exits with code 1
++so the VM is not left hanging until the 1 h minimum timeout.
 +"""
 +import json, os, sys, urllib.request
 +from pathlib import Path
@@ -209,8 +209,8 @@ new file mode 100644
 +    return json.loads(cuerpo["choices"][0]["message"]["content"])
 +
 +def cifra_o_nada(query, idioma):
-+    """search + extract. Nano solo dice si hay una cifra citable.
-+    La query la armó el servidor Next con entidades cortas, no este archivo.
++    """search + extract. Nano only says whether a figure is citable.
++    The Next server built the query from short entities, not this file.
 +    """
 +    tavily = os.environ.get("TAVILY_API_KEY")
 +    if not tavily or not query:
@@ -224,15 +224,15 @@ new file mode 100644
 +    if not hits:
 +        return None
 +    top = hits[0]
-+    # El veredicto de relevancia lo da Nano, no el orden de Tavily.
++    # Nano gives the relevance verdict, not Tavily's ranking.
 +    veredicto = chat(
 +        NANO,
 +        "Acepta la fuente solo si contiene una cifra concreta y del mismo tema. Responde JSON.",
 +        json.dumps({"query": query, "idioma": idioma, "titulo": top.get("title"), "url": top.get("url"), "recorte": (top.get("content") or "")[:1500]}, ensure_ascii=False),
 +    )
-+    # chat() de arriba exige el esquema del acta. En el archivo real este
-+    # llamado usa otro json_schema (aceptada, cifra, cita). Se deja el hueco
-+    # marcado para no fingir un segundo parser en el diff.
++    # chat() above requires the record schema. In the real file this
++    # call uses another json_schema (aceptada, cifra, cita). The gap is
++    # left marked so the diff does not pretend to include a second parser.
 +    return {"url": top.get("url"), "titulo": top.get("title"), "nota": "validar con esquema propio de Nano"}
 +
 +def main():
@@ -258,20 +258,20 @@ new file mode 100644
 --- /dev/null
 +++ b/src/lib/comite-job.ts
 @@ -0,0 +1,78 @@
-+// Crea un Serverless Job. No llama a Token Factory: eso lo hace el contenedor.
++// Creates a Serverless Job. It does not call Token Factory: the container does.
 +// API: POST https://api.nebius.cloud/ai/v1/jobs
-+// (docs.nebius.com/serverless/jobs/manage, leído el 4 oct 2026).
++// (docs.nebius.com/serverless/jobs/manage, read on 4 Oct 2026).
 +
-+const TOPE_BYTES = 64 * 1024; // injected file, límite documentado
++const TOPE_BYTES = 64 * 1024; // injected file, documented limit
 +
 +export interface SesionComite {
 +  idioma: "es" | "en";
 +  tipoPitch: string;
 +  duracionMaximaMin: number;
 +  transcripcion: string;
-+  /** Ids de rúbrica, no el texto libre del cliente. */
++  /** Rubric ids, not free text from the client. */
 +  puntosSinCumplir: string[];
-+  /** Entidades ya extraídas en Next. El worker no rehace ese paso. */
++  /** Entities already extracted in Next. The worker does not redo that step. */
 +  entidades: string[];
 +}
 +
@@ -314,8 +314,8 @@ new file mode 100644
 +          containerPath: "/mnt/files/sesion.json",
 +          content: Buffer.from(JSON.stringify(sesion), "utf8").toString("base64"),
 +        }],
-+        // NEBIUS_API_KEY y TAVILY_API_KEY van por SecretStash
-+        // (environmentVariables de secreto en la misma doc), no en este JSON.
++        // NEBIUS_API_KEY and TAVILY_API_KEY go through SecretStash
++        // (secret environmentVariables in the same doc), not in this JSON.
 +      },
 +    }),
 +  });
@@ -343,8 +343,8 @@ new file mode 100644
 +
 +/**
 + * POST /api/comite
-+ * No analiza el pitch. El análisis sigue en /api/analizar-pitch.
-+ * Si AI Cloud no está configurado, responde 501 y el dashboard no se rompe.
++ * Does not analyze the pitch. Analysis stays on /api/analizar-pitch.
++ * If AI Cloud is not configured, it responds 501 and the dashboard does not break.
 + */
 +export async function POST(request: Request): Promise<NextResponse> {
 +  const bloqueo = limitar(request, "comite");
@@ -390,36 +390,36 @@ new file mode 100644
 +}
 ```
 
-El hunk de `cifra_o_nada` está incompleto a propósito: reutiliza `chat()` con el esquema del acta, y eso no sirve para un sí/no. En la implementación de verdad esa función lleva su propio `json_schema` (`aceptada`, `cifra`, `cita`) y no llama a Super. El botón del dashboard no está en este diff: es un `POST` a `/api/comite` desde `DashboardResultado.tsx` que muestra `jobId` o el 501, sin sustituir el análisis en vivo.
+The `cifra_o_nada` hunk is incomplete on purpose: it reuses `chat()` with the record schema, and that does not work for a yes/no. In the real implementation that function has its own `json_schema` (`aceptada`, `cifra`, `cita`) and does not call Super. The dashboard button is not in this diff: it is a `POST` to `/api/comite` from `DashboardResultado.tsx` that shows `jobId` or the 501, without replacing the live analysis.
 
-`extraerEntidades` hoy es interna al flujo de Tavily; si su firma no acepta `(transcripcion, idioma)` tal cual, el route usa el helper que ya exista en `src/lib/entidades-tavily.ts` en lugar de inventar otro. `limitar()` necesita un ámbito `"comite"` en `LIMITES_POR_AMBITO` (el de enriquecer, 5/10 min, es el techo correcto). Esas dos líneas no están expandidas aquí.
+`extraerEntidades` is internal to the Tavily flow today; if its signature does not accept `(transcripcion, idioma)` as written, the route uses the helper that already exists in `src/lib/entidades-tavily.ts` instead of inventing another. `limitar()` needs a `"comite"` scope in `LIMITES_POR_AMBITO` (the enrich one, 5/10 min, is the right ceiling). Those two lines are not expanded here.
 
-## 8. Riesgos
+## 8. Risks
 
-- **El job no es el pase de las rules.** Si AI Cloud (proyecto, registry, cuota, rol `editor`) no está listo, el envío sigue siendo válido con Token Factory. Presentar un Endpoint vacío o un job GPU que solo hace `curl` se ve como checklist.
-- **Timeout mínimo de 1 h y borrado del disco.** Un worker que no sale puede facturar hasta el timeout. Sin volumen, el acta desaparece con la VM. No se verificó en una cuenta el preset sin GPU ni el precio; la doc solo afirma que la VM sin GPU existe y que se factura como Compute, por segundo, mientras corre.
-- **Claves y tokens distintos.** El Job necesita el token de AI Cloud; no es `NEBIUS_API_KEY` de Token Factory. También hay que inyectar `TAVILY_API_KEY` sin poner secretos en el JSON. La configuración de producción de Railway (`NEBIUS_API_KEY`, `TAVILY_API_KEY`, `MODEL_PROVIDER=nebius`) no fue comprobada.
-- **Proyecto anterior al 26 ago.** El git lo muestra (primer commit 18 ago 2026 16:52 GT; baseline `pre-evento` el 25 ago). El trabajo posterior (Nebius el 25 sep, Tavily endurecido el 1 oct, UI el 2 oct) es el argumento; un juez puede igualmente decir que el género ya estaba el 25 ago. No se tocó el historial.
-- **Un solo bono.** Si la candidatura también compite en Feedback, las rules como están no dejan llevar además los $3,000 de Tavily. El hilo 45215 no tenía respuesta en este fetch.
-- **Créditos.** No se volvió a abrir la página de términos del Builder Program en este pase. El premio Tavily de $3,000 sí está en las rules. No se afirma aquí un saldo de créditos.
+- **The job is not the rules pass.** If AI Cloud (project, registry, quota, `editor` role) is not ready, the submission is still valid with Token Factory. Presenting an empty Endpoint or a GPU job that only does `curl` reads as a checklist.
+- **Minimum timeout of 1 h and disk erasure.** A worker that does not exit can bill up to the timeout. Without a volume, the record disappears with the VM. The no-GPU preset and the price were not verified on an account; the doc only states that the VM without a GPU exists and that it is billed as Compute, per second, while it runs.
+- **Distinct keys and tokens.** The Job needs the AI Cloud token; it is not the Token Factory `NEBIUS_API_KEY`. `TAVILY_API_KEY` also has to be injected without putting secrets in the JSON. Railway's production configuration (`NEBIUS_API_KEY`, `TAVILY_API_KEY`, `MODEL_PROVIDER=nebius`) was not checked.
+- **Project from before 26 Aug.** Git shows it (first commit 18 Aug 2026 16:52 GT; `pre-evento` baseline on 25 Aug). The later work (Nebius on 25 Sep, Tavily hardened on 1 Oct, UI on 2 Oct) is the argument; a judge can still say the genre was already there on 25 Aug. History was not touched.
+- **A single bonus.** If the entry also competes in Feedback, the rules as written do not allow also taking Tavily's $3,000. Thread 45215 had no reply in this fetch.
+- **Credits.** The Builder Program terms page was not opened again in this pass. The $3,000 Tavily prize is in the rules. A credit balance is not claimed here.
 
-### Hechos que este pase no pudo cerrar
+### Facts this pass could not close
 
-- Si el contenedor de Railway tiene `NEBIUS_API_KEY`, `TAVILY_API_KEY` y `MODEL_PROVIDER=nebius`. La home cargó; no se corrió un análisis.
-- Respuesta oficial al hilo 45215.
-- Monto en dólares de los créditos Tavily del Builder Program.
-- Id de platform y nombre de preset de una VM sin GPU. La doc dice que se puede elegir «sin GPU» y el único preset de ejemplo es `1gpu-8vcpu-32gb`.
-- Catálogo Token Factory re-descargado hoy. Se cita el extract de esta mañana para Lightning / ausencia de GR00T, Cosmos y Sonic.
-- Si Francisco ya pulsó Join Hackathon. No se abrió sesión.
+- Whether the Railway container has `NEBIUS_API_KEY`, `TAVILY_API_KEY`, and `MODEL_PROVIDER=nebius`. The home page loaded; an analysis was not run.
+- Official reply to thread 45215.
+- Dollar amount of the Builder Program's Tavily credits.
+- Platform id and preset name of a VM without a GPU. The doc says "without GPU" can be chosen and the only example preset is `1gpu-8vcpu-32gb`.
+- Token Factory catalog re-downloaded today. This morning's extract is cited for Lightning / the absence of GR00T, Cosmos, and Sonic.
+- Whether Francisco has already clicked Join Hackathon. No session was opened.
 
-## 9. Checklist de entregables
+## 9. Deliverables checklist
 
-Esto se hace al final, cuando el producto ya no se va a tocar. Cierre: viernes 30 oct 2026, 11:00 GT.
+This is done at the end, when the product is no longer going to be touched. Close: Friday 30 Oct 2026, 11:00 GT.
 
-- [ ] Dejar `https://github.com/focampok/pitch-coach` público y la licencia MIT visible en el About.
-- [ ] Publicar un video público de YouTube de hasta 3 minutos. Tiene que verse una grabación, el dashboard con el id del modelo de Token Factory, y una cifra de Tavily con su URL o el descarte explícito.
-- [ ] Completar el formulario de Devpost en inglés: descripción, instrucciones y feedback escrito sobre Token Factory, AI Cloud y NVIDIA.
-- [ ] Pegar en el formulario el párrafo de proyecto previo de `docs/formulario-devpost.md` §6 (qué cambió después del 26 ago 2026).
-- [ ] Poner la demo `https://pitch-coach-production-1c0c.up.railway.app/` en el envío.
-- [ ] Revisar que el README de setup baste para correr la demo sin preguntar.
-- [ ] Comprobar que el video, el repo y la demo sigan accesibles el 30 oct a las 11:00 GT.
+- [ ] Leave `https://github.com/focampok/pitch-coach` public and the MIT license visible in About.
+- [ ] Publish a public YouTube video of up to 3 minutes. It has to show a recording, the dashboard with the Token Factory model id, and a Tavily figure with its URL or the explicit discard.
+- [ ] Complete the Devpost form in English: description, instructions, and written feedback on Token Factory, AI Cloud, and NVIDIA.
+- [ ] Paste into the form the prior-project paragraph from `docs/formulario-devpost.md` §6 (what changed after 26 Aug 2026).
+- [ ] Put the demo `https://pitch-coach-production-1c0c.up.railway.app/` on the submission.
+- [ ] Check that the setup README is enough to run the demo without asking.
+- [ ] Check that the video, the repo, and the demo are still reachable on 30 Oct at 11:00 GT.

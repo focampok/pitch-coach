@@ -1,211 +1,217 @@
-# Pitch Coach — Status del proyecto
+# Pitch Coach — Project status
 
-> **2026-10-08.** Qué está implementado, mapeado a `docs/alcance.md`.
-> Índice de documentación: `docs/README.md`. Snapshot **después** vs tag
-> `pre-nebius`: `docs/post-nebius.md` (este archivo es el detalle operativo).
-> El loop (voz → análisis → dashboard + veredicto a pedido) está cerrado.
-> El STT es universal (MediaRecorder + Scribe). Resolver hallazgos, Análisis
-> Ultra y el panel "Tu progreso" están implementados; la verificación del
-> micrófono en cada navegador queda para el mantenedor.
-> El **modo bilingüe (es / en)** está completo: interfaz, rúbricas, prompts,
-> contrato de API, voz (TTS y hint de Scribe) y muletillas (§15 del alcance).
-> El **avatar reactivo y su motor de reacciones fueron eliminados**: el flujo
-> grabar → transcribir → analizar no produce resultados intermedios sobre los
-> que reaccionar. Hoy el coach es un **indicador de texto** temporal; el
-> reemplazo visual —un indicador en vivo que reacciona al audio, **no** un
-> orbe/esfera— llega en la fase de UX/UI (dirección registrada en
-> `docs/referencias-ui/`).
-> **Tavily (fases A y B) completo**: auth por header `Bearer`, extracción de
-> entidades cortas (nivel `rapido`), query orientada a cifra (sin el comentario
-> negativo de la Fase A) y `exclude_domains` para los dominios metodológicos
-> conocidos, más `language` / `filter_by_language` / `topic` / `time_range` en
-> la búsqueda. Una sugerencia **solo se muestra si pasa un paso de validación
-> obligatorio** (Tavily Extract + nivel `rapido`) que exige una cifra concreta
-> citada con su fuente, y se entrega con una **frase hablada** lista para decir
-> en voz alta (misma voz TTS de la sesión). Ver la evidencia real en
+> **2026-10-08.** What is implemented, mapped to `docs/alcance.md`.
+> Documentation index: `docs/README.md`. Snapshot **after** vs tag
+> `pre-nebius`: `docs/post-nebius.md` (this file is the operational detail).
+> The loop (voice → analysis → dashboard + verdict on request) is closed.
+> STT is universal (MediaRecorder + Scribe). Resolve findings, Ultra analysis,
+> and the "Your progress" panel are implemented; microphone verification in
+> each browser is left to the maintainer.
+> **Bilingual mode (es / en)** is complete: interface, rubrics, prompts, API
+> contract, voice (TTS and the Scribe hint), and filler words (§15 of alcance).
+> The **reactive avatar and its reaction engine were removed**. The live
+> measurement is the signal ring `AnilloSenal` (rest, live, settled); a short
+> text status still reports recording, transcribing, and finished. Live STT
+> stays out of scope (direction recorded in `docs/referencias-ui/`).
+> **Tavily (phases A and B) complete**: auth by `Bearer` header, extraction of
+> short entities (level `rapido`), a figure-oriented query (without the negative
+> comment from Phase A) and `exclude_domains` for the known methodological
+> domains, plus `language` / `filter_by_language` / `topic` / `time_range` on
+> the search. A suggestion **is shown only if it passes a mandatory validation
+> step** (Tavily Extract + level `rapido`) that requires a concrete cited
+> figure with its source, and it is delivered with a **spoken phrase** ready to
+> say out loud (the same TTS voice as the session). See the real evidence in
 > `docs/guia-integracion-tavily.md` (§2).
 
-## Resumen rápido
+## Quick summary
 
-- ✅ Loop voz → transcripción → muletillas (MediaRecorder + Scribe).
-- ✅ Indicador de estado del coach (§5.1): texto (`Escuchando…` /
-  `Transcribiendo…` / 3 frases al terminar) en el idioma de la sesión. Temporal.
-- ✅ Deploy: `Dockerfile` + `railway.toml`.
-- ✅ Análisis con dos proveedores: **Nebius** (por defecto) y **Gemini**
-  (contingencia manual). Rúbricas, prompt parametrizado por idioma, tiempo como
-  contexto, JSON estructurado, fallbacks y reintentos.
-- ✅ Dashboard: score, rúbrica, muletillas, transcripción resaltada, tiempo.
-- ✅ TTS: ElevenLabs vía `/api/tts`, fallback a SpeechSynthesis.
-  **Sin autoplay** — el usuario pulsa "Escuchar veredicto".
-- ✅ Tavily (§12): `/api/enriquecer` si hay puntos sin cumplir. Auth por
-  `Authorization: Bearer` (la key no va en el body). La query se arma con
-  entidades cortas del pitch + el nombre visible del punto (nivel `rapido`),
-  **sin repetir el comentario negativo** que produjo resultados inútiles en las
-  pruebas manuales; los dominios metodológicos conocidos —y los proxies de
-  traducción automática (`translate.goog` y similares)— se excluyen con
-  `exclude_domains`. La búsqueda viaja con `language` + `filter_by_language`,
-  `topic` (`finance` para capital) y `time_range=year`. Sobre la mejor fuente
-  se corre **Tavily Extract** y un **paso de validación obligatorio**: sin una
-  cifra concreta citada con su fuente **y relevante al tema/sector del pitch**
-  (el validador recibe las entidades como contexto de comparación), la
-  sugerencia se descarta. Cuando pasa,
-  se agrega una **frase hablada** (8–12 s) en el idioma de la sesión, lista para
-  decir. El pipeline completo solo corre para los **2 primeros puntos de la
-  rúbrica** del tipo de pitch, en su orden; los puntos fallidos que quedan fuera
-  no generan ninguna llamada externa. Sin key, el dashboard no se rompe.
-  La misma llamada agrega **una objeción de sala** (el primer punto no cumplido;
-  la sala sale del tipo: inversión, aula, comité, comprador técnico) y el
-  **contraste de una cifra ya dicha** (con fuente del mismo orden, o el aviso
-  de que no se halló). La transcripción sigue sin ir a Tavily.
-- ✅ Línea de tiempo: si Scribe devolvió marcas, Nano ubica los puntos cubiertos
-  sobre el audio (`/api/linea-tiempo`).
-- ✅ Segunda toma: 45 segundos sobre un punto no cumplido (`/api/segunda-toma`).
-  Si queda cubierto, el historial guarda el id en `puntosCerrados`. "Tu progreso"
-  muestra qué puntos se cerraron o se abrieron respecto de la práctica anterior
-  del mismo tipo e idioma.
-- ✅ Sentry: errores de servidor y de cliente, con filtro de privacidad (§5).
-  **Session Replay deshabilitado a propósito**; **la IP del cliente no se
-  reporta** y **los breadcrumbs de consola no salen** (fuga real, cerrada).
-  Camino de error del cliente verificado en Chrome.
-- ✅ Tests unitarios (`npm test`, vitest) sobre la lógica de `src/lib/`
-  (incluido el historial local) y las rutas de análisis/sparring/transcribir
-  (fetch mockeado; sin llamadas reales a proveedores).
-- ✅ Límites: transcripción máx. 8000 caracteres; audio máx. 20 MB; respuesta
-  de sparring máx. 2000; rate limit por IP en memoria, **con techo por ruta**
-  (10 / 10 min; `/api/enriquecer`, 5 / 10 min, por su costo por invocación).
-- ✅ Análisis Ultra: botón en el dashboard que reanaliza la misma transcripción
-  con nivel `ultra` (Nemotron Ultra, razonamiento activo). Se muestra además
-  del análisis estándar, con una traza de razonamiento (4–8 pasos).
-- ✅ Resolver hallazgos: hasta 3 preguntas de seguimiento sobre los primeros
-  puntos de rúbrica no cumplidos. Texto + "Escuchar pregunta" (misma voz de
-  sesión); no hay autoplay.
-- ✅ Historial local: las últimas 20 prácticas se guardan en `localStorage`
-  de este navegador (sin cuenta y sin servidor). El panel "Tu progreso"
-  las lista. No se guardan transcripción, comentarios, traza, preguntas,
-  respuestas ni audio.
-- ✅ **Modo bilingüe (es / en)**: selector en la home, diccionarios tipados,
-  rúbricas con ids estables, mensajes de error de la API en el idioma pedido,
-  prompts que instruyen la salida en ese idioma, par de voces TTS por idioma,
-  hint de Scribe y muletillas en inglés. El idioma se recuerda en este
-  navegador y, si no hay ninguno guardado, sale del navegador.
-- 🟡 La transcripción no es en vivo (grabar → detener → transcribir). Scribe
-  Realtime queda para el rediseño de UX; no hay fecha de calendario.
-- 🟡 El coach es **solo texto**. La animación que reemplaza al avatar (un
-  indicador en vivo, **no** un orbe/esfera) se define en la fase de UX/UI; no
-  hay fecha de calendario.
+- ✅ Loop voice → transcription → filler words (MediaRecorder + Scribe).
+- ✅ Coach status (§5.1): session-language text (`Listening…` /
+  `Transcribing…` / 3 phrases when it finishes) and the signal ring
+  `AnilloSenal`.
+- ✅ Deploy: `Dockerfile` + `railway.toml`. The Dockerfile is for Railway only.
+  Local development does not use Docker.
+- ✅ Analysis with two providers: **Nebius** (default) and **Gemini**
+  (manual contingency). Rubrics, prompt parameterized by language, time as
+  context, structured JSON, fallbacks, and retries. Super analyzes every take.
+  The model does not set the score.
+- ✅ Dashboard: score, rubric, filler words, highlighted transcript, time.
+- ✅ TTS: ElevenLabs via `/api/tts`, fallback to SpeechSynthesis.
+  **No autoplay** — the user presses "Listen to the verdict".
+- ✅ Tavily (§12): `POST /api/enriquecer` if there are missed points. Auth by
+  `Authorization: Bearer` (the key does not go in the body). The query is built
+  from short entities of the pitch + the visible name of the point (level
+  `rapido`), **without repeating the negative comment** that produced useless
+  results in the manual tests; known methodological domains — and automatic
+  translation proxies (`translate.goog` and similar) — are excluded with
+  `exclude_domains`. The search travels with `language` + `filter_by_language`,
+  `topic` (`finance` for capital), and `time_range=year`. On the best source,
+  **Tavily Extract** runs and a **mandatory validation step**: without a
+  concrete figure cited with its source **and relevant to the pitch's
+  topic/sector** (the validator receives the entities as comparison context),
+  the suggestion is discarded. When it passes, a **spoken phrase** (8–12 s) is
+  added in the session language, ready to say. The full pipeline runs only for
+  the **first 2 rubric points** of the pitch type, in their order
+  (`MAX_PUNTOS_ENRIQUECIDOS`); missed points left outside generate no external
+  call. The transcript is never sent to Tavily. The same call adds **one room
+  objection** (the first missed point; the room follows the type: investment
+  panel, classroom, innovation committee, technical buyer) and the **check of
+  one figure already said** (with a source of the same order, or the notice
+  that none was found — the point is not penalized). Rubric ids do not change.
+  With no key, or if Tavily fails, the rest of the UI continues.
+- ✅ Timeline: `POST /api/linea-tiempo`. If Scribe returned marks, Nano places
+  the covered points on the audio.
+- ✅ Second take: `POST /api/segunda-toma`. 45 seconds on one missed point.
+  If it is covered, history stores the id in `puntosCerrados` and does not
+  store the retake text. The next practice of the same type and language does
+  not remind that closed point. "Your progress" shows which points closed or
+  opened versus the previous practice of the same type and language.
+- ✅ Sentry: server and client errors, with a privacy filter (§5).
+  **Session Replay disabled on purpose**; **the client IP is not reported**
+  and **console breadcrumbs do not go out** (a real leak, closed). Client
+  error path verified in Chrome.
+- ✅ Unit tests (`npm test`, vitest) on the logic in `src/lib/`
+  (including local history) and the analysis/sparring/transcribe routes
+  (mocked fetch; no real calls to providers).
+- ✅ Limits: transcript max 8000 characters; audio max 20 MB; sparring answer
+  max 2000; in-memory rate limit per IP, **with a ceiling per route**
+  (10 / 10 min; `/api/enriquecer`, 5 / 10 min, because of its cost per
+  invocation).
+- ✅ Ultra analysis: a dashboard button that re-analyzes the same transcript
+  at level `ultra` (Nemotron Ultra, reasoning on). Shown in addition to the
+  standard analysis, with a reasoning trace (4–8 steps). Opt-in.
+- ✅ Resolve findings: up to 3 follow-up questions on the first missed rubric
+  points. Text + "Listen to the question" (the same session voice); no
+  autoplay. Nano.
+- ✅ Local history: the last 20 practices are stored in this browser's
+  `localStorage` (no account and no server). The "Your progress" panel lists
+  them. Transcript, comments, trace, questions, answers, and audio are not
+  stored. The panel shows which points closed or opened versus the previous
+  practice of the same type and language.
+- ✅ **Bilingual mode (es / en)**: selector on the home page, typed
+  dictionaries, rubrics with stable ids, API error messages in the requested
+  language, prompts that instruct the output in that language, a TTS voice
+  pair per language, Scribe hint, and English filler words. The language is
+  remembered in this browser and, if none is saved, it comes from the browser.
+  UI strings stay in both languages.
+- 🟡 Transcription is not live (record → stop → transcribe). Scribe Realtime
+  is left for later; there is no calendar date.
 
-## Leyenda
+## Legend
 
-- ✅ Implementado y probado en navegador
-- 🟡 Implementado con limitación conocida
-- ⬜ No implementado (idea abierta para la comunidad)
+- ✅ Implemented and tested in the browser
+- 🟡 Implemented with a known limitation
+- ⬜ Not implemented (open idea for the community)
 
-## 1. Implementado
+## 1. Implemented
 
-| Estado | Ítem | Archivos | Notas |
+| Status | Item | Files | Notes |
 |---|---|---|---|
-| ✅ | Selector de tipo (§9) | `SelectorTipoPitch.tsx` | capital, educación, innovación, tecnología |
-| ✅ | Selector de duración (§9) | `SelectorDuracion.tsx` | 1 a 7 minutos |
-| ✅ | Grabación con corte (§9) | `GrabadorVoz.tsx` | MediaRecorder; auto-stop; texto de respaldo si no hay micrófono |
-| ✅ | Transcripción (§9) | `GrabadorVoz.tsx` + `/api/transcribir` | ElevenLabs Scribe (`scribe_v2`); hint `language_code` = idioma de la sesión (`es` o `en`); `timestamps_granularity=word`; sin palabra por palabra en vivo |
-| ✅ | Guion descargable | `guion-transcripcion.ts` + `DashboardResultado.tsx` | `.txt` con `[mm:ss.cc]` por frase; solo si Scribe mandó `start`; no se persiste en el historial |
-| ✅ | Muletillas (§8) | `src/lib/muletillas.ts` | español: 21 patrones (`PATRONES_MULETILLAS`). inglés: `patronesMuletillas("en")`. `like` / `so` / `right` no se marcan por la palabra suelta |
-| ✅ | UI | `src/app/page.tsx` | selectores + grabador + `DashboardResultado` |
-| 🟡 | Indicador de estado del coach (§5.1) | `GrabadorVoz.tsx` + `mensajes-coach.ts` | texto simple: `Escuchando…` al grabar, `Transcribiendo…` mientras responde Scribe y, al terminar, una de las 3 frases de `MENSAJES_ASINTIENDO` (idioma de la sesión). Aplica al pitch y a "Resolver hallazgos". Temporal: el reemplazo visual (indicador en vivo, no un orbe) es de la fase de UX/UI, sin fecha |
-| ✅ | Sesión anónima | `src/app/page.tsx` | sin login. El historial vive en `localStorage` de este navegador, no en el servidor |
-| ✅ | Deploy | `Dockerfile` + `railway.toml` | standalone; healthcheck `/` |
-| ✅ | Rúbricas (§6) | `src/lib/rubricas.ts` | 4 tipos × 5 puntos |
-| ✅ | Tipos (§13) | `src/types/pitch.ts` | `ResultadoAnalisis` y relacionados |
-| ✅ | Tiempo real (§7) | `GrabadorVoz.tsx` + `page.tsx` | contexto de Gemini + dashboard |
-| ✅ | Cliente del modelo (§13) | `src/lib/modelo.ts` + adaptadores | capa neutra + fábrica por `MODEL_PROVIDER`; backoff; timeout 20 s |
-| ✅ | Proveedor Nebius (por defecto) | `src/lib/proveedor-nebius.ts` | `/chat/completions` OpenAI-compatible; `json_schema` estricto (`{name, strict, schema}`); niveles `estandar` / `ultra` / `rapido`; `enable_thinking: false` en estándar y rápido; ultra omite el campo (razonamiento activo) |
-| ✅ | Proveedor Gemini (contingencia) | `src/lib/proveedor-gemini.ts` | `generateContent`; se activa con `MODEL_PROVIDER=gemini` |
-| ✅ | Esquema restringido | `src/lib/validar-analisis.ts` | `construirEsquemaAnalisisRestringido`: `rubrica` con `minItems === maxItems === puntos.length`; cada ítem con `additionalProperties: false` y `required: ["cumplido", "comentario"]`; Ultra añade `traza` (4–8 pasos) al esquema y la exige en validación |
-| ✅ | Prompt (§7/§13) | `src/lib/prompts.ts` | español; transcripción como dato no confiable; pide rúbrica sin nombres + `claridad` + `veredicto_corto`. Si hay un intento previo del mismo tipo, el análisis principal puede mencionar solo los nombres de puntos no cubiertos |
-| ✅ | API `analizar-pitch` | `src/app/api/analizar-pitch/route.ts` | acepta `nivel` opcional (`estandar` \| `ultra` \| `rapido`); 400 / 413 / 429 / 502 (errores genéricos al cliente); Ultra comparte el mismo rate limit |
-| ✅ | Dashboard | `DashboardResultado.tsx` + `dashboard-resultado.css` | incluye Tavily y botón **Análisis Ultra** |
-| ✅ | Resolver hallazgos (§9) | `SparringCoach.tsx` + `/api/sparring/pregunta` + `/api/sparring/evaluar` | copy visible "Resolver hallazgos"; APIs internas siguen en `/api/sparring/*`; hasta 3 puntos no cumplidos; nivel `rapido`; escuchar a pedido; mismo grabador + texto de respaldo |
-| ✅ | API `transcribir` | `elevenlabs.ts` + `/api/transcribir` | Scribe batch; `language_code` del idioma de la sesión; `timestamps_granularity=word`; `ELEVENLABS_SCRIBE_MODEL` solo elige el modelo; audio en memoria; 200 `{ texto, palabras }`; 400 / 413 / 429 / 502 genérico; timeout 60 s |
-| ✅ | TTS (§13) | `ReproductorVeredicto.tsx` + `elevenlabs.ts` + `/api/tts` | par de Voice IDs según idioma (sin sufijo en es, `_EN_` en en); el género de sesión no cambia. Veredicto y Resolver hallazgos comparten `/api/tts`. timeout 6 s; 413/429; `autoPlay={false}` |
-| ✅ | Tavily (§12) | `tavily.ts` + `query-tavily.ts` + `tavily-extract.ts` + `validar-sugerencia.ts` + `entidades-tavily.ts` + `/api/enriquecer` | best-effort; timeouts propios (búsqueda 8 s, Extract 12 s). Auth `Authorization: Bearer` (la key no viaja en el body). Extrae hasta 3 entidades cortas (máx. 40 caracteres, nivel `rapido`) y arma la query con ellas + el nombre visible del punto **sin el comentario negativo**; una entidad ambigua (sigla/marca de una palabra) nunca viaja sola. Una llamada al modelo (`rapido`) puede reescribir la query orientándola a cifra; si falla, cae a la query determinista. La transcripción **nunca** se envía a Tavily. Búsqueda localizada: `language` + `filter_by_language`, `exclude_domains` (dominios metodológicos conocidos **y proxies de traducción automática como `translate.goog`**), `topic` (`finance` si es `capital`, `general` en el resto) y `time_range=year`. Criterio de selección documentado (`SCORE_MINIMO`, tope de candidatos) en vez de `results[0]` ciego; sobre el elegido se corre **Tavily Extract** y una **validación obligatoria** (nivel `rapido`, esquema restringido con `additionalProperties: false`) que exige cifra citada **y confirma su relevancia al tema** (campo `relevante`: compara la cifra contra las entidades del pitch, así una cifra real de otro sector se descarta); solo entonces se genera la **frase hablada** (nivel `rapido`). Los fallos de la validación se registran en un **log de diagnóstico sin PII** (query final + si aprobó), nunca la transcripción ni el contenido extraído |
-| ✅ | Límites | `src/lib/limites.ts` + `src/lib/rate-limit.ts` | transcripción máx. 8000; audio máx. 20 MB; respuesta sparring máx. 2000; rate limit por IP en memoria (por instancia) con techo por ámbito: 10 / 10 min por defecto y **5 / 10 min en `/api/enriquecer`** (`LIMITES_POR_AMBITO`). El techo más bajo sigue al costo: cada invocación dispara 1 llamada a Nano (entidades) y, por cada punto fallido, hasta 1 query al modelo + 1 búsqueda de Tavily + hasta 2 Extract + 1 validación + 1 frase. El pipeline completo solo corre para los `MAX_PUNTOS_ENRIQUECIDOS` (2) primeros puntos de la rúbrica del tipo, en su orden: el resto no genera llamadas externas. Techo real por invocación: 1 + 2 × 6 = **~13 llamadas externas** contra 1 del resto de las rutas. Verificado por test (incluido el techo de puntos): el de `enriquecer` no afecta al de las demás rutas |
-| ✅ | Historial local | `src/lib/historial-sesiones.ts` + `src/types/historial.ts` | clave `pitch-coach:historial-sesiones`; últimas 20; FIFO. Campos: fecha, tipo, duración, score, claridad (reconstruida del score), rúbrica `{punto, cumplido}`, conteo de muletillas, `ultraUsado`, y —si se completó— hallazgos `{preguntasHechas, puntosReforzados, puntos: [{punto, cumplido}]}`. Ultra no guarda score ni rúbrica propios |
-| ✅ | Panel "Tu progreso" | `PanelProgreso.tsx` | enlace en la página principal; lista reciente primero (fecha, tipo, score, cobertura `n/5`, Ultra, hallazgos); "Borrar historial" con `confirm()` |
-| ✅ | Modo bilingüe (§15) | `src/lib/idiomas.ts`, `src/lib/diccionario-es.ts`, `src/lib/diccionario-en.ts`, `src/lib/diccionarios.ts`, `ProveedorIdioma.tsx`, `SelectorIdioma.tsx` | registro de idiomas + diccionarios tipados + contexto de React. `en` está tipado contra la forma de `es`; un test compara las dos formas clave por clave. Idioma inicial: `localStorage` → `navigator.language` (`es*` → es) → es |
-| ✅ | `<html lang>` sin parpadeo | `layout.tsx` + `src/lib/idiomas.ts` | script en el `<head>` fija el atributo antes del primer paint; el proveedor arranca con el mismo idioma por defecto que el servidor (sin warning de hidratación) y lo corrige en un layout effect. La home sigue estática |
-| ✅ | Ids estables de rúbrica | `src/lib/rubricas.ts` | 4 tipos × 5 puntos, cada uno con `id` estable + nombre y "qué buscar" por idioma. El id es lo único que viaja por la API y lo que se persiste; el modelo nunca lo ve. Verificados por un test que fija la lista |
-| ✅ | Historial con ids e idioma | `src/lib/historial-sesiones.ts` + `src/types/historial.ts` | cada sesión guarda los **ids** de sus puntos y el `idioma`. Las entradas viejas (nombre en español, sin idioma) se normalizan sin romper: nombre → id, idioma → `es`. La continuidad solo usa sesiones del mismo tipo **y** idioma |
-| ✅ | Mensajes de error por idioma | `src/lib/idioma-ruta.ts` + `src/lib/rate-limit.ts` + `src/lib/diccionarios.ts` | todas las rutas aceptan `idioma` (`'es' \| 'en'`; ausente → `'es'`; otro → 400) y responden 400/413/429/502 en ese idioma. El 429 usa la cabecera `X-Idioma` porque el rate limit corre antes de leer el cuerpo |
-| ✅ | Prompts por idioma | `src/lib/prompts.ts`, `src/lib/prompts-sparring.ts`, `src/lib/validar-analisis.ts`, `src/lib/validar-sparring.ts` | un constructor por idioma (análisis estándar, Ultra con traza y sparring) y descripciones del esquema también por idioma: son instrucciones, es donde se le dice al modelo en qué idioma escribir. Delimitadores, esquema restringido y score siguen igual |
+| ✅ | Type selector (§9) | `SelectorTipoPitch.tsx` | capital, educacion, innovacion, tecnologia; the four weigh the same |
+| ✅ | Duration selector (§9) | `SelectorDuracion.tsx` | 1 to 7 minutes |
+| ✅ | Recording with stop (§9) | `GrabadorVoz.tsx` | MediaRecorder; auto-stop; fallback text if there is no microphone |
+| ✅ | Transcription (§9) | `GrabadorVoz.tsx` + `/api/transcribir` | ElevenLabs Scribe (`scribe_v2`); `language_code` hint = session language (`es` or `en`); `timestamps_granularity=word`; no live word by word |
+| ✅ | Downloadable script | `guion-transcripcion.ts` + `DashboardResultado.tsx` | `.txt` with `[mm:ss.cc]` per sentence; only if Scribe sent `start`; not persisted in history |
+| ✅ | Filler words (§8) | `src/lib/muletillas.ts` | Spanish: 21 patterns (`PATRONES_MULETILLAS`). English: `patronesMuletillas("en")`. `like` / `so` / `right` are not marked from the bare word |
+| ✅ | UI | `src/app/page.tsx` | selectors + recorder + `DashboardResultado` |
+| ✅ | Coach status (§5.1) | `GrabadorVoz.tsx` + `AnilloSenal.tsx` + `mensajes-coach.ts` | signal ring: 72px while recording (no number), 148px on the result (the arc is the score). Text: `Listening…` while recording, `Transcribing…` while Scribe responds, and, when it finishes, one of the 3 `MENSAJES_ASINTIENDO` phrases (session language). Applies to the pitch and to "Resolve findings" |
+| ✅ | Anonymous session | `src/app/page.tsx` | no login, no accounts. History lives in this browser's `localStorage`, not on the server |
+| ✅ | Deploy | `Dockerfile` + `railway.toml` | standalone; healthcheck `/`. Railway only; not used for local development |
+| ✅ | Rubrics (§6) | `src/lib/rubricas.ts` | 4 types × 5 points, stable ids |
+| ✅ | Types (§13) | `src/types/pitch.ts` | `ResultadoAnalisis` and related types |
+| ✅ | Real time (§7) | `GrabadorVoz.tsx` + `page.tsx` | model context + dashboard |
+| ✅ | Model client (§13) | `src/lib/modelo.ts` + adapters | neutral layer + factory by `MODEL_PROVIDER`; backoff; timeout 20 s |
+| ✅ | Nebius provider (default) | `src/lib/proveedor-nebius.ts` | OpenAI-compatible `/chat/completions`; strict `json_schema` (`{name, strict, schema}`); levels `estandar` (Super, every take) / `ultra` (opt-in, 4–8 step trace) / `rapido` (Nano: sparring, short entities, search-query writing, citation checks, room objection, spoken-figure check, timeline, 45-second retake); `enable_thinking: false` on standard and fast; ultra omits the field (reasoning on). The model does not set the score |
+| ✅ | Gemini provider (contingency) | `src/lib/proveedor-gemini.ts` | `generateContent`; activated with `MODEL_PROVIDER=gemini`. Ignores the level |
+| ✅ | Restricted schema | `src/lib/validar-analisis.ts` | `construirEsquemaAnalisisRestringido`: `rubrica` with `minItems === maxItems === puntos.length`; each item with `additionalProperties: false` and `required: ["cumplido", "comentario"]`; Ultra adds `traza` (4–8 steps) to the schema and requires it in validation |
+| ✅ | Prompt (§7/§13) | `src/lib/prompts.ts` | transcript as untrusted data; asks for the rubric without names + `claridad` + `veredicto_corto`. If there is a previous attempt of the same type and language, the main analysis may mention only the names of uncovered points, and skips ids in `puntosCerrados` |
+| ✅ | `analizar-pitch` API | `src/app/api/analizar-pitch/route.ts` | accepts optional `nivel` (`estandar` \| `ultra` \| `rapido`); 400 / 413 / 429 / 502 (generic errors to the client); Ultra shares the same rate limit |
+| ✅ | Dashboard | `DashboardResultado.tsx` + `dashboard-resultado.css` | includes Tavily and the **Ultra analysis** button |
+| ✅ | Resolve findings (§9) | `SparringCoach.tsx` + `/api/sparring/pregunta` + `/api/sparring/evaluar` | visible copy "Resolve findings"; internal APIs stay at `/api/sparring/*`; up to 3 missed points; level `rapido`; listen on request; same recorder + fallback text |
+| ✅ | `transcribir` API | `elevenlabs.ts` + `/api/transcribir` | Scribe batch; `language_code` from the session language; `timestamps_granularity=word`; `ELEVENLABS_SCRIBE_MODEL` only chooses the model; audio in memory; 200 `{ texto, palabras }`; generic 400 / 413 / 429 / 502; timeout 60 s |
+| ✅ | TTS (§13) | `ReproductorVeredicto.tsx` + `elevenlabs.ts` + `/api/tts` | Voice ID pair by language (no suffix in es, `_EN_` in en); session gender does not change. Verdict and Resolve findings share `/api/tts`. timeout 6 s; 413/429; `autoPlay={false}` |
+| ✅ | Tavily (§12) | `tavily.ts` + `query-tavily.ts` + `tavily-extract.ts` + `validar-sugerencia.ts` + `entidades-tavily.ts` + `/api/enriquecer` | best-effort; own timeouts (search 8 s, Extract 12 s). Auth `Authorization: Bearer` (the key does not travel in the body). Extracts up to 3 short entities (max 40 characters, level `rapido`) and builds the query with them + the visible name of the point **without the negative comment**; an ambiguous entity (an acronym or one-word brand) never travels alone. One model call (`rapido`) may rewrite the query toward a figure; if it fails, it falls back to the deterministic query. The transcript is **never** sent to Tavily. Localized search: `language` + `filter_by_language`, `exclude_domains` (known methodological domains **and automatic-translation proxies such as `translate.goog`**), `topic` (`finance` if it is `capital`, `general` otherwise), and `time_range=year`. Documented selection criterion (`SCORE_MINIMO`, candidate cap) instead of a blind `results[0]`; on the chosen one, **Tavily Extract** runs and a **mandatory validation** (level `rapido`, restricted schema with `additionalProperties: false`) that requires a cited figure **and confirms its relevance to the topic** (field `relevante`: it compares the figure against the pitch entities, so a real figure from another sector is discarded); only then is the **spoken phrase** generated (level `rapido`). The same call fetches one public-room objection for the first missed point and checks one figure the speaker already said. If no source of the same order is found, the dashboard says so and does not penalize the point. If Tavily fails, the rest of the UI continues. Validation failures are recorded in a **diagnostic log without PII** (final query + whether it passed), never the transcript or the extracted content |
+| ✅ | Timeline | `/api/linea-tiempo` | with Scribe word timestamps, Nano places covered rubric points on the audio |
+| ✅ | Second take | `/api/segunda-toma` | 45 seconds on one missed point. If it is covered, local history stores the id in `puntosCerrados` and does not store the retake text. The next practice of the same type and language does not remind that closed point |
+| ✅ | Limits | `src/lib/limites.ts` + `src/lib/rate-limit.ts` | transcript max 8000; audio max 20 MB; sparring answer max 2000; in-memory rate limit per IP (per instance) with a ceiling per scope: 10 / 10 min by default and **5 / 10 min on `/api/enriquecer`** (`LIMITES_POR_AMBITO`). The lower ceiling follows the cost: each invocation fires 1 Nano call (entities) and, per missed point, up to 1 model query + 1 Tavily search + up to 2 Extract + 1 validation + 1 phrase. The full pipeline runs only for the first `MAX_PUNTOS_ENRIQUECIDOS` (2) rubric points of the type, in their order: the rest generate no external calls. Real ceiling per invocation: 1 + 2 × 6 = **~13 external calls** against 1 for the other routes. Verified by test (including the point ceiling): the `enriquecer` ceiling does not affect the other routes |
+| ✅ | Local history | `src/lib/historial-sesiones.ts` + `src/types/historial.ts` | key `pitch-coach:historial-sesiones`; last 20; FIFO. No transcript. Fields: date, type, duration, score, clarity (reconstructed from the score), rubric `{punto, cumplido}`, filler-word count, `ultraUsado`, `idioma`, and — if completed — findings `{preguntasHechas, puntosReforzados, puntos: [{punto, cumplido}]}`. If a retake covers a point, the id is stored in `puntosCerrados` and the retake text is not stored. Ultra does not store a score or a rubric of its own |
+| ✅ | "Your progress" panel | `PanelProgreso.tsx` | link on the main page; list most recent first (date, type, score, coverage `n/5`, Ultra, findings); shows which points closed or opened versus the previous practice of the same type and language; "Delete history" with `confirm()` |
+| ✅ | Bilingual mode (§15) | `src/lib/idiomas.ts`, `src/lib/diccionario-es.ts`, `src/lib/diccionario-en.ts`, `src/lib/diccionarios.ts`, `ProveedorIdioma.tsx`, `SelectorIdioma.tsx` | language registry + typed dictionaries + React context. `en` is typed against the shape of `es`; a test compares the two shapes key by key. Initial language: `localStorage` → `navigator.language` (`es*` → es) → es. UI strings stay in both languages |
+| ✅ | `<html lang>` with no flash | `layout.tsx` + `src/lib/idiomas.ts` | a script in the `<head>` sets the attribute before the first paint; the provider starts with the same default language as the server (no hydration warning) and corrects it in a layout effect. The home page stays static |
+| ✅ | Stable rubric ids | `src/lib/rubricas.ts` | 4 types × 5 points, each with a stable `id` + name and "what to look for" per language. The id is the only thing that travels through the API and what is persisted; the model never sees it. Verified by a test that pins the list |
+| ✅ | History with ids and language | `src/lib/historial-sesiones.ts` + `src/types/historial.ts` | each session stores the **ids** of its points and the `idioma`. Old entries (Spanish name, no language) are normalized without breaking: name → id, language → `es`. Continuity only uses sessions of the same type **and** language. An id in `puntosCerrados` is not reminded on the next practice |
+| ✅ | Error messages by language | `src/lib/idioma-ruta.ts` + `src/lib/rate-limit.ts` + `src/lib/diccionarios.ts` | every route accepts `idioma` (`'es' \| 'en'`; absent → `'es'`; other → 400) and responds 400/413/429/502 in that language. The 429 uses the `X-Idioma` header because the rate limit runs before reading the body |
+| ✅ | Prompts by language | `src/lib/prompts.ts`, `src/lib/prompts-sparring.ts`, `src/lib/validar-analisis.ts`, `src/lib/validar-sparring.ts` | one constructor per language (standard analysis, Ultra with trace, and sparring) and schema descriptions also per language: they are instructions, which is where the model is told which language to write in. Delimiters, restricted schema, and score stay the same. The model does not set the score |
 
-### Muletillas (21 patrones)
+### Filler words (21 patterns)
 
 - **Base (§8):** "eeee / ehh", "o sea", "como les decía", "este…",
   "bueno pues", "a mí me tocó hablar de", "digamos", "en ese sentido".
-- **Oratoria (11):** "es decir", "quiero decir", "en otras palabras",
+- **Public speaking (11):** "es decir", "quiero decir", "en otras palabras",
   "básicamente", "literalmente", "prácticamente", "obviamente", "en fin",
   "entonces", "¿me explico?", "a ver".
-- **Umbral ≥3 (2):** **"pues"** y **"bueno"** (no se reportan ni se resaltan
-  con menos de 3 apariciones).
-- El patrón de "eeee / ehh" sigue; depende de que Scribe transcriba el relleno.
-  Lo mismo pasa con "um" / "uh" en inglés.
+- **Threshold ≥3 (2):** **"pues"** and **"bueno"** (they are not reported or
+  highlighted with fewer than 3 occurrences).
+- The "eeee / ehh" pattern remains; it depends on Scribe transcribing the
+  filler. The same happens with "um" / "uh" in English.
 
-### Muletillas en inglés
+### English filler words
 
-`patronesMuletillas("en")`. Claras: "um", "uh", "you know", "I mean",
-"actually", "basically", "kind of" / "sort of". "you know" puede coincidir con
-una pregunta real ("do you know"); se acepta, igual que "este" en español.
+`patronesMuletillas("en")`. Clear ones: "um", "uh", "you know", "I mean",
+"actually", "basically", "kind of" / "sort of". "you know" can match a real
+question ("do you know"); that is accepted, the same as "este" in Spanish.
 
-"like", "so" y "right" **no** se marcan por la palabra suelta:
+"like", "so", and "right" are **not** marked from the bare word:
 
-- **like**: inicio de cláusula o entre comas ("Like,", ", like,"), repetido
-  ("like like"), o seguido de um/uh. "I like the product" no entra.
-- **so**: inicio de cláusula salvo "so that/much/many/far/on", entre comas, o
-  repetido. "and so on" y "so big" no entran.
-- **right**: solo "right?" o ", right," / ", right.". "right now" y "the right
-  market" no entran.
-- **well**: inicio de cláusula o tras coma. "as well" y "well-known" no entran.
+- **like**: start of a clause or between commas ("Like,", ", like,"), repeated
+  ("like like"), or followed by um/uh. "I like the product" does not match.
+- **so**: start of a clause except "so that/much/many/far/on", between commas, or
+  repeated. "and so on" and "so big" do not match.
+- **right**: only "right?" or ", right," / ", right.". "right now" and "the right
+  market" do not match.
+- **well**: start of a clause or after a comma. "as well" and "well-known" do not match.
 
-El resaltado marca la palabra, no la coma que la precede.
+The highlight marks the word, not the comma that precedes it.
 
-## 2. Abierto para la comunidad
+## 2. Open for the community
 
-| Ítem | Notas |
+| Item | Notes |
 |---|---|
-| Historial entre dispositivos o cuentas | El progreso queda en el `localStorage` de este navegador. No hay cuentas ni sincronización. |
-| Rúbricas custom | Hoy son 4 rúbricas fijas, en español e inglés. Editarlas o crear propias sigue abierto. |
-| Animación del coach (indicador en vivo, no orbe) | Hoy el coach es solo texto (§5.1). La animación que lo reemplace se define en la fase de UX/UI, con la dirección anti-orbe de `docs/referencias-ui/`; no hay fecha de calendario. |
-| Idiomas nuevos | Agregar uno debería ser agregar datos en el registro, un diccionario, un par de Voice IDs y patrones de muletillas; hoy solo hay es y en. |
-| STT en vivo (Scribe Realtime) | Esta fase transcribe el clip completo al detener. No tiene fecha de calendario. |
+| History across devices or accounts | Progress stays in this browser's `localStorage`. There are no accounts and no sync. |
+| Custom rubrics | Today there are 4 fixed rubrics, in Spanish and English. Editing them or creating your own stays open. |
+| New languages | Adding one should mean adding data in the registry, a dictionary, a Voice ID pair, and filler-word patterns; today there are only es and en. |
+| Live STT (Scribe Realtime) | This phase transcribes the full clip on stop. It has no calendar date. |
 
-## 3. Variables de entorno
+## 3. Environment variables
 
-En `.env.local` y en el host de deploy:
+In `.env.local` and on the deploy host:
 
-- `MODEL_PROVIDER` — `nebius` (por defecto) o `gemini`.
-- **Nebius** (`MODEL_PROVIDER=nebius`): `NEBIUS_API_KEY` (requerida),
+- `MODEL_PROVIDER` — `nebius` (default) or `gemini`.
+- **Nebius** (`MODEL_PROVIDER=nebius`): `NEBIUS_API_KEY` (required),
   `NEBIUS_BASE_URL` (default `https://api.tokenfactory.nebius.com/v1`),
-  `NEBIUS_MODEL_ULTRA` (default `nvidia/Nemotron-3-Ultra-550b-a55b`) y
+  `NEBIUS_MODEL_ULTRA` (default `nvidia/Nemotron-3-Ultra-550b-a55b`) and
   `NEBIUS_MODEL_NANO` (default `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`).
-- **Gemini** (`MODEL_PROVIDER=gemini`, contingencia manual):
-  `GEMINI_API_KEY` (requerida en ese modo).
-- Configuración del modelo, compartida por el proveedor activo (todas
-  opcionales): `MODEL`, `MODEL_FALLBACK_MODELS`, `MODEL_MAX_TOKENS`,
+  Super, which analyzes every take, is the `estandar` level (`MODEL`).
+- **Gemini** (`MODEL_PROVIDER=gemini`, manual contingency):
+  `GEMINI_API_KEY` (required in that mode). Ignores the level.
+- Model configuration, shared by the active provider (all optional):
+  `MODEL`, `MODEL_FALLBACK_MODELS`, `MODEL_MAX_TOKENS`,
   `MODEL_TEMPERATURE`, `MODEL_RETRY_ATTEMPTS`, `MODEL_RETRY_DELAY_MS`,
-  `MODEL_RETRY_MAX_DELAY_MS`. Los nombres `GEMINI_MODEL`,
-  `GEMINI_FALLBACK_MODELS` y `GEMINI_RETRY_*` siguen funcionando como alias,
-  pero **solo aplican cuando el proveedor activo es Gemini**.
-- `ELEVENLABS_API_KEY` — TTS y STT (Scribe). Sin API key, el STT falla y hay texto de respaldo; el veredicto cae a SpeechSynthesis.
-- `ELEVENLABS_VOICE_ID_MALE`, `ELEVENLABS_VOICE_ID_FEMALE` — par de voces en español.
-- `ELEVENLABS_VOICE_ID_EN_MALE`, `ELEVENLABS_VOICE_ID_EN_FEMALE` — par de voces en inglés. Sin ellas, el TTS en inglés falla y el cliente cae a SpeechSynthesis. El género de la sesión no cambia de par.
-- `ELEVENLABS_SCRIBE_MODEL` — modelo batch de Scribe (default `scribe_v2`). No elige idioma: el hint es `language_code` (`es` o `en`), y si se omitiera Scribe autodetectaría.
-- `TAVILY_API_KEY` — sugerencias; sin ella, esa sección no aparece
+  `MODEL_RETRY_MAX_DELAY_MS`. The names `GEMINI_MODEL`,
+  `GEMINI_FALLBACK_MODELS`, and `GEMINI_RETRY_*` still work as aliases,
+  but **they apply only when the active provider is Gemini**.
+- `ELEVENLABS_API_KEY` — TTS and STT (Scribe). Without an API key, STT fails and there is fallback text; the verdict falls back to SpeechSynthesis.
+- `ELEVENLABS_VOICE_ID_MALE`, `ELEVENLABS_VOICE_ID_FEMALE` — Spanish voice pair.
+- `ELEVENLABS_VOICE_ID_EN_MALE`, `ELEVENLABS_VOICE_ID_EN_FEMALE` — English voice pair. Without them, English TTS fails and the client falls back to SpeechSynthesis. The session gender does not change pair.
+- `ELEVENLABS_SCRIBE_MODEL` — Scribe batch model (default `scribe_v2`). It does not choose the language: the hint is `language_code` (`es` or `en`), and if it were omitted Scribe would autodetect.
+- `TAVILY_API_KEY` — suggestions; without it, that section does not appear and the rest of the UI continues
 
-Prueba de humo manual contra Nebius real (fuera de vitest, la ejecuta el
-mantenedor con su clave): `scripts/smoke-nebius.mjs`. Corre el mismo pitch en
-tres niveles de calidad (fuerte / medio / débil) y comprueba que el evaluador los
-ordene; con `--lang en` eso mismo sobre transcripciones en inglés, para ver si
-distingue calidad igual que en español. Consume cuota (una petición por fixture).
+Manual smoke test against real Nebius (outside vitest; the maintainer runs it
+with their key): `scripts/smoke-nebius.mjs`. It runs the same pitch at three
+quality levels (strong / medium / weak) and checks that the evaluator orders
+them; with `--lang en` the same thing on English transcripts, to see whether
+it distinguishes quality the same way as in Spanish. It consumes quota (one
+request per fixture).
 
 ```
 node scripts/smoke-nebius.mjs --lang en
@@ -213,159 +219,166 @@ node scripts/smoke-nebius.mjs --lang en --ultra
 node scripts/smoke-nebius.mjs --lang en --fixture debil
 ```
 
-## 4. Notas técnicas
+## 4. Technical notes
 
-- Correr: `npm run dev` (sin Docker). Cualquier navegador moderno con micrófono.
-- Red: Scribe, el modelo, ElevenLabs TTS y Tavily necesitan internet.
-  SpeechSynthesis cubre el veredicto si el TTS falla; el texto de respaldo
-  cubre el STT si no hay micrófono o falta la key.
-- Tests: `npm test` (vitest; `src/lib/` y rutas de análisis/sparring/transcribir
-  con fetch mockeado). El loop con micrófono se verifica a mano.
-- Timeout del modelo: 20 s en `estandar`/`rapido`, 90 s en `ultra` (razonamiento).
-- **Decisión de rate limit (Fase B)**: `/api/enriquecer` sigue en **5 / 10 min
-  por IP** (el global se queda en 10). Razón explícita (y el motivo de que **no**
-  se baje más): cada invocación ya no cuesta una o dos llamadas, cuesta **una
-  cadena completa por punto fallido** —1 query al modelo (`rapido`), 1 búsqueda
-  de Tavily a 1 crédito con `search_depth: "basic"`, hasta 2 `extract`, 1
-  llamada de validación (`rapido`) y 1 de frase (`rapido`)— más 1 extracción
-  de entidades. Ese techo no se multiplica por todos los puntos: el pipeline
-  completo solo corre para los `MAX_PUNTOS_ENRIQUECIDOS` (2) primeros puntos de
-  la rúbrica del tipo, en su orden, y el resto no genera ninguna llamada
-  externa. El techo real por invocación es 1 + 2 × 6 = **~13 llamadas externas**,
-  contra 1 del resto de las rutas. Con el techo global de 10, el peor caso por IP y ventana
-  se multiplica por ~5 y el free tier de Tavily (~1000 créditos/mes) se agota en
-  horas de abuso; con 5 el costo por ventana queda comparable al del resto. Se
-  centraliza en `LIMITES_POR_AMBITO` (`src/lib/rate-limit.ts`) y hay test de que
-  el techo de `enriquecer` no afecta al de las otras rutas. Si en el futuro se
-  agrega otra ruta de costo múltiple, el override va ahí, no en la ruta.
-- `.env.local` no se commitea. `.env.example` sí, sin valores.
+- Run: `npm run dev` (no Docker). Any modern browser with a microphone.
+  Anonymous session. No accounts. Live demo: `https://pitch-coach.focampo.com`.
+- Network: Scribe, the model, ElevenLabs TTS, and Tavily need the internet.
+  SpeechSynthesis covers the verdict if TTS fails; fallback text covers STT
+  if there is no microphone or the key is missing.
+- Tests: `npm test` (vitest; `src/lib/` and analysis/sparring/transcribe routes
+  with mocked fetch). The microphone loop is verified by hand.
+- Model timeout: 20 s on `estandar`/`rapido`, 90 s on `ultra` (reasoning).
+- **Rate-limit decision (Phase B)**: `/api/enriquecer` stays at **5 / 10 min
+  per IP** (the global ceiling stays at 10). Explicit reason (and why it is
+  **not** lowered further): each invocation no longer costs one or two calls,
+  it costs **a full chain per missed point** — 1 model query (`rapido`), 1
+  Tavily search at 1 credit with `search_depth: "basic"`, up to 2 `extract`, 1
+  validation call (`rapido`), and 1 phrase call (`rapido`) — plus 1 entity
+  extraction. That ceiling is not multiplied by every point: the full pipeline
+  runs only for the first `MAX_PUNTOS_ENRIQUECIDOS` (2) rubric points of the
+  type, in their order, and the rest generate no external call. The real
+  ceiling per invocation is 1 + 2 × 6 = **~13 external calls**, against 1 for
+  the other routes. With the global ceiling of 10, the worst case per IP and
+  window multiplies by ~5 and Tavily's free tier (~1000 credits/month) runs out
+  in hours of abuse; with 5 the cost per window stays comparable to the rest.
+  It is centralized in `LIMITES_POR_AMBITO` (`src/lib/rate-limit.ts`) and there
+  is a test that the `enriquecer` ceiling does not affect the other routes. If
+  another multi-cost route is added later, the override goes there, not in the
+  route.
+- `.env.local` is not committed. `.env.example` is, without values.
 
-## 5. Sentry (monitoreo de errores)
+## 5. Sentry (error monitoring)
 
-Integrado en los tres runtimes: Node, Edge y navegador. Los errores de las
-rutas de API se reportan con un **resumen sanitizado**, nunca con el error
-crudo; los de render del cliente, con los error boundaries del App Router
-(`src/app/error.tsx` y `src/app/global-error.tsx`).
+Integrated in the three runtimes: Node, Edge, and the browser. Errors from the
+API routes are reported with a **sanitized summary**, never with the raw
+error; client render errors, with the App Router error boundaries
+(`src/app/error.tsx` and `src/app/global-error.tsx`).
 
-**Qué NO llega a Sentry.** La regla es la misma que ya se aplicó al historial
-local: lo sensible no se persiste ni se envía, aunque cueste funcionalidad.
+**What does NOT reach Sentry.** The rule is the same one already applied to
+local history: sensitive data is not persisted and is not sent, even if that
+costs functionality.
 
-- La **transcripción** del pitch.
-- El campo **`comentario`** de cualquier rúbrica (principal, Ultra, o de un
-  turno de "Resolver hallazgos").
-- El campo **`traza`** del Análisis Ultra.
-- La **`pregunta`** y la **`respuesta`** de un turno de hallazgos.
-- El **`veredicto`** y el **`veredicto_corto`**.
-- **Audio** en cualquier forma.
-- La **IP del cliente**. La app es de sesión anónima, así que la IP era el
-  único identificador de cliente que podía colarse; ya no se reporta. Salía por
-  cuatro canales (el usuario, las cabeceras del evento y los atributos de los
-  spans); se apaga con `dataCollection` en las tres configs, más un borrado
-  redundante en el filtro. El detalle, en `docs/sentry.md` §3.6.
-- Los **breadcrumbs de consola**. Eran una fuga real, no teórica: el
-  `console.error` de los `catch` graba el mensaje de `ErrorModelo` completo, y
-  ese mensaje arrastra el cuerpo de respuesta del proveedor —que puede repetir
-  la petición, con la transcripción—. Se descartan enteros en `beforeSend` y
-  `beforeSendTransaction`; el resto de los breadcrumbs sigue pasando por el
-  filtro. Reproducción y fix, en `docs/sentry.md` §3.7.
+- The pitch **transcript**.
+- The **`comentario`** field of any rubric (main, Ultra, or a "Resolve
+  findings" turn).
+- The **`traza`** field of Ultra analysis.
+- The **`pregunta`** and the **`respuesta`** of a findings turn.
+- The **`veredicto`** and the **`veredicto_corto`**.
+- **Audio** in any form.
+- The **client IP**. The app is an anonymous session, so the IP was the only
+  client identifier that could slip in; it is no longer reported. It used to
+  leave through four channels (the user, the event headers, and the span
+  attributes); it is turned off with `dataCollection` in the three configs,
+  plus a redundant deletion in the filter. Detail in `docs/sentry.md` §3.6.
+- **Console breadcrumbs**. They were a real leak, not a theoretical one: the
+  `console.error` of the `catch` blocks records the full `ErrorModelo`
+  message, and that message carries the provider response body — which can
+  repeat the request, with the transcript. They are discarded whole in
+  `beforeSend` and `beforeSendTransaction`; the rest of the breadcrumbs still
+  pass through the filter. Reproduction and fix in `docs/sentry.md` §3.7.
 
-El filtro (`src/lib/sentry-scrub.ts`) redacta esas propiedades por nombre, en
-cualquier nivel y también dentro de arrays (las rúbricas y los turnos son
-arrays de objetos). Además, el error del proveedor **nunca se manda crudo**: su
-mensaje puede arrastrar el cuerpo de respuesta del proveedor, que a su vez
-puede repetir la petición —y con ella la transcripción—. Se envía un resumen
-(tipo de error, código HTTP, proveedor, nivel) con el stack sin su primera
-línea, que es la que lleva el mensaje original.
+The filter (`src/lib/sentry-scrub.ts`) redacts those properties by name, at
+any depth and also inside arrays (rubrics and turns are arrays of objects).
+In addition, the provider error is **never sent raw**: its message can carry
+the provider response body, which in turn can repeat the request — and with
+it the transcript. A summary is sent (error type, HTTP code, provider, level)
+with the stack minus its first line, which is the one that carries the
+original message.
 
-**Límite conocido:** el filtro decide por *nombre* de propiedad, no por
-contenido. Un texto sensible que viaje como *valor* de una propiedad con nombre
-permitido no se detecta. Por eso las rutas nunca adjuntan texto del usuario
-como contexto y el error del proveedor se resume en vez de reenviarse. Si se
-agrega un `extra` nuevo en alguna ruta, revisar antes esta sección.
+**Known limit:** the filter decides by property *name*, not by content. A
+sensitive text that travels as the *value* of a property with an allowed name
+is not detected. That is why the routes never attach user text as context and
+the provider error is summarized instead of being forwarded. If a new `extra`
+is added on some route, review this section first.
 
-**Verificado, capturando el sobre real** (antes eran suposiciones):
+**Verified, by capturing the real envelope** (these used to be assumptions):
 
-- El filtro **corre de verdad** en el pipeline de servidor: con centinelas sin
-  filtrar adjuntos a propósito, el sobre real salió con `transcripcion` y
-  `veredicto_corto` en `"[Filtered]"`.
-- El **camino de error del cliente funciona**: un throw en `useEffect` y otro en
-  render en Chrome 152 hacen que `error.tsx` muestre la UI de respaldo, y el
-  evento con la excepción real llega al túnel hacia Sentry (HTTP 200).
-- La IP quedó fuera en los cuatro canales.
-- **`beforeSendTransaction` sí se ejecuta** ahora, y se comprobó de forma
-  directa: centinelas en una transacción real salieron `"[Filtered]"`. Ese
-  marcador solo lo produce el callback, así que no basta con que el SDK deje de
-  avisar por consola.
-- **`httpBodies` no filtra el cuerpo** de la petición: se mandó un POST real con
-  la transcripción y el cuerpo no llega a Sentry por ninguna vía —ni
-  `request.data`, ni atributos de span, ni breadcrumbs `http`—. Ver `§3.6.1`.
-- **El camino de error de `/api/enriquecer` está cerrado, probado en este flujo y
-  no supuesto** (`test/enriquecer-privacidad.test.ts`). Se provoca el doble
-  fallo —extracción (Nano) y Tavily— con errores que arrastran la transcripción,
-  y se verifica en el flujo real de la ruta: la respuesta al cliente no lleva la
-  transcripción; el payload que va a `captureException` (mensaje, stack, extra,
-  tags) tampoco; y el error crudo que la ruta sí escribe en consola —el vector de
-  breadcrumb de consola, el mismo que se cerró para ElevenLabs— se pasa por el
-  `beforeSend` REAL del proyecto y el breadcrumb se descarta. Nota de cobertura:
-  el reporte a Sentry de esta ruta solo se alcanza por el catch externo (los
-  fallos del proveedor se tragan adentro por diseño best-effort), así que el test
-  fuerza ese catch con un `ErrorModelo` con el cuerpo del proveedor en el
-  `message`, que es la forma real de `src/lib/proveedor-nebius.ts`.
-- **`genAI` es inerte por construcción** (verificado, no supuesto): instrumenta
-  solo SDKs de IA reconocidos, por **paquete + versión + archivo exactos**
-  (`openai`, `@google/genai`, `langchain`…), **nunca por URL ni por host**. Este
-  proyecto llama a los proveedores por `fetch` crudo y no tiene ningún SDK de IA
-  instalado, así que la categoría no captura nada. Confirmado además en los
-  sobres: la llamada al proveedor sale como `auto.http.node_fetch` /
-  `http.client`, sin ningún atributo `gen_ai.*`. Ver `docs/sentry.md` §3.6.2.
-- El modo `static` **no pierde telemetría**: mismas trazas y mismos spans (36 en
-  la home del navegador), solo cambia el sobre en que viajan.
-- **Producción, las dos vías** (verificado en Railway el 2026-09-27): el
-  servidor reporta con el resumen sanitizado, `environment: production`,
-  `release` con el SHA del commit y los stack traces **desminificados** (los
-  source maps suben en el build). Y el cliente reporta: llegan spans de
-  navegador con `auto.pageload.nextjs.app_router_instrumentation` y se ve el
-  `POST /monitoring` en DevTools. Antes de esto, el cliente no reportaba nada
-  porque faltaban los `ARG NEXT_PUBLIC_*` en el `Dockerfile` — ver
+- The filter **actually runs** in the server pipeline: with unfiltered
+  sentinels attached on purpose, the real envelope came out with `transcripcion`
+  and `veredicto_corto` as `"[Filtered]"`.
+- The **client error path works**: a throw in `useEffect` and another in
+  render in Chrome 152 make `error.tsx` show the fallback UI, and the event
+  with the real exception reaches the tunnel toward Sentry (HTTP 200).
+- The IP was kept out on all four channels.
+- **`beforeSendTransaction` does run** now, and it was checked directly:
+  sentinels on a real transaction came out `"[Filtered]"`. Only the callback
+  produces that marker, so it is not enough that the SDK stops warning on the
+  console.
+- **`httpBodies` does not filter the request body**: a real POST was sent with
+  the transcript and the body does not reach Sentry by any path — not
+  `request.data`, not span attributes, not `http` breadcrumbs. See `§3.6.1`.
+- **The `/api/enriquecer` error path is closed, tested on this flow, and not
+  assumed** (`test/enriquecer-privacidad.test.ts`). The double failure is
+  provoked — extraction (Nano) and Tavily — with errors that carry the
+  transcript, and it is checked on the real route flow: the response to the
+  client does not carry the transcript; the payload that goes to
+  `captureException` (message, stack, extra, tags) does not either; and the
+  raw error the route does write to the console — the console-breadcrumb
+  vector, the same one closed for ElevenLabs — is passed through the project's
+  REAL `beforeSend` and the breadcrumb is discarded. Coverage note: the
+  Sentry report for this route is reached only through the outer catch
+  (provider failures are swallowed inside by best-effort design), so the test
+  forces that catch with an `ErrorModelo` whose `message` holds the provider
+  body, which is the real shape of `src/lib/proveedor-nebius.ts`.
+- **`genAI` is inert by construction** (verified, not assumed): it instruments
+  only recognized AI SDKs, by **package + version + exact file** (`openai`,
+  `@google/genai`, `langchain`…), **never by URL or by host**. This project
+  calls the providers with raw `fetch` and has no AI SDK installed, so the
+  category captures nothing. Also confirmed on the envelopes: the provider
+  call goes out as `auto.http.node_fetch` / `http.client`, with no `gen_ai.*`
+  attribute. See `docs/sentry.md` §3.6.2.
+- `static` mode **does not lose telemetry**: the same traces and the same
+  spans (36 on the browser home page); only the envelope they travel in
+  changes.
+- **Production, both paths** (verified on Railway on 2026-09-27): the server
+  reports with the sanitized summary, `environment: production`, `release`
+  with the commit SHA, and **deminified** stack traces (source maps upload
+  during the build). And the client reports: browser spans arrive with
+  `auto.pageload.nextjs.app_router_instrumentation` and `POST /monitoring` is
+  visible in DevTools. Before this, the client reported nothing because the
+  `ARG NEXT_PUBLIC_*` were missing from the `Dockerfile` — see
   `docs/sentry.md` §6.
-- **El cliente de producción ya lleva `release`.** Antes no lo llevaba: el
-  release del navegador se resuelve en build-time y no llegaba nunca al build,
-  mientras que el del servidor se resuelve en runtime y por eso sí aparecía —
-  una asimetría que hacía parecer roto al cliente. Se arregló declarando
-  `ARG RAILWAY_GIT_COMMIT_SHA` en el `Dockerfile`. Verificado en el bundle
-  desplegado. Detalle y moraleja, en `docs/sentry.md` §9.14.
-- **Lo único sin verificar en producción:** que los stack traces del navegador
-  salgan **desminificados**. El cliente ya tiene release y los mapas suben bajo
-  ese release, así que debería resolver, pero comprobarlo requiere un error real
-  lanzado desde código del bundle — no alcanza con uno tirado desde la consola.
-  Ojo al probar: el cliente muestrea trazas al 10%, así que cargar la página una
-  vez probablemente no genere transacción; los errores no se muestrean.
+- **The production client already carries `release`.** Before, it did not:
+  the browser release is resolved at build time and never reached the build,
+  while the server release is resolved at runtime and therefore did appear —
+  an asymmetry that made the client look broken. It was fixed by declaring
+  `ARG RAILWAY_GIT_COMMIT_SHA` in the `Dockerfile`. Verified in the deployed
+  bundle. Detail and the moral, in `docs/sentry.md` §9.14.
+- **The only thing not verified in production:** that the browser stack traces
+  come out **deminified**. The client already has a release and the maps
+  upload under that release, so it should resolve, but checking it requires a
+  real error thrown from bundle code — one thrown from the console is not
+  enough. Careful when testing: the client samples traces at 10%, so loading
+  the page once probably does not generate a transaction; errors are not
+  sampled.
 
-> **⚠️ Trampa latente de `genAI`.** Las integraciones de IA **se registran por
-> defecto** igual: son no-ops solo mientras el paquete del vendor no exista. Si
-> alguien reemplaza el `fetch` crudo de `src/lib/proveedor-nebius.ts` por el
-> **paquete oficial `openai`** (plausible: Nebius es compatible con esa API),
-> `genAI` se activa con sus **defaults permisivos** (`inputs`/`outputs: true`) y
-> el prompt —con la transcripción— empieza a viajar a Sentry **sin que nadie
-> toque la privacidad**, como atributo de span, que **no pasa por `beforeSend`**.
-> Si eso pasa, poner `dataCollection.genAI: { inputs: false, outputs: false }`
-> **antes** del cambio.
+> **⚠️ Latent `genAI` trap.** The AI integrations **register by default**
+> anyway: they are no-ops only while the vendor package does not exist. If
+> someone replaces the raw `fetch` in `src/lib/proveedor-nebius.ts` with the
+> **official `openai` package** (plausible: Nebius is compatible with that
+> API), `genAI` turns on with its **permissive defaults** (`inputs`/`outputs:
+> true`) and the prompt — with the transcript — starts traveling to Sentry
+> **without anyone touching privacy**, as a span attribute, which **does not
+> pass through `beforeSend`**. If that happens, set `dataCollection.genAI:
+> { inputs: false, outputs: false }` **before** the change.
 
-**Siguen sin auditarse** `cookies`, `urlQueryParams` y `httpHeaders.response`:
-sin evidencia de fuga, pero tampoco de lo contrario. Ver `docs/sentry.md` §3.6.3.
+**Still unaudited:** `cookies`, `urlQueryParams`, and `httpHeaders.response`:
+no evidence of a leak, and no evidence of the opposite either. See
+`docs/sentry.md` §3.6.3.
 
-**Requiere tu decisión, con fecha.** `traceLifecycle` es `"static"` a propósito:
-con el default (`"stream"`) el SDK **ignora** `beforeSendTransaction`, y los
-eventos de transacción llevan breadcrumbs, que pueden llevar texto del usuario.
-El precio es que `beforeSendTransaction` **se elimina en la v12 del SDK**: hay
-que migrar a `beforeSendSpan` antes de subir a esa versión. No es urgente, pero
-es una fecha. Ver `docs/sentry.md` §3.8 y §10.
+**Requires your decision, with a date.** `traceLifecycle` is `"static"` on
+purpose: with the default (`"stream"`) the SDK **ignores**
+`beforeSendTransaction`, and transaction events carry breadcrumbs, which can
+carry user text. The price is that `beforeSendTransaction` **is removed in
+SDK v12**: migrate to `beforeSendSpan` before upgrading to that version. It is
+not urgent, but it is a date. See `docs/sentry.md` §3.8 and §10.
 
-**Session Replay está deshabilitado a propósito.** Graba interacciones del DOM
-—incluido texto tipeado y leído—, que es exactamente el tipo de captura que
-este proyecto no quiere. No activarlo sin revisar antes esta sección.
+**Session Replay is disabled on purpose.** It records DOM interactions —
+including text typed and read — which is exactly the kind of capture this
+project does not want. Do not turn it on without reviewing this section first.
 
-Sin `SENTRY_DSN` la app funciona igual: el SDK no envía nada.
-`SENTRY_ENABLED=false` apaga el envío sin tocar código. Las variables están
-documentadas en `.env.example`; la subida de source maps necesita además
-`SENTRY_AUTH_TOKEN` en build-time.
+Without `SENTRY_DSN` the app works the same: the SDK sends nothing.
+`SENTRY_ENABLED=false` turns sending off without touching code. The variables
+are documented in `.env.example`; source-map upload also needs
+`SENTRY_AUTH_TOKEN` at build time.

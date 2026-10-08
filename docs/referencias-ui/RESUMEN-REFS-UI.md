@@ -1,318 +1,318 @@
-# Resumen curado — refs UI · Pitch Coach (web)
+# Curated summary — UI refs · Pitch Coach (web)
 
-Documento de referencia visual para la fase de dirección. Sin código.
-Fuentes: [`README.md`](README.md) de esta carpeta + capturas locales (solo lectura) + productos públicos (web, sin Mobbin/Refero).
-Fecha: 2026-10-02.
+Visual reference document for the direction phase. No code.
+Sources: this folder's [`README.md`](README.md) + local captures (read only) + public products (web, no Mobbin/Refero).
+Date: 2026-10-02.
 
-> **Alcance y fuente de verdad.** Este archivo es un **resumen de pre-dirección**
-> (capturas + refs públicas) para decidir el rediseño; la dirección que propone es
-> una **propuesta**, no una decisión cerrada. La fuente de verdad *de referencias*
-> es esta carpeta; la fuente de verdad *del sistema visual* es
-> [`DESIGN.md`](../../DESIGN.md) en la raíz, y el contexto de producto está en
-> [`PRODUCT.md`](../../PRODUCT.md). Si algo de acá se adopta, se consolida en
+> **Scope and source of truth.** This file is a **pre-direction summary**
+> (captures + public refs) for deciding the redesign; the direction it proposes is
+> a **proposal**, not a closed decision. The source of truth *for references*
+> is this folder; the source of truth *for the visual system* is
+> [`DESIGN.md`](../../DESIGN.md) at the repo root, and the product context is in
+> [`PRODUCT.md`](../../PRODUCT.md). If anything here is adopted, it is consolidated in
 > `DESIGN.md`.
 
 ---
 
-## 1. Visualizador de audio
+## 1. Audio visualizer
 
-Dirección: indicador de mic **en vivo** que reacciona a audio real. **No orbe brillante.** Explorar EQ/waveform como héroe, forma angular que pulsa, o línea tipo señal de mercado.
+Direction: a **live** mic indicator that reacts to real audio. **No glowing orb.** Explore EQ/waveform as the hero, an angular shape that pulses, or a market-signal line.
 
-### Motivos ya presentes en refs locales
+### Motifs already present in local refs
 
-`color.png` (usuario) ya contiene los tres lenguajes de datos que el README propone reutilizar como animación:
+`color.png` (user) already contains the three data languages the README proposes reusing as animation:
 
-| Motivo | En `color.png` | Uso propuesto |
+| Motif | In `color.png` | Proposed use |
 |---|---|---|
-| **Barras / EQ** | Card "Order volume" — barras delgadas + línea base punteada | Héroe de grabación; el más corto de implementar |
-| **Anillo angular** | Card "Registrations" — anillo de progreso grueso (no esfera) | Anti-orbe: geométrico; engrosa/segmenta con amplitud |
-| **Línea de señal** | Card "NPS" — línea + área | Continuidad formal con Wealthsimple |
+| **Bars / EQ** | "Order volume" card — thin bars + dotted baseline | Recording hero; the shortest to implement |
+| **Angular ring** | "Registrations" card — thick progress ring (not a sphere) | Anti-orb: geometric; thickens/segments with amplitude |
+| **Signal line** | "NPS" card — line + area | Formal continuity with Wealthsimple |
 
-Reglas del README (**propuesta**, a mantener si la dirección se aprueba): un solo matiz; animar **altura/opacidad**, nunca glow; reposo = paso 600 de la rampa; continuidad grabación → score (el mismo elemento se asienta y *es* el veredicto).
+README rules (**proposal**, to keep if the direction is approved): a single hue; animate **height/opacity**, never glow; rest = ramp step 600; continuity from recording → score (the same element settles and *is* the verdict).
 
-### Enfoques (2–3 variantes por familia)
+### Approaches (2–3 variants per family)
 
-#### A. EQ / waveform como héroe
+#### A. EQ / waveform as the hero
 
-1. **Barras de frecuencia (multibanda)** — 12–24 barras finas, alineadas al centro o desde baseline; altura = bandas FFT del mic. Reposo: todas al mínimo + `signal-rest`. Pico: `signal-peak`. Encaja con "Order volume" de `color.png`.
-2. **Waveform de dominio temporal** — trazo continuo tipo Voice Memos / Descript: canvas con AnalyserNode, línea de 1–2px, sin relleno glow. Mejor para "estoy grabando un pitch" (sensación de herramienta, no de agente).
-3. **Barras escasas (5–7)** — estilo LiveKit Bar / ElevenLabs BarVisualizer con `state` (listening/thinking). Más "voice agent"; usable si se desatura y se quita el look neon.
+1. **Frequency bars (multiband)** — 12–24 thin bars, center-aligned or rising from a baseline; height = mic FFT bands. Rest: all at minimum + `signal-rest`. Peak: `signal-peak`. Fits "Order volume" in `color.png`.
+2. **Time-domain waveform** — a continuous stroke in the Voice Memos / Descript manner: canvas with AnalyserNode, a 1–2px line, no glow fill. Better for "I am recording a pitch" (the feel of a tool, not of an agent).
+3. **Sparse bars (5–7)** — LiveKit Bar / ElevenLabs BarVisualizer style with `state` (listening/thinking). More "voice agent"; usable if it is desaturated and the neon look is removed.
 
-#### B. Forma angular que pulsa (anti-orbe)
+#### B. Angular shape that pulses (anti-orb)
 
-1. **Anillo segmentado / arco** — el de "Registrations": contorno plano, grosor o apertura modulada por amplitud RMS. Sin sombreado 3D.
-2. **Polígono wireframe** — N vértices (hex/octágono) empujados por bandas de frecuencia; un color, sin fill. Si se llena o brilla → vuelve al cliché del orbe.
-3. **Cruz / chevron / diamante** — forma editorial (marca institucional) que escala 1.0→1.08 y cambia opacidad; más "coach serio" que "AI listening blob".
+1. **Segmented ring / arc** — the "Registrations" one: flat outline, thickness or opening modulated by RMS amplitude. No 3D shading.
+2. **Wireframe polygon** — N vertices (hex/octagon) pushed by frequency bands; one color, no fill. If it fills or glows → it slips back into the orb cliché.
+3. **Cross / chevron / diamond** — an editorial shape (institutional mark) that scales 1.0→1.08 and changes opacity; more "serious coach" than "AI listening blob".
 
-#### C. Línea tipo señal de mercado
+#### C. Market-signal line
 
-1. **Línea de ancho completo** — precedente Wealthsimple (`01-visualizador-audio/wealthsimple-com.png`): trazo blanco/signal que enhebra el viewport y termina en pico agudo. En pitch-coach: el trazo se escribe en vivo con la envolvente del audio.
-2. **Sparkline + área** — como NPS en `color.png`: línea + fill al ~20–40% opacity del mismo matiz (no glow). Ideal en header compacto durante grabación.
-3. **Ticker / tape** — línea que avanza de izquierda a derecha como cotización; silencio = plano, voz = ruido controlado. Muy "inversionista"; riesgo de parecer decorativo si no está ligado al AnalyserNode.
+1. **Full-width line** — Wealthsimple precedent (`01-visualizador-audio/wealthsimple-com.png`): a white/signal stroke that threads the viewport and ends in a sharp peak. In pitch-coach: the stroke is drawn live from the audio envelope.
+2. **Sparkline + area** — like NPS in `color.png`: line + fill at ~20–40% opacity of the same hue (not glow). Ideal in a compact header during recording.
+3. **Ticker / tape** — a line that advances left to right like a quote; silence = flat, voice = controlled noise. Very "investor"; risk of looking decorative if it is not tied to the AnalyserNode.
 
-### Qué encaja con "coach serio / inversionista"
+### What fits "serious coach / investor"
 
-| Prioridad | Enfoque | Por qué |
+| Priority | Approach | Why |
 |---|---|---|
-| **1º** | Barras EQ tipo dashboard (`color.png` Order volume) | Ya es lenguaje de datos del producto; no grita "AI" |
-| **1º empatado** | Línea de señal Wealthsimple / NPS | Precedente fintech editorial; hero o transición a score |
-| **2º** | Anillo segmentado (Registrations) | Anti-orbe claro; buen puente grabación→score circular |
-| Evitar / adaptar | Aura/orb LiveKit·Deepgram·GodUI·ChatGPT Voice | Son el cliché; solo si se despoja a wireframe + un matiz |
-| Evitar | Gradientes neon, corona rainbow, blur glow | Explicitamente fuera de dirección |
+| **1st** | Dashboard-style EQ bars (`color.png` Order volume) | Already the product's data language; it does not shout "AI" |
+| **1st, tied** | Wealthsimple / NPS signal line | Editorial fintech precedent; hero or transition into the score |
+| **2nd** | Segmented ring (Registrations) | Clear anti-orb; a good bridge from recording to a circular score |
+| Avoid / adapt | LiveKit·Deepgram·GodUI·ChatGPT Voice aura/orb | They are the cliché; only if stripped to wireframe + one hue |
+| Avoid | Neon gradients, rainbow corona, glow blur | Explicitly outside the direction |
 
-⚠ **Salvedad sobre el anillo.** El motivo anillo quedó **sin precedente real de
-producto** en el lote local. La captura de `zencastr` que la ficha original
-clasificaba como "anillo" es en realidad un **botón de grabación circular** dentro
-de un mockup de landing, no un anillo de amplitud. El anillo sigue siendo una
-opción válida (viene de `color.png`, card "Registrations"), pero conviene saber que
-**no está respaldado por una captura de producto** — es una extrapolación desde el
-lenguaje de datos del propio `color.png`.
+⚠ **Caveat on the ring.** The ring motif was left **without a real product
+precedent** in the local batch. The `zencastr` capture the original sheet
+classified as a "ring" is actually a **circular record button** inside
+a landing mockup, not an amplitude ring. The ring remains a
+valid option (it comes from `color.png`, the "Registrations" card), but it is worth knowing that
+**it is not backed by a product capture** — it is an extrapolation from the
+data language of `color.png` itself.
 
-⚠ **El contraste de gradiente rainbow.** Las capturas de `audiomotion` (activo,
-sin-audio y radial) usan todas el mismo gradiente rainbow por frecuencia
-(rojo→azul). La ficha original marcó como contra-ejemplo solo la radial; el
-gradiente **aplica a la familia entera** y contradice la dirección de un solo matiz.
+⚠ **The rainbow-gradient contrast.** The `audiomotion` captures (active,
+no-audio, and radial) all use the same rainbow frequency gradient
+(red→blue). The original sheet marked only the radial one as a counterexample; the
+gradient **applies to the whole family** and contradicts the single-hue direction.
 
-### Ejemplos públicos (por categoría)
+### Public examples (by category)
 
 #### Voice assistant (2–4)
-| Producto | URL | Nota |
+| Product | URL | Note |
 |---|---|---|
-| LiveKit Agents UI — visualizers | https://docs.livekit.io/frontends/agents-ui/audio-visualizer/prebuilt/ | Bar / Grid / Radial / Wave / Aura — **tomar Bar y Wave; descartar Aura** |
-| ElevenLabs BarVisualizer | https://ui.elevenlabs.io/docs/components/bar-visualizer | Estados listening/speaking/thinking + MediaStream real |
-| ChatGPT Voice | https://help.openai.com/en/articles/20001274-chatgpt-voice | Orbe = **contra-referencia** (exactamente lo que no queremos) |
-| Orb-UI guide (estados) | https://orb-ui.com/docs/guides/voice-agent-ui | Útil por la máquina de estados idle→listening→thinking→speaking; no por el orbe |
+| LiveKit Agents UI — visualizers | https://docs.livekit.io/frontends/agents-ui/audio-visualizer/prebuilt/ | Bar / Grid / Radial / Wave / Aura — **take Bar and Wave; discard Aura** |
+| ElevenLabs BarVisualizer | https://ui.elevenlabs.io/docs/components/bar-visualizer | listening/speaking/thinking states + a real MediaStream |
+| ChatGPT Voice | https://help.openai.com/en/articles/20001274-chatgpt-voice | Orb = **counter-reference** (exactly what we do not want) |
+| Orb-UI guide (states) | https://orb-ui.com/docs/guides/voice-agent-ui | Useful for the idle→listening→thinking→speaking state machine; not for the orb |
 
 #### Audio waveform visualizer (2–4)
-| Producto | URL | Nota |
+| Product | URL | Note |
 |---|---|---|
-| Deepgram UI (LiveWaveform / BarVisualizer) | https://github.com/deepgram/ui/tree/main/packages/ui | Canvas waveform + barras; colores de marca verdes/cyan → **cambiar matiz** |
-| audio-pulse (React) | https://github.com/kirandhudhat/audio-pulse | Waveform canvas light/dark, configurable |
-| LiveKit Wave visualizer | https://docs.livekit.io/frontends/agents-ui/audio-visualizer/prebuilt/ | Variante Wave horizontal |
-| Voice UI Kit (Figma, free) | https://www.figma.com/community/file/1656021062890107334/voice-ui-kit-waveforms-stt-transcription-free | Estados idle/recording/playback — referencia de kit, no producto |
+| Deepgram UI (LiveWaveform / BarVisualizer) | https://github.com/deepgram/ui/tree/main/packages/ui | Canvas waveform + bars; green/cyan brand colors → **change the hue** |
+| audio-pulse (React) | https://github.com/kirandhudhat/audio-pulse | Light/dark canvas waveform, configurable |
+| LiveKit Wave visualizer | https://docs.livekit.io/frontends/agents-ui/audio-visualizer/prebuilt/ | Horizontal Wave variant |
+| Voice UI Kit (Figma, free) | https://www.figma.com/community/file/1656021062890107334/voice-ui-kit-waveforms-stt-transcription-free | idle/recording/playback states — a kit reference, not a product |
 
 #### Recording app (2–4)
-| Producto | URL | Nota |
+| Product | URL | Note |
 |---|---|---|
-| Descript Voice Recorder | https://www.descript.com/tools/voice-recorder | Recorder + transcript en tiempo real; tono herramienta pro |
-| Otter.ai | https://otter.ai/ai-notetaker · https://otter.ai/mobile | Mic + transcript live; UI sobria |
-| Apple Voice Memos (guía) | https://support.apple.com/guide/voice-memos/play-a-recording-vma2c8c0a040/mac | Waveform de overview + playhead — patrón nativo serio |
-| Granola | https://www.granola.ai/ | AI notepad para meetings; **sin bot, sin orbe** — tono inversionista |
+| Descript Voice Recorder | https://www.descript.com/tools/voice-recorder | Recorder + real-time transcript; pro-tool tone |
+| Otter.ai | https://otter.ai/ai-notetaker · https://otter.ai/mobile | Mic + live transcript; sober UI |
+| Apple Voice Memos (guide) | https://support.apple.com/guide/voice-memos/play-a-recording-vma2c8c0a040/mac | Overview waveform + playhead — a serious native pattern |
+| Granola | https://www.granola.ai/ | AI notepad for meetings; **no bot, no orb** — investor tone |
 
 #### AI listening state (2–4)
-| Producto | URL | Nota |
+| Product | URL | Note |
 |---|---|---|
 | ElevenLabs BarVisualizer states | https://ui.elevenlabs.io/docs/components/bar-visualizer | connecting / listening / thinking / speaking |
-| LiveKit agent state + audio | https://docs.livekit.io/frontends/agents-ui/audio-visualizer/prebuilt/ | Volumen + estado del agente |
-| Vapi / Orb-UI states | https://orb-ui.com/docs/guides/voice-agent-ui | Tabla de qué debe comunicar cada estado |
-| Deepgram Orb (contra) | https://github.com/deepgram/ui/tree/main/packages/ui | Hoop audio-reactive — útil como "qué no hacer" si brilla |
+| LiveKit agent state + audio | https://docs.livekit.io/frontends/agents-ui/audio-visualizer/prebuilt/ | Volume + agent state |
+| Vapi / Orb-UI states | https://orb-ui.com/docs/guides/voice-agent-ui | Table of what each state must communicate |
+| Deepgram Orb (counter) | https://github.com/deepgram/ui/tree/main/packages/ui | Audio-reactive hoop — useful as "what not to do" if it glows |
 
 #### Investor / fintech dashboard dark mode (2–4)
-| Producto | URL | Nota |
+| Product | URL | Note |
 |---|---|---|
-| Mercury (dark mode) | https://support.mercury.com/hc/en-us/articles/37538153196948-Enabling-dark-mode · https://mercury.com/insights | Banco startup; un número héroe, charts calmados |
-| Copilot Money (análisis) | https://blakecrosley.com/guides/design/copilot-money | Dark navy canvas + data brillante — **en refs locales es contra-ejemplo** (lúdico) |
-| Wealthsimple | https://www.wealthsimple.com/ | Editorial serif + línea de señal; claro/cálido más que dark |
-| Linear (tono dark tooling) | https://linear.app/ | Un acento, densidades serias — referencia de disciplina, no de audio |
+| Mercury (dark mode) | https://support.mercury.com/hc/en-us/articles/37538153196948-Enabling-dark-mode · https://mercury.com/insights | Startup bank; one hero number, calm charts |
+| Copilot Money (analysis) | https://blakecrosley.com/guides/design/copilot-money | Dark navy canvas + bright data — **in the local refs it is a counterexample** (playful) |
+| Wealthsimple | https://www.wealthsimple.com/ | Editorial serif + signal line; light/warm more than dark |
+| Linear (dark tooling tone) | https://linear.app/ | One accent, serious densities — a discipline reference, not an audio one |
 
 #### Coaching feedback / score screen (2–4)
-| Producto | URL | Nota |
+| Product | URL | Note |
 |---|---|---|
-| Yoodli — Personalized Feedback | https://yoodli.ai/platform/ai-feedback | Feedback inmediato post-práctica, rúbricas org |
-| Yoodli Roleplays | https://yoodli.ai/platform/ai-roleplays | Pitch/roleplay + goals tipados |
-| shadcn AI Interview Coach block | https://www.shadcn.io/blocks/ai-interview-coach | Score /10 + strengths/improvements + rubric (patrón UI, no marca) |
-| Refs locales Lucid / Tana | `04-jerarquia-resultado/lucidmotors-com.png`, `03-tipografia/tana-inc.png` | Métricas en fila (Lucid); score+veredicto inmediato (Tana) |
+| Yoodli — Personalized Feedback | https://yoodli.ai/platform/ai-feedback | Immediate post-practice feedback, org rubrics |
+| Yoodli Roleplays | https://yoodli.ai/platform/ai-roleplays | Pitch/roleplay + typed goals |
+| shadcn AI Interview Coach block | https://www.shadcn.io/blocks/ai-interview-coach | Score /10 + strengths/improvements + rubric (a UI pattern, not a brand) |
+| Local Lucid / Tana refs | `04-jerarquia-resultado/lucidmotors-com.png`, `03-tipografia/tana-inc.png` | Metrics in a row (Lucid); immediate score+verdict (Tana) |
 
-### Qué rindió el barrido — hueco angostado, **no** cerrado
+### What the sweep yielded — the gap narrowed, **not** closed
 
-Se capturaron 22 pantallas. **11 eran landings de producto sin visualizador vivo**
-y se descartaron (riverside ×2, descript ×2, otter, fireflies, tldv ×2, podcastle,
-adobe podcast, howlerjs inicio). Dos de transcripción se movieron a
+22 screens were captured. **11 were product landings with no live visualizer**
+and were discarded (riverside ×2, descript ×2, otter, fireflies, tldv ×2, podcastle,
+adobe podcast, howlerjs inicio). Two transcription screens were moved to
 `04-jerarquia-resultado/`.
 
-**Razón de fondo, que es el aprendizaje real: las landings públicas de productos de
-grabación no exponen su visualizador.** El material utilizable vino de **demos de
-librería** (`wavesurfer`, `peaksjs`, `audiomotion`) y de un mockup (`zencastr`),
-no de UI de producto en vivo.
+**The underlying reason, which is the real learning: public landings of
+recording products do not expose their visualizer.** The usable material came from **library
+demos** (`wavesurfer`, `peaksjs`, `audiomotion`) and from a mockup (`zencastr`),
+not from live product UI.
 
-Lo que esto implica: para capturas de producto real hace falta **sesión
-autenticada** o **capturas nativas**. Las landings de inspo/awwwards tampoco
-cubren apps de grabación. El hueco está angostado; sigue abierto.
+What this implies: real product captures require an **authenticated
+session** or **native captures**. inspo/awwwards landings do not
+cover recording apps either. The gap is narrowed; it is still open.
 
-Ver `01-visualizador-audio/FICHAS.md` para el detalle verificado por captura.
+See `01-visualizador-audio/FICHAS.md` for the detail verified per capture.
 
 ---
 
-## 2. Paleta / color
+## 2. Palette / color
 
-### Evaluación pedida: burdeos (wine) vs navy
+### Requested evaluation: bordeaux (wine) vs. navy
 
-Números completos y tokens en `README.md` (sección "Paleta propuesta"). Acá solo
-el resultado:
+Full numbers and tokens are in `README.md` (section "Proposed palette"). Here, only
+the result:
 
-- **Burdeos `#6E1D2E`** — 1.75:1 en oscuro (falla) / 10.46:1 en claro. Sirve en
-  claro y como *campo*, nunca como acento chico sobre fondo oscuro.
-- **Navy `#1B2A4A`** — 1.38:1 en oscuro (falla) / 13.31:1 en claro. Navy sobre
+- **Bordeaux `#6E1D2E`** — 1.75:1 on dark (fails) / 10.46:1 on light. It works on
+  light and as a *field*, never as a small accent on a dark background.
+- **Navy `#1B2A4A`** — 1.38:1 on dark (fails) / 13.31:1 on light. Navy on
   navy = 1.00:1.
-- **Aclarar cualquiera de los dos para dark los empuja al pastel** (el vino se
-  vuelve rosa, o sea deja de ser vino). Ese es el mecanismo del cliché "IA glow".
+- **Lightening either one for dark pushes it into pastel** (the wine
+  becomes pink, which means it stops being wine). That is the mechanism of the "AI glow" cliché.
 
-**Conclusiones honestas (README + evaluación):**
+**Honest conclusions (README + evaluation):**
 
-1. **Ni wine ni navy funcionan como acento pequeño sobre fondo oscuro.** Es luminancia, no gusto.
-2. **Harvard usa el vino como *campo* (fondo de bloque), no como acento** — bone sobre `#6E1D2E` = 10.46:1. Esa es la única vía seria del burdeos en dark.
-3. Aclarar wine/navy para dark los empuja al pastel (lavanda Railway `#b4a4d5` es el mismo mecanismo). El cliché "IA glow" es en parte un accidente de contraste.
-4. **Entre wine y navy (si hubiera que elegir sin olivo):**
-   - **Claro:** ambos sirven; wine = gravedad institucional (Harvard); navy = dato/fintech (`color.png` COGS).
-   - **Oscuro como acento:** ambos pierden. Wine gana solo si se usa como **campo de score** (panel filled). Navy gana solo como **neutro estructural** (no como signal).
-   - **Como signal vivo del mic:** ninguno sobrevive el aclarado sin perder identidad.
+1. **Neither wine nor navy works as a small accent on a dark background.** It is luminance, not taste.
+2. **Harvard uses the wine as a *field* (a block background), not as an accent** — bone on `#6E1D2E` = 10.46:1. That is the only serious path for bordeaux on dark.
+3. Lightening wine/navy for dark pushes them into pastel (Railway lavender `#b4a4d5` is the same mechanism). The "AI glow" cliché is partly a contrast accident.
+4. **Between wine and navy (if one had to choose without olive):**
+   - **Light:** both work; wine = institutional gravity (Harvard); navy = data/fintech (`color.png` COGS).
+   - **Dark as an accent:** both lose. Wine wins only if used as a **score field** (filled panel). Navy wins only as a **structural neutral** (not as signal).
+   - **As the mic's live signal:** neither survives lightening without losing its identity.
 
-### Olivo
+### Olive
 
-Base extraída de `color.png`: **`#285828`**. Rampa de 11 pasos; pivote **`#457F42`
-(600)** pasa umbral gráfico en claro (4.53:1) y en oscuro (3.99:1). Aclarar olivo →
-salvia (sigue siendo olivo); aclarar vino → rosa (deja de ser vino). **La tabla de
-tokens, la rampa completa y las reglas de animación están en `README.md`** — acá
-no se duplican.
+Base extracted from `color.png`: **`#285828`**. An 11-step ramp; the pivot **`#457F42`
+(600)** clears the graphic threshold on light (4.53:1) and on dark (3.99:1). Lightening olive →
+sage (it is still olive); lightening wine → pink (it stops being wine). **The
+token table, the full ramp, and the animation rules are in `README.md`** — they are
+not duplicated here.
 
-### Recomendación de color
+### Color recommendation
 
-| Rol | Elección | Motivo |
+| Role | Choice | Reason |
 |---|---|---|
-| **Portador único / signal (mic + charts)** | **Olivo rampa** | Identidad estable light+dark; ya en `color.png`; anti-cliché |
-| Burdeos | Opcional solo como **campo** de un bloque score (modo Harvard), no como acento de UI | Cumple el pedido "evaluar wine" sin mentir sobre contraste |
-| Navy | Secundario de datos *solo si* hacen falta dos series; preferir dos pasos de olivo; si no, slate `#46586B` / `#7E8FA3` del README | Evita competir con el signal |
-| Evitar | Purple/indigo glow, neon green-cyan, amber/gold | Dirección explícita |
+| **Single carrier / signal (mic + charts)** | **Olive ramp** | Stable identity in light+dark; already in `color.png`; anti-cliché |
+| Bordeaux | Optional only as the **field** of a score block (Harvard mode), not as a UI accent | Meets the request to "evaluate wine" without misstating the contrast |
+| Navy | Data secondary *only if* two series are needed; prefer two olive steps; otherwise the README slate `#46586B` / `#7E8FA3` | Avoids competing with the signal |
+| Avoid | Purple/indigo glow, neon green-cyan, amber/gold | Explicit direction |
 
-**Veredicto wine vs navy vs olivo:** para un producto light+dark con indicador vivo, **olivo gana**. Wine y navy fallan la prueba de acento en dark; wine solo como campo institucional; navy solo como neutro. No rechazar el pedido de evaluarlos — se evaluaron y pierden por física WCAG, no por moda.
+**Verdict, wine vs. navy vs. olive:** for a light+dark product with a live indicator, **olive wins**. Wine and navy fail the dark-accent test; wine only as an institutional field; navy only as a neutral. The request to evaluate them stands — they were evaluated, and they lose on WCAG physics, not on fashion.
 
 ---
 
-## 3. Tipografía en contexto
+## 3. Typography in context
 
-Dirección: serif con carácter en títulos/score (Fraunces / Newsreader-like) + sans limpia en cuerpo (IBM Plex Sans-like). **Evitar Inter / Geist.**
+Direction: a serif with character in titles/score (Fraunces / Newsreader-like) + a clean sans in body (IBM Plex Sans-like). **Avoid Inter / Geist.**
 
-### Refs locales → qué tomar
+### Local refs → what to take
 
-| Captura | Tipografía | Uso en pitch-coach |
+| Capture | Typography | Use in pitch-coach |
 |---|---|---|
-| `03-tipografia/railway-com-tipografia.png` | IBM Plex **Serif** display con tracking negativo fuerte; sans de cuerpo con interlínea ~1.63 | Modelo técnico más cercano a "Plex Sans + serif carácter". **Descartar violeta del CTA** |
-| `03-tipografia/tana-inc.png` | Source Serif 4 enorme, negro, un solo color en viewport | **Score + veredicto** al pliegue |
-| `03-tipografia/moshimoshimusic-com.png` | Libre Baskerville chico como **etiqueta** | Labels de secciones colapsables (rúbrica, fillers…) |
-| `03-tipografia/furoweb-eu.png` | Instrument Serif en oscuro, cálido | Alternativa serif display |
-| `03-tipografia/danielsun-space.png` | LT Superior Serif oscuro | Techo de calidez editorial |
-| Wealthsimple (web + captura) | Tiempos-like serif + sans geométrica | Pareja "inversionista editorial" |
+| `03-tipografia/railway-com-tipografia.png` | IBM Plex **Serif** display with strong negative tracking; body sans with line-height ~1.63 | The closest technical model to "Plex Sans + a serif with character". **Discard the CTA violet** |
+| `03-tipografia/tana-inc.png` | Huge Source Serif 4, black, a single color in the viewport | **Score + verdict** at the fold |
+| `03-tipografia/moshimoshimusic-com.png` | Small Libre Baskerville as a **label** | Labels for collapsible sections (rubric, fillers…) |
+| `03-tipografia/furoweb-eu.png` | Instrument Serif on dark, warm | Display-serif alternative |
+| `03-tipografia/danielsun-space.png` | Dark LT Superior Serif | Ceiling of editorial warmth |
+| Wealthsimple (web + capture) | Tiempos-like serif + geometric sans | The "editorial investor" pair |
 
-### Pares recomendados (web-safe / Google Fonts adyacentes)
+### Recommended pairs (web-safe / adjacent Google Fonts)
 
-| Rol | Primaria | Alternativas | Notas |
+| Role | Primary | Alternatives | Notes |
 |---|---|---|---|
-| Display / score / veredicto | **Fraunces** o **Newsreader** | Source Serif 4, Instrument Serif, Libre Baskerville (solo labels) | Optical sizing si disponible; tracking −1% a −2% en >40px |
-| Body / UI / transcript | **IBM Plex Sans** | IBM Plex Sans + Plex Mono para badges/rúbrica tags | Tabular nums (`tnum`) en scores y % |
-| Evitar | Inter, Geist, system-ui genérico como voz de marca | — | Demasiado "AI SaaS default" |
+| Display / score / verdict | **Fraunces** or **Newsreader** | Source Serif 4, Instrument Serif, Libre Baskerville (labels only) | Optical sizing if available; tracking −1% to −2% above 40px |
+| Body / UI / transcript | **IBM Plex Sans** | IBM Plex Sans + Plex Mono for badges/rubric tags | Tabular nums (`tnum`) on scores and % |
+| Avoid | Inter, Geist, generic system-ui as the brand voice | — | Too much "default AI SaaS" |
 
-### En contexto de pantallas
+### In the context of screens
 
-- **Grabación:** sans para timer/controles; el visualizador carga la personalidad (no hace falta serif en el mic).
-- **Resultado:** serif enorme para número + etiqueta de veredicto ("Fuerte" / "A mejorar"); sans para rúbrica, fillers, transcript, Tavily.
-- **Valencia del score:** por peso/tamaño tipográfico + label explícito — **no** bañar de verde/rojo el número (el olivo es identidad, no "aprobado").
+- **Recording:** sans for the timer/controls; the visualizer carries the personality (a serif on the mic is unnecessary).
+- **Result:** a huge serif for the number + the verdict label ("Strong" / "Needs work"); sans for the rubric, fillers, transcript, and Tavily.
+- **Score valence:** through typographic weight/size + an explicit label — **do not** wash the number in green/red (olive is identity, not "approved").
 
 ---
 
-## 4. Jerarquía — pantalla de resultado
+## 4. Hierarchy — result screen
 
-Dirección: **score + veredicto grandes arriba**; rúbrica / fillers / transcript / Tavily en **secciones colapsables** abajo.
+Direction: **large score + verdict on top**; rubric / fillers / transcript / Tavily in **collapsible sections** below.
 
-### Modelo de viewport (primer pliegue ~1280×800)
+### Viewport model (first fold ~1280×800)
 
 ```
 ┌─────────────────────────────────────────────┐
-│  [serif]  7.4          Fuerte               │  ← score + veredicto (inmediatos)
-│  [opcional] el mismo motivo vivo → asentado │  ← barras/anillo/línea = score viz
-│  ─ ─ ─ métricas Lucid: Clarity · Pace · … ─ │  ← versalita + valor + regla fina
+│  [serif]  7.4          Strong               │  ← score + verdict (immediate)
+│  [optional] same live motif → settled       │  ← bars/ring/line = score viz
+│  ─ ─ Lucid metrics: Clarity · Pace · … ─ ─  │  ← small caps + value + thin rule
 └─────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────┐
-│ ▸ Rúbrica          (acordeón, fila layout)  │
-│ ▸ Muletillas / fillers                      │
-│ ▸ Transcripción                             │
-│ ▸ Fuentes Tavily                            │
+│ ▸ Rubric           (accordion, layout row)  │
+│ ▸ Filler words                              │
+│ ▸ Transcript                                │
+│ ▸ Tavily sources                            │
 └─────────────────────────────────────────────┘
 ```
 
-### Qué tomar de cada ref
+### What to take from each ref
 
-| Ref | Patrón |
+| Ref | Pattern |
 |---|---|
-| **Tana** (`03-tipografia/tana-inc.png`) | Escala monumental (un número/frase enorme) y un solo portador de color en todo el viewport. En nuestro producto, la frase monumental *es* el **score + veredicto** al pliegue (§3); el resto queda subordinado. |
-| **Lucid** (`04-jerarquia-resultado/lucidmotors-com.png`) | Franja de métricas: versalita chica + valor grande + divisor vertical |
-| **layout.png** (usuario) | Fila de acordeón: icono sobre `signal-tint` + título + badge mono + descripción; estado abierto = mismo matiz AA |
-| **Basement** (`04-…/basement-studio.png`) | Techo de oscuridad art-directed — **no** copiar registro "estudio creativo" |
-| **Copilot Money** (local + web) | **Contra-referencia:** dark fintech + bento + color decorativo → lee lúdico |
+| **Tana** (`03-tipografia/tana-inc.png`) | Monumental scale (one huge number/phrase) and a single color carrier across the whole viewport. In our product, the monumental phrase *is* the **score + verdict** at the fold (§3); everything else stays subordinate. |
+| **Lucid** (`04-jerarquia-resultado/lucidmotors-com.png`) | Metrics strip: small caps + large value + vertical divider |
+| **layout.png** (user) | Accordion row: icon on `signal-tint` + title + mono badge + description; open state = the same hue, AA |
+| **Basement** (`04-…/basement-studio.png`) | Ceiling of art-directed darkness — **do not** copy the "creative studio" register |
+| **Copilot Money** (local + web) | **Counter-reference:** dark fintech + bento + decorative color → reads playful |
 
-### Reglas de jerarquía
+### Hierarchy rules
 
-1. Score + veredicto caben **sin scroll** en desktop.
-2. Secciones inferiores: chevron + label serif/sans chico (moshimoshimusic); una sola abierta a la vez o multi pero con ritmo ≥64–96px.
-3. Hallazgos (`attention`) solo dentro de fillers/rúbrica — nunca tiñen el score.
-4. Continuidad: si el mic era barras/anillo/línea, el score **reutiliza** ese motivo congelado.
+1. Score + verdict fit **without scrolling** on desktop.
+2. Lower sections: chevron + a small serif/sans label (moshimoshimusic); one open at a time, or several, but with rhythm ≥64–96px.
+3. Findings (`attention`) only inside fillers/rubric — they never tint the score.
+4. Continuity: if the mic was bars/ring/line, the score **reuses** that motif, frozen.
 
 ---
 
-## Best-fit — "coach serio, tipo inversionista, no genérico de IA"
+## Best fit — "serious coach, investor-like, not generic AI"
 
-### Núcleo a seguir (en orden)
+### Core to follow (in order)
 
-1. **`color.png` + rampa olivo del README** — identidad, motivos de viz, anti-pastel.
-2. **`layout.png`** — filas de rúbrica / acordeón.
-3. **Wealthsimple (línea de señal + serif editorial)** — hero de grabación o transición.
-4. **Tana** — score+veredicto al pliegue.
+1. **`color.png` + the README olive ramp** — identity, viz motifs, anti-pastel.
+2. **`layout.png`** — rubric rows / accordion.
+3. **Wealthsimple (signal line + editorial serif)** — recording hero or transition.
+4. **Tana** — score+verdict at the fold.
 5. **Lucid metrics strip** — sub-scores.
-6. **Railway tipografía (sin violeta)** — Plex serif/sans pairing.
-7. **Harvard** — solo si se quiere wine como *campo* de score, no como accent UI.
-8. **Granola / Descript / Otter / Yoodli** — tono producto (herramienta de trabajo), no landing awwwards.
+6. **Railway typography (without the violet)** — Plex serif/sans pairing.
+7. **Harvard** — only if wine is wanted as a score *field*, not as a UI accent.
+8. **Granola / Descript / Otter / Yoodli** — product tone (a working tool), not an awwwards landing.
 
-### Contra-referencias (estudiar para no copiar)
+### Counter-references (study so they are not copied)
 
-- ChatGPT Voice / GodUI Voice Orb / LiveKit Aura / Deepgram Orb glow  
-- Copilot Money (local) — fintech dark que se vuelve juguete  
-- Railway CTA violeta / cualquier indigo-lavender glow  
-- Basement Studio — demasiado "creative agency"
+- ChatGPT Voice / GodUI Voice Orb / LiveKit Aura / Deepgram Orb glow
+- Copilot Money (local) — dark fintech that turns into a toy
+- Railway violet CTA / any indigo-lavender glow
+- Basement Studio — too much "creative agency"
 
-### Decisión corta de dirección (propuesta)
+### Short direction decision (proposal)
 
-| Eje | Decisión |
+| Axis | Decision |
 |---|---|
-| Color | **Olivo** como signal único; wine/navy evaluados y descartados como acento dark |
-| Mic hero | **Barras EQ dashboard** o **línea de señal**; anillo como 2ª opción |
-| Tipo | **Newsreader/Fraunces + IBM Plex Sans** |
-| Resultado | Score serif arriba → acordeones abajo (`layout.png`) |
-| Modo | Light + dark con la misma rampa; reposo `#457F42` en ambos |
+| Color | **Olive** as the single signal; wine/navy evaluated and discarded as a dark accent |
+| Mic hero | **Dashboard EQ bars** or **signal line**; ring as the 2nd option |
+| Type | **Newsreader/Fraunces + IBM Plex Sans** |
+| Result | Serif score on top → accordions below (`layout.png`) |
+| Mode | Light + dark on the same ramp; rest `#457F42` in both |
 
 ---
 
-## Índice de archivos locales
+## Index of local files
 
 ```
 docs/referencias-ui/
-  README.md               ← doc canónico: criterios, paleta, animación, descartes
-  RESUMEN-REFS-UI.md      ← este archivo: resumen por categoría + refs públicas
-  color.png · layout.png  ← set principal del usuario
-  01-visualizador-audio/  ← 12 capturas + FICHAS.md (fichas verificadas)
-  02-color/               ← copilot-money (contra-ref), harvard-edu
+  README.md               ← canonical doc: criteria, palette, animation, discards
+  RESUMEN-REFS-UI.md      ← this file: summary by category + public refs
+  color.png · layout.png  ← the user's main set
+  01-visualizador-audio/  ← 12 captures + FICHAS.md (verified sheets)
+  02-color/               ← copilot-money (counter-ref), harvard-edu
   03-tipografia/          ← railway-com-tipografia, tana-inc, moshimoshimusic-com,
                              furoweb-eu, danielsun-space
   04-jerarquia-resultado/ ← lucidmotors-com, basement-studio,
                              otter-1280-transcribiendo, fireflies-1280-transcribiendo
 ```
 
-Cada imagen vive en **una sola** carpeta; qué aporta cada una está en la tabla del
-`README.md`.
+Each image lives in **one** folder; what each one contributes is in the
+`README.md` table.
 
-**Copia canónica de las capturas:** `docs/referencias-ui/`, versionada en git
-dentro del repo. Es la única fuente de verdad **de referencias**. Si existe una
-copia fuera del repo (p. ej. `~/Proyectos/pitch-coach-refs/` o `/workspace/`),
-está desactualizada y debe descartarse.
+**Canonical copy of the captures:** `docs/referencias-ui/`, versioned in git
+inside the repo. It is the only source of truth **for references**. If a
+copy exists outside the repo (e.g. `~/Proyectos/pitch-coach-refs/` or `/workspace/`),
+it is out of date and should be discarded.
 
-**Fuente de verdad del diseño:** el sistema visual formal vive en
-[`DESIGN.md`](../../DESIGN.md). Esta carpeta es insumo de la dirección, no su
-contrato; si un valor se adopta, se consolida en `DESIGN.md`.
+**Design source of truth:** the formal visual system lives in
+[`DESIGN.md`](../../DESIGN.md). This folder is input to the direction, not its
+contract; if a value is adopted, it is consolidated in `DESIGN.md`.

@@ -1,16 +1,16 @@
 # Pitch Coach — Additional info (Devpost)
 
-Ficha para copiar y pegar en **Additional info** del [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/). Esa sección la leen jueces y organizadores; no sale en la página pública del proyecto.
+Sheet to copy and paste into **Additional info** on the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/). Judges and organizers read that section; it does not appear on the project's public page.
 
-Cada bloque bajo **Pegar** es el texto completo del campo, en inglés. Cópialo tal cual. Las notas en español no se pegan.
+Each block under **Paste** is the complete text of the field, in English. Copy it verbatim. The notes around those blocks are not pasted.
 
-Premios bono: Tavily (3.000 USD), ciudad (500 USD) y feedback (100 USD) son premios distintos. Las [reglas](https://nebiusglobalaihackathon.devpost.com/rules) permiten **un** premio bono por proyecto, además de un premio general o uno de track. Completa Tavily y el feedback: el feedback es requisito de todo envío, y Tavily es el bono al que apunta este proyecto. No hubo Builders & Brews en Guatemala, así que el premio de ciudad no aplica.
+Bonus prizes: Tavily (USD 3,000), city (USD 500), and feedback (USD 100) are separate prizes. The [rules](https://nebiusglobalaihackathon.devpost.com/rules) allow **one** bonus prize per project, in addition to an overall prize or a track prize. Fill in Tavily and the feedback: feedback is required for every submission, and Tavily is the bonus this project is aiming at. There was no Builders & Brews in Guatemala, so the city prize does not apply.
 
 ---
 
 ## 1. Submitter type
 
-**Pegar**
+**Paste**
 
 ```
 Individual
@@ -18,7 +18,7 @@ Individual
 
 ## 2. Organization name
 
-**Pegar**
+**Paste**
 
 ```
 N/A
@@ -26,9 +26,9 @@ N/A
 
 ## 3. Submitter country of residence
 
-Aparece en la galería del proyecto.
+It appears in the project gallery.
 
-**Pegar**
+**Paste**
 
 ```
 Guatemala
@@ -36,7 +36,7 @@ Guatemala
 
 ## 4. Canadian province
 
-**Pegar**
+**Paste**
 
 ```
 N/A
@@ -44,7 +44,7 @@ N/A
 
 ## 5. Track
 
-**Pegar**
+**Paste**
 
 ```
 Best Apps and Agents Track
@@ -52,9 +52,9 @@ Best Apps and Agents Track
 
 ## 6. New or existing prior to August 26, 2026
 
-**Selección:** Existing (el proyecto ya existía antes del 26 de agosto de 2026).
+**Selection:** Existing (the project already existed before 26 August 2026).
 
-**Pegar** en el campo que pide cómo lo actualizaste con herramientas de Nebius:
+**Paste** into the field that asks how you updated it with Nebius tools:
 
 ```
 Pitch Coach already existed before the submission period. The first commit is 18 August 2026, and through the pre-Nebius baseline the pitch was analyzed only with the Gemini API: one prompt string, a model-assigned score, and rubric point names invented by the model.
@@ -68,9 +68,9 @@ Tavily is part of that update and runs in production, not as a mock. When a rubr
 
 ## 7. Public code repository
 
-El remoto es `https://github.com/focampok/pitch-coach`. El repositorio ya es **público**, con licencia MIT en `LICENSE` y nombrada en el README. Las reglas piden que esa licencia se vea en la página del repo (About). Pega esta URL.
+The remote is `https://github.com/focampok/pitch-coach`. The repository is already **public**, with an MIT license in `LICENSE` and named in the README. The rules require that license to be visible on the repo page (About). Paste this URL.
 
-**Pegar**
+**Paste**
 
 ```
 https://github.com/focampok/pitch-coach
@@ -78,9 +78,9 @@ https://github.com/focampok/pitch-coach
 
 ## 8. Working demo
 
-Es la demo de producción del README. No pegues el hostname antiguo de Railway (`*.up.railway.app`): en el README quedó comentado.
+This is the production demo from the README. Do not paste the old Railway hostname (`*.up.railway.app`): it is left commented out in the README.
 
-**Pegar**
+**Paste**
 
 ```
 https://pitch-coach.focampo.com
@@ -88,7 +88,7 @@ https://pitch-coach.focampo.com
 
 ## 9. Which models, and why that size
 
-**Pegar**
+**Paste**
 
 ```
 Three NVIDIA Nemotron 3 models on Nebius Token Factory, one size per job.
@@ -104,7 +104,7 @@ No other NVIDIA model is on the request path. Gemini remains a manual contingenc
 
 ## 10. Output quality (1–10)
 
-**Pegar**
+**Paste**
 
 ```
 8
@@ -116,7 +116,7 @@ What fell short: a model-written score was not stable enough to show a founder. 
 
 ## 11. Fine-tune, prompt engineering, or out of the box
 
-**Pegar**
+**Paste**
 
 ```
 Prompt engineering on the hosted models. No fine-tune and no local weights.
@@ -130,7 +130,7 @@ The prompts were rewritten per language (Spanish and English) rather than transl
 
 ## 12. Comparison with other models
 
-**Pegar**
+**Paste**
 
 ```
 The comparison is the same product before and after the migration, not a separate benchmark suite.
@@ -144,7 +144,7 @@ Where Gemini was easier: its schema dialect was already familiar, and a Flash ca
 
 ## 13. Nebius platform capabilities
 
-**Pegar**
+**Paste**
 
 ```
 The valuable capability was Token Factory's OpenAI-compatible inference API, not a GPU cluster I operated.
@@ -165,7 +165,7 @@ I did not use Nebius to train, to batch jobs, or to autoscale a model I host. Th
 
 ## 14. Recommend Nemotron on Nebius (1–10)
 
-**Pegar**
+**Paste**
 
 ```
 8
@@ -177,7 +177,7 @@ I would not score it a 10 yet. An unwrapped json_schema fails with 422, and the 
 
 ## 15. Experience versus previous environments (1–10)
 
-**Pegar**
+**Paste**
 
 ```
 8
@@ -191,7 +191,7 @@ The rough edges were model-specific, not account or quota setup. The schema enve
 
 ## 16. What would have made Nemotron on Nebius more effective
 
-**Pegar**
+**Paste**
 
 ```
 Seven changes, in the order they cost me time:
@@ -213,7 +213,7 @@ Seven changes, in the order they cost me time:
 
 ## 17. What you hope to see from the Nemotron team next
 
-**Pegar**
+**Paste**
 
 ```
 A size guide written for people who call Token Factory, not for people who pretrain. For Nano, Super, and Ultra, publish typical latency, how reliable strict json_schema is, and what to expect in Spanish and English structured output. This app's split (Super for the critique, Ultra for an optional trace, Nano for short checks) should be a documented pattern, with numbers, rather than something each team rediscovers.
@@ -227,28 +227,28 @@ Thinking as a documented request field. On, off, and "how many reasoning tokens 
 
 ## 18. Did you use Tavily?
 
-**Selección:** Yes.
+**Selection:** Yes.
 
-El desplegable no pide un párrafo. El argumento para el bono queda en las secciones 6, 9 y 13. Para calificar, el proyecto tiene que llamar a la API de Tavily en runtime. Aquí eso es `POST /api/enriquecer` → `https://api.tavily.com/search` y `https://api.tavily.com/extract`, con la clave solo en el servidor. La transcripción no se envía. Como máximo dos puntos por práctica. Si la validación no encuentra una cifra citada y pertinente, la sugerencia no se muestra.
+The dropdown does not ask for a paragraph. The case for the bonus is in sections 6, 9, and 13. To qualify, the project has to call the Tavily API at runtime. Here that is `POST /api/enriquecer` → `https://api.tavily.com/search` and `https://api.tavily.com/extract`, with the key only on the server. The transcript is not sent. At most two points per practice. If validation does not find a cited, relevant figure, the suggestion is not shown.
 
 ## 19. Builders & Brews city
 
-No selecciones ninguna ciudad. No hubo evento en Guatemala, y las reglas limitan el premio de ciudad a quien asistió a una de las veinte sedes.
+Do not select any city. There was no event in Guatemala, and the rules limit the city prize to people who attended one of the twenty venues.
 
-## 20. Declaraciones legales
+## 20. Legal declarations
 
-Márcalas tú en el formulario solo si las dos son ciertas:
+Check them yourself on the form only if both are true:
 
-- Tú (y, si aplica, todo el equipo) tienes al menos la mayoría de edad donde vives.
-- Tú (y, si aplica, todo el equipo) no son empleados, representantes ni agentes de las Promotion Entities de este hackathon (patrocinador, administrador o afiliados).
+- You (and, if applicable, the whole team) are at least the age of majority where you live.
+- You (and, if applicable, the whole team) are not employees, representatives, or agents of this hackathon's Promotion Entities (sponsor, administrator, or affiliates).
 
-Guatemala no está en la lista de territorios excluidos de las reglas (Brasil, Quebec, Rusia, Crimea, Cuba, Irán, Corea del Norte y demás sanciones integrales de OFAC).
+Guatemala is not on the rules' list of excluded territories (Brazil, Quebec, Russia, Crimea, Cuba, Iran, North Korea, and other comprehensive OFAC sanctions).
 
-## 21. Antes de enviar
+## 21. Before submitting
 
-- El repositorio `https://github.com/focampok/pitch-coach` ya es público. La licencia MIT está en `LICENSE` y en el README; confírmala en el About de GitHub antes de enviar.
-- El README (sección «Cómo corre») ya nombra Nebius Token Factory, los tres ids de NVIDIA Nemotron (Super, Ultra y Nano), que el servidor calcula el score, y Tavily (search y extract, sin enviar la transcripción, como máximo dos puntos). No hay otro servicio de Nebius en el proyecto: la inferencia es Token Factory. Con eso un juez ve el uso de Nemotron sin abrir el código.
+- The repository `https://github.com/focampok/pitch-coach` is already public. The MIT license is in `LICENSE` and in the README; confirm it in the GitHub About before submitting.
+- The README (section «Cómo corre») already names Nebius Token Factory, the three NVIDIA Nemotron ids (Super, Ultra, and Nano), that the server computes the score, and Tavily (search and extract, without sending the transcript, at most two points). There is no other Nebius service in the project: inference is Token Factory. With that, a judge sees the Nemotron usage without opening the code.
 - Demo: `https://pitch-coach.focampo.com`.
-- Video público en YouTube, de menos de 3 minutos, con el proyecto funcionando y con Token Factory y Nemotron visibles en el relato. No forma parte de esta ficha.
-- No subas archivo en "Upload a File". El repo y la demo cubren el envío.
-- La app en Railway llama a Token Factory en runtime. Eso cumple el requisito de "correr en Token Factory". No hace falta decir que el hosting es Nebius.
+- A public YouTube video, under 3 minutes, with the project working and with Token Factory and Nemotron visible in the narration. It is not part of this sheet.
+- Do not upload a file in "Upload a File". The repo and the demo cover the submission.
+- The app on Railway calls Token Factory at runtime. That meets the requirement to "run on Token Factory". There is no need to say the hosting is Nebius.
