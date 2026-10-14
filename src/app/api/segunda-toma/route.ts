@@ -7,6 +7,7 @@ import {
 } from "@/lib/limites";
 import { diccionario } from "@/lib/diccionarios";
 import { nombreProveedorActivo } from "@/lib/modelo";
+import { iniciarEvaluacion, rechazarSinCupo, responderEvaluacion } from "@/lib/cupo-evaluacion";
 import { limitar } from "@/lib/rate-limit";
 import { obtenerPuntoPorId } from "@/lib/rubricas";
 import { reportarFallo } from "@/lib/sentry-reporte";
@@ -15,6 +16,7 @@ import { MAX_CIFRA_DICHA_CARACTERES } from "@/lib/cifras-dichas";
 import type { TipoPitch } from "@/types/pitch";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const TIPOS = new Set<string>(["capital", "educacion", "innovacion", "tecnologia"]);
 
@@ -25,8 +27,13 @@ const TIPOS = new Set<string>(["capital", "educacion", "innovacion", "tecnologia
  * en lo dicho. La cifra no decide el punto; solo se informa.
  */
 export async function POST(request: Request): Promise<NextResponse> {
+  const inicio = iniciarEvaluacion(request);
+  if (!inicio.continuar) return inicio.respuesta as NextResponse;
+  const salir = (response: Response, costo = 0) =>
+    responderEvaluacion(request, inicio.ctx, response, costo) as NextResponse;
+
   const bloqueo = limitar(request, "segunda-toma");
-  if (bloqueo) return bloqueo as NextResponse;
+  if (bloqueo) return salir(bloqueo);
 
   let body: {
     tipoPitch?: string;
@@ -39,36 +46,39 @@ export async function POST(request: Request): Promise<NextResponse> {
     body = await request.json();
   } catch {
     const textos = diccionario(idiomaDeCabecera(request));
-    return NextResponse.json({ error: textos.api.jsonInvalido }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.jsonInvalido }, { status: 400 }));
   }
 
   const idiomaRuta = resolverIdiomaDeRuta(body.idioma, request);
-  if (idiomaRuta.tipo === "invalido") return idiomaRuta.respuesta;
+  if (idiomaRuta.tipo === "invalido") return salir(idiomaRuta.respuesta);
   const { idioma, textos } = idiomaRuta;
 
   if (typeof body.tipoPitch !== "string" || !TIPOS.has(body.tipoPitch)) {
-    return NextResponse.json({ error: textos.api.tipoPitchInvalido }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.tipoPitchInvalido }, { status: 400 }));
   }
   if (typeof body.punto !== "string" || body.punto.trim() === "") {
-    return NextResponse.json({ error: textos.api.puntoObligatorio }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.puntoObligatorio }, { status: 400 }));
   }
   if (typeof body.respuesta !== "string" || body.respuesta.trim() === "") {
-    return NextResponse.json({ error: textos.api.respuestaObligatoria }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.respuestaObligatoria }, { status: 400 }));
   }
   if (excedeLimitePuntoSparring(body.punto)) {
-    return NextResponse.json({ error: textos.api.puntoSparringLargo }, { status: 413 });
+    return salir(NextResponse.json({ error: textos.api.puntoSparringLargo }, { status: 413 }));
   }
   if (excedeLimiteRespuestaSparring(body.respuesta)) {
-    return NextResponse.json({ error: textos.api.respuestaSparringLarga }, { status: 413 });
+    return salir(NextResponse.json({ error: textos.api.respuestaSparringLarga }, { status: 413 }));
   }
 
   const tipoPitch = body.tipoPitch as TipoPitch;
   if (!obtenerPuntoPorId(tipoPitch, body.punto.trim())) {
-    return NextResponse.json({ error: textos.api.puntoFueraDeRubrica }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.puntoFueraDeRubrica }, { status: 400 }));
   }
 
   const cifra =
     typeof body.cifra === "string" ? body.cifra.trim().slice(0, MAX_CIFRA_DICHA_CARACTERES) : "";
+
+  const rechazo = rechazarSinCupo(request, inicio.ctx, 1, idioma);
+  if (rechazo) return rechazo as NextResponse;
 
   try {
     const resultado = await evaluarSegundaToma({
@@ -79,11 +89,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       respuesta: body.respuesta.trim(),
       ...(cifra ? { cifra } : {}),
     });
-    return NextResponse.json(resultado);
+    return salir(NextResponse.json(resultado), 1);
   } catch (error) {
     console.error("[/api/segunda-toma] fallo:", error);
     const proveedor = nombreProveedorActivo();
     reportarFallo(error, { proveedor, nivel: "rapido" }, { proveedor, nivel: "rapido" });
-    return NextResponse.json({ error: textos.api.evaluacionFallida }, { status: 502 });
+    return salir(NextResponse.json({ error: textos.api.evaluacionFallida }, { status: 502 }));
   }
 }

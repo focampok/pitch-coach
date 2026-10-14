@@ -13,5 +13,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
+    // La pausa corta las rutas de proveedor. Los tests existentes corren con la
+    // demo encendida y sin cupo, que es el comportamiento de main.
+    setupFiles: ["test/setup-env.ts"],
   },
 });

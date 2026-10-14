@@ -95,6 +95,14 @@ export const IP_HEADER_NAMES: readonly string[] = [
 ];
 
 /**
+ * Cabeceras que transportan la cookie de evaluación (`pc_eval`) o cualquier
+ * otra cookie. Van en la denegación de spans junto a las de IP: el valor no
+ * debe salir hacia Sentry. `pc_eval` como nombre de propiedad lo cubre
+ * SENSITIVE_KEYS en el filtro de eventos.
+ */
+export const COOKIE_HEADER_NAMES: readonly string[] = ["cookie", "set-cookie"];
+
+/**
  * Colección de datos del SDK. Es lo que impide que la IP del cliente llegue a
  * Sentry, y el ÚNICO interruptor que lo apaga en todas las superficies.
  *
@@ -114,7 +122,7 @@ export const IP_HEADER_NAMES: readonly string[] = [
  *      b. BORRA de `request.headers` toda cabecera cuyo nombre esté en la lista
  *         de IP del SDK, y con eso también desaparece del evento de error.
  *
- * 2. `httpHeaders.request.deny` con la lista de IP.
+ * 2. `httpHeaders.request.deny` con la lista de IP y las cabeceras de cookie.
  *    El punto 1.b NO alcanza para los spans. Los atributos
  *    `http.request.header.*` los arma `httpHeadersToSpanAttributes`
  *    (node_modules/@sentry/core/build/cjs/utils/request.js), que filtra por
@@ -137,7 +145,7 @@ export const IP_HEADER_NAMES: readonly string[] = [
  */
 export const DATA_COLLECTION = {
   userInfo: false,
-  httpHeaders: { request: { deny: [...IP_HEADER_NAMES] } },
+  httpHeaders: { request: { deny: [...IP_HEADER_NAMES, ...COOKIE_HEADER_NAMES] } },
 };
 
 /** Vista de variables de entorno, para poder inyectar una falsa en los tests. */

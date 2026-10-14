@@ -3,6 +3,7 @@
 import { useState } from "react";
 import GrabadorVoz from "./GrabadorVoz";
 import { useIdioma } from "./ProveedorIdioma";
+import { esCupoAgotado, esDemoPausada, useEvaluacion } from "./ProveedorEvaluacion";
 import { cabecerasJson } from "@/lib/idiomas";
 import type { DuracionMaxima, TipoPitch } from "@/types/pitch";
 
@@ -32,6 +33,7 @@ export function SegundaToma({
   onCerrado,
 }: SegundaTomaProps) {
   const { idioma, textos } = useIdioma();
+  const evaluacion = useEvaluacion();
   const [evaluando, setEvaluando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [juicio, setJuicio] = useState<JuicioToma | null>(null);
@@ -52,6 +54,8 @@ export function SegundaToma({
         }),
       });
       const cuerpo = (await respuestaHttp.json()) as JuicioToma | { error: string };
+      evaluacion.notar(respuestaHttp, cuerpo);
+      if (esDemoPausada(cuerpo) || esCupoAgotado(cuerpo)) return;
       if (!respuestaHttp.ok || "error" in cuerpo) {
         throw new Error("error" in cuerpo ? cuerpo.error : textos.sparring.errorEvaluarRespuesta);
       }
@@ -70,12 +74,18 @@ export function SegundaToma({
       <p className="text-sm" style={{ color: "var(--text-muted)" }}>
         {textos.segundaToma.oferta(puntoNombre)}
       </p>
+      {evaluacion.cupoActivo && (
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+          {textos.evaluacion.avisoToma}
+        </p>
+      )}
       {juicio === null || !juicio.cumplido ? (
         <GrabadorVoz
           key={juicio ? "reintento" : "primera"}
           duracionMaxima={duracionMaxima}
           topeSegundos={45}
           titulo={textos.segundaToma.titulo}
+          proposito="toma"
           variante="incrustado"
           onTranscripcionCompleta={(texto) => {
             void evaluar(texto);

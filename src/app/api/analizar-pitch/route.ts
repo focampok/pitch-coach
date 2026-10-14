@@ -7,6 +7,7 @@ import { obtenerRubrica, type PuntoRubrica } from "@/lib/rubricas";
 import { construirPrompt } from "@/lib/prompts";
 import { analizarConModelo } from "@/lib/analisis-modelo";
 import { detectarMuletillas } from "@/lib/muletillas";
+import { iniciarEvaluacion, rechazarSinCupo, responderEvaluacion } from "@/lib/cupo-evaluacion";
 import { limitar } from "@/lib/rate-limit";
 import { diccionario, type Diccionario } from "@/lib/diccionarios";
 import { idiomaDeCabecera } from "@/lib/idiomas";
@@ -22,6 +23,8 @@ import {
 // Contrato bilingüe: el campo `idioma` del cuerpo ('es' | 'en'; ausente → 'es',
 // otro valor → 400) gobierna los mensajes de error que devuelve esta ruta.
 
+export const dynamic = "force-dynamic";
+
 const TIPOS_PITCH_VALIDOS = new Set<string>(["capital", "educacion", "innovacion", "tecnologia"]);
 const DURACIONES_VALIDAS = new Set<number>([1, 2, 3, 4, 5, 6, 7]);
 const NIVELES_VALIDOS = new Set<NivelAnalisis>(["estandar", "ultra", "rapido"]);
@@ -29,10 +32,16 @@ const NIVELES_VALIDOS = new Set<NivelAnalisis>(["estandar", "ultra", "rapido"]);
 type TextosApi = Diccionario["api"];
 
 export async function POST(request: Request): Promise<NextResponse> {
+  // Pausa y cupo antes del rate limit y de leer un cuerpo grande.
+  const inicio = iniciarEvaluacion(request);
+  if (!inicio.continuar) return inicio.respuesta as NextResponse;
+  const salir = (response: Response, costo = 0) =>
+    responderEvaluacion(request, inicio.ctx, response, costo) as NextResponse;
+
   // Rate limit por IP (en memoria, por instancia — ver src/lib/rate-limit.ts).
   // El 429 sale en el idioma de la cabecera X-Idioma: corre antes del cuerpo.
   const bloqueo = limitar(request, "analizar-pitch");
-  if (bloqueo) return bloqueo as NextResponse;
+  if (bloqueo) return salir(bloqueo);
 
   let body: Partial<SolicitudAnalisis>;
   try {
@@ -40,16 +49,16 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch {
     // Sin cuerpo legible no hay campo `idioma`: manda la cabecera.
     const textos = diccionario(idiomaDeCabecera(request));
-    return NextResponse.json({ error: textos.api.jsonInvalido }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.jsonInvalido }, { status: 400 }));
   }
 
   const idiomaRuta = resolverIdiomaDeRuta(body.idioma, request);
-  if (idiomaRuta.tipo === "invalido") return idiomaRuta.respuesta;
+  if (idiomaRuta.tipo === "invalido") return salir(idiomaRuta.respuesta);
   const { idioma, textos } = idiomaRuta;
 
   const errorValidacion = validarSolicitud(body, textos.api);
   if (errorValidacion) {
-    return NextResponse.json({ error: errorValidacion }, { status: 400 });
+    return salir(NextResponse.json({ error: errorValidacion }, { status: 400 }));
   }
 
   const { transcripcion, tipoPitch, duracionMaxima, tiempoRealSegundos, nivel } =
@@ -57,8 +66,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   // Límite duro de entrada: se corta antes de gastar cuota del modelo.
   if (excedeLimiteTranscripcion(transcripcion)) {
-    return NextResponse.json({ error: textos.api.transcripcionLarga }, { status: 413 });
+    return salir(NextResponse.json({ error: textos.api.transcripcionLarga }, { status: 413 }));
   }
+
+  // Estándar, rápido y Ultra cuestan 1 cada uno (estándar y luego Ultra = 2).
+  // Se rechaza antes de llamar al modelo. El descuento es solo en el 200.
+  const rechazo = rechazarSinCupo(request, inicio.ctx, 1, idioma);
+  if (rechazo) return rechazo as NextResponse;
 
   const rubrica = obtenerRubrica(tipoPitch);
   const prompt = construirPrompt({
@@ -90,7 +104,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       ...(analisis.traza ? { traza: analisis.traza } : {}),
     };
 
-    return NextResponse.json(resultado);
+    return salir(NextResponse.json(resultado), 1);
   } catch (error) {
     // El detalle del proveedor se registra server-side y NUNCA se devuelve al
     // cliente: hacia fuera solo va un mensaje genérico.
@@ -105,7 +119,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       { proveedor, nivel: nivelEfectivo },
       { proveedor, nivel: nivelEfectivo },
     );
-    return NextResponse.json({ error: textos.api.analisisFallido }, { status: 502 });
+    return salir(NextResponse.json({ error: textos.api.analisisFallido }, { status: 502 }));
   }
 }
 

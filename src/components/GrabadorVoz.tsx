@@ -10,6 +10,7 @@ import {
 import { cabecerasIdioma } from "@/lib/idiomas";
 import { extraerPalabrasScribe } from "@/lib/guion-transcripcion";
 import { useIdioma } from "./ProveedorIdioma";
+import { useEvaluacion, esCupoAgotado, esDemoPausada } from "./ProveedorEvaluacion";
 import { AnilloSenal } from "./AnilloSenal";
 import { IconoPausa, IconoPlay } from "./ui/IconosTransporte";
 
@@ -41,6 +42,12 @@ interface GrabadorVozProps {
     tiempoRealSegundos: number,
     palabras?: PalabraTranscripcion[],
   ) => void;
+  /**
+   * "pitch" (defecto) es la práctica principal: con el cupo en 0 el servidor
+   * no llama a ElevenLabs. "toma" es la segunda toma o un hallazgo: el audio
+   * se transcribe igual y el costo lo cobra la ruta que evalúa.
+   */
+  proposito?: "pitch" | "toma";
 }
 
 const MIME_CANDIDATOS = [
@@ -83,10 +90,13 @@ export default function GrabadorVoz({
   topeSegundos,
   titulo,
   variante = "panel",
+  proposito = "pitch",
   onTranscripcionCompleta,
 }: GrabadorVozProps) {
   const { idioma, textos } = useIdioma();
+  const evaluacion = useEvaluacion();
   const idAyudaRespaldo = useId();
+  const idBloqueo = useId();
   const [estado, setEstado] = useState<EstadoGrabador>("inactivo");
   const [transcripcionFinal, setTranscripcionFinal] = useState("");
   const [textoRespaldo, setTextoRespaldo] = useState("");
@@ -156,6 +166,7 @@ export default function GrabadorVoz({
         const form = new FormData();
         form.append("audio", blob, nombreArchivo(blob.type || mimeRef.current));
         form.append("idioma", idioma);
+        form.append("proposito", proposito);
         const respuesta = await fetch("/api/transcribir", {
           method: "POST",
           headers: cabecerasIdioma(idioma),
@@ -167,6 +178,12 @@ export default function GrabadorVoz({
           palabras?: unknown;
           error?: string;
         };
+        evaluacion.notar(respuesta, cuerpo);
+        if (esDemoPausada(cuerpo) || esCupoAgotado(cuerpo)) {
+          setEstado("inactivo");
+          setMensajeCoach(null);
+          return;
+        }
         if (!respuesta.ok || typeof cuerpo.texto !== "string") {
           throw new Error(cuerpo.error ?? textos.grabador.errorTranscripcion);
         }
@@ -184,7 +201,7 @@ export default function GrabadorVoz({
         setMensajeCoach(null);
       }
     },
-    [finalizarConTexto, idioma, textos],
+    [evaluacion, finalizarConTexto, idioma, proposito, textos],
   );
 
   const detenerGrabacion = useCallback(() => {
@@ -228,7 +245,11 @@ export default function GrabadorVoz({
     }
   }, []);
 
+  const sinPracticas = evaluacion.cupoActivo && (evaluacion.restantes ?? 0) < 1;
+  const bloqueado = !evaluacion.puede(1);
+
   const iniciarGrabacion = useCallback(async () => {
+    if (bloqueado) return;
     if (!capturaDisponible()) {
       setMostrarRespaldo(true);
       setError(textos.grabador.errorMicrofonoSinSoporte);
@@ -329,9 +350,10 @@ export default function GrabadorVoz({
     setPausado(false);
     setMensajeCoach(null);
     setMostrarRespaldo(false);
-  }, [duracionMaxima, topeSegundos, soltarMicrófono, textos, transcribirBlob]);
+  }, [bloqueado, duracionMaxima, topeSegundos, soltarMicrófono, textos, transcribirBlob]);
 
   const enviarTextoRespaldo = useCallback(() => {
+    if (bloqueado) return;
     const texto = textoRespaldo.trim();
     if (texto === "") {
       setError(textos.grabador.errorTextoVacio);
@@ -339,7 +361,7 @@ export default function GrabadorVoz({
     }
     setError(null);
     finalizarConTexto(texto, 0);
-  }, [finalizarConTexto, textos, textoRespaldo]);
+  }, [bloqueado, finalizarConTexto, textos, textoRespaldo]);
 
   const reiniciar = useCallback(() => {
     abortTranscripcionRef.current?.abort();
@@ -434,7 +456,13 @@ export default function GrabadorVoz({
 
       <div className="mt-4">
         {estado === "inactivo" && soporte && (
-          <button type="button" onClick={() => void iniciarGrabacion()} className="pc-btn">
+          <button
+            type="button"
+            onClick={() => void iniciarGrabacion()}
+            className="pc-btn"
+            disabled={bloqueado}
+            aria-describedby={sinPracticas ? idBloqueo : undefined}
+          >
             {textos.grabador.comenzar}
           </button>
         )}
@@ -459,11 +487,23 @@ export default function GrabadorVoz({
           </div>
         )}
         {estado === "finalizado" && (
-          <button type="button" onClick={reiniciar} className="pc-btn pc-btn-quiet">
+          <button
+            type="button"
+            onClick={reiniciar}
+            className="pc-btn pc-btn-quiet"
+            disabled={bloqueado}
+            aria-describedby={sinPracticas ? idBloqueo : undefined}
+          >
             {textos.grabador.grabarDeNuevo}
           </button>
         )}
       </div>
+
+      {sinPracticas && (
+        <p id={idBloqueo} className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>
+          {textos.evaluacion.noAlcanza}
+        </p>
+      )}
 
       {indicadorCoach !== null && (
         <p className="mt-4 text-sm" style={{ color: "var(--text-muted)" }}>
@@ -510,6 +550,7 @@ export default function GrabadorVoz({
       </div>
 
       {(soporte === false || mostrarRespaldo) &&
+        !bloqueado &&
         estado !== "grabando" &&
         estado !== "transcribiendo" &&
         estado !== "finalizado" && (

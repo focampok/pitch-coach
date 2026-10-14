@@ -11,6 +11,7 @@ import { cabecerasJson } from "@/lib/idiomas";
 import { etiquetaPunto } from "@/lib/rubricas";
 import GrabadorVoz from "./GrabadorVoz";
 import { useIdioma } from "./ProveedorIdioma";
+import { esCupoAgotado, esDemoPausada, useEvaluacion } from "./ProveedorEvaluacion";
 import { ReproductorVeredicto } from "./ReproductorVeredicto";
 
 const MAX_PREGUNTAS_SPARRING = 3;
@@ -34,6 +35,7 @@ export function SparringCoach({
   onCompletado,
 }: SparringCoachProps) {
   const { idioma, textos } = useIdioma();
+  const evaluacion = useEvaluacion();
   const pendientes = useMemo(
     () => rubrica.filter((item) => !item.cumplido).slice(0, MAX_PREGUNTAS_SPARRING),
     [rubrica],
@@ -63,6 +65,11 @@ export function SparringCoach({
           body: JSON.stringify({ tipoPitch, idioma, punto: punto.punto }),
         });
         const cuerpo = (await respuesta.json()) as { pregunta?: string; error?: string };
+        evaluacion.notar(respuesta, cuerpo);
+        if (esDemoPausada(cuerpo)) {
+          setFase("oferta");
+          return;
+        }
         if (!respuesta.ok || !cuerpo.pregunta) {
           throw new Error(cuerpo.error ?? textos.sparring.errorGenerarPregunta);
         }
@@ -73,7 +80,7 @@ export function SparringCoach({
         setFase("oferta");
       }
     },
-    [idioma, pendientes, textos, tipoPitch],
+    [evaluacion, idioma, pendientes, textos, tipoPitch],
   );
 
   const evaluar = useCallback(
@@ -104,6 +111,11 @@ export function SparringCoach({
           comentario?: string;
           error?: string;
         };
+        evaluacion.notar(respuesta, cuerpo);
+        if (esDemoPausada(cuerpo) || esCupoAgotado(cuerpo)) {
+          setFase("pregunta");
+          return;
+        }
         if (!respuesta.ok || typeof cuerpo.cumplido !== "boolean") {
           throw new Error(cuerpo.error ?? textos.sparring.errorEvaluarRespuesta);
         }
@@ -122,7 +134,7 @@ export function SparringCoach({
         setFase("pregunta");
       }
     },
-    [idioma, indice, pendientes, pregunta, textos, tipoPitch],
+    [evaluacion, idioma, indice, pendientes, pregunta, textos, tipoPitch],
   );
 
   const irAlSiguiente = useCallback(() => {
@@ -154,13 +166,24 @@ export function SparringCoach({
       {fase === "oferta" && (
         <div className="space-y-3">
           <p>{textos.sparring.oferta(pendientes.length)}</p>
+          {evaluacion.cupoActivo && (
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              {textos.evaluacion.avisoHallazgos}
+            </p>
+          )}
           <button
             type="button"
             onClick={() => void cargarPregunta(0)}
             className="pc-btn"
+            disabled={!evaluacion.puede(1)}
           >
             {textos.sparring.resolver}
           </button>
+          {evaluacion.cupoActivo && !evaluacion.puede(1) && (
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              {textos.evaluacion.noAlcanza}
+            </p>
+          )}
         </div>
       )}
 
@@ -198,6 +221,7 @@ export function SparringCoach({
             <GrabadorVoz
               key={`sparring-${indice}`}
               duracionMaxima={1}
+              proposito="toma"
               variante="incrustado"
               onTranscripcionCompleta={(texto) => {
                 void evaluar(texto);
@@ -217,9 +241,15 @@ export function SparringCoach({
             type="button"
             onClick={irAlSiguiente}
             className="pc-btn"
+            disabled={indice + 1 < pendientes.length && !evaluacion.puede(1)}
           >
             {indice + 1 >= pendientes.length ? textos.sparring.verResumen : textos.sparring.siguiente}
           </button>
+          {evaluacion.cupoActivo && indice + 1 < pendientes.length && !evaluacion.puede(1) && (
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              {textos.evaluacion.noAlcanza}
+            </p>
+          )}
         </div>
       )}
 

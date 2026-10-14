@@ -9,7 +9,10 @@ import { DashboardResultado } from "@/components/DashboardResultado";
 import { PanelProgreso } from "@/components/PanelProgreso";
 import { SparringCoach } from "@/components/SparringCoach";
 import { PiePagina } from "@/components/PiePagina";
+import { BannerDemoPausada } from "@/components/BannerDemoPausada";
+import { IndicadorCupo, MensajeCupoAgotado } from "@/components/IndicadorCupo";
 import { useIdioma } from "@/components/ProveedorIdioma";
+import { esCupoAgotado, esDemoPausada, ProveedorEvaluacion, useEvaluacion } from "@/components/ProveedorEvaluacion";
 import { cabecerasJson } from "@/lib/idiomas";
 import {
   actualizarSesion,
@@ -28,7 +31,16 @@ import type {
 } from "@/types/pitch";
 
 export default function Home() {
+  return (
+    <ProveedorEvaluacion>
+      <Inicio />
+    </ProveedorEvaluacion>
+  );
+}
+
+function Inicio() {
   const { idioma, textos } = useIdioma();
+  const evaluacion = useEvaluacion();
   const [tipoPitch, setTipoPitch] = useState<TipoPitch>("capital");
   const [duracionMaxima, setDuracionMaxima] = useState<DuracionMaxima>(3);
   const [transcripcion, setTranscripcion] = useState<string | null>(null);
@@ -67,7 +79,9 @@ export default function Home() {
             ...(puntosPrevios.length > 0 ? { puntosNoCumplidosPrevios: puntosPrevios } : {}),
           } satisfies SolicitudAnalisis),
         });
-        const cuerpo = (await respuesta.json()) as ResultadoAnalisis | { error: string };
+        const cuerpo = (await respuesta.json()) as ResultadoAnalisis | { error: string; mensaje?: string };
+        evaluacion.notar(respuesta, cuerpo);
+        if (esDemoPausada(cuerpo) || esCupoAgotado(cuerpo)) return;
         if (!respuesta.ok || "error" in cuerpo) {
           throw new Error("error" in cuerpo ? cuerpo.error : textos.inicio.errorAnalisis);
         }
@@ -92,7 +106,7 @@ export default function Home() {
         setAnalizando(false);
       }
     },
-    [tipoPitch, duracionMaxima, idioma, textos],
+    [tipoPitch, duracionMaxima, idioma, textos, evaluacion],
   );
 
   const marcarUltraUsado = useCallback(() => {
@@ -137,6 +151,8 @@ export default function Home() {
         </div>
       </header>
 
+      <IndicadorCupo />
+
       {mostrarProgreso && <PanelProgreso />}
 
       <div className="pc-practica">
@@ -162,7 +178,7 @@ export default function Home() {
         </section>
 
         <div className="pc-practica-grabar">
-          <GrabadorVoz
+          <ZonaGrabacion
             duracionMaxima={duracionMaxima}
             onTranscripcionCompleta={handleTranscripcionCompleta}
           />
@@ -209,5 +225,38 @@ export default function Home() {
       )}
       <PiePagina />
     </main>
+  );
+}
+
+function ZonaGrabacion({
+  duracionMaxima,
+  onTranscripcionCompleta,
+}: {
+  duracionMaxima: DuracionMaxima;
+  onTranscripcionCompleta: (
+    transcripcion: string,
+    tiempoRealSegundos: number,
+    palabras?: PalabraTranscripcion[],
+  ) => void;
+}) {
+  const { textos } = useIdioma();
+  const evaluacion = useEvaluacion();
+
+  if (evaluacion.listo && !evaluacion.liveDemo) return <BannerDemoPausada />;
+  if (evaluacion.listo && evaluacion.noConfigurada) {
+    return (
+      <p role="status" className="pc-panel px-4 py-3">
+        {textos.evaluacion.noConfigurada}
+      </p>
+    );
+  }
+  if (evaluacion.cupoActivo && evaluacion.restantes === 0) return <MensajeCupoAgotado />;
+
+  return (
+    <GrabadorVoz
+      duracionMaxima={duracionMaxima}
+      proposito="pitch"
+      onTranscripcionCompleta={onTranscripcionCompleta}
+    />
   );
 }

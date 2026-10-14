@@ -40,6 +40,11 @@
   - `ELEVENLABS_VOICE_ID_EN_FEMALE` — female English voice id. Server-side only.
   - `ELEVENLABS_SCRIBE_MODEL` — Scribe batch model (default `scribe_v2`). Server-side only.
   - `TAVILY_API_KEY` — Tavily key (statistics for suggestions, the room objection, and the spoken-figure check), used only in API routes (server-side), never exposed to the client.
+  - `LIVE_DEMO` — exact `true` runs the live demo. Any other value, or absent, pauses it (banner + 503 on provider routes). Server-side only.
+  - `EVAL_LIMIT` — integer practices per browser. Empty, `0`, or invalid means unlimited. Server-side only.
+  - `EVAL_COOKIE_SECRET` — HMAC secret for the `pc_eval` cookie, at least 32 random bytes. Required when `EVAL_LIMIT` is greater than 0. Server-side only. Never log it.
+  - `DEMO_VIDEO_URL` — https URL of the demo video, or empty (the link is hidden). Server-side only.
+  - `CONTACTO` — optional email or https URL on the exhausted-quota message. Server-side only.
   - `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_*` — optional monitoring; see `.env.example` and `docs/sentry.md`. The client DSN is public ingest by Sentry's design; `SENTRY_AUTH_TOKEN` never uses the `NEXT_PUBLIC_` prefix.
   - On Railway, set the same keys in the project panel (Settings → Variables) as in `.env.local`.
   - Any variable that starts with `NEXT_PUBLIC_` is exposed to the browser — **never use that prefix for API keys or secrets**.
@@ -85,7 +90,8 @@ pitch-coach/
 │   │       ├── enriquecer/           # Tavily
 │   │       ├── linea-tiempo/         # covered points on the audio
 │   │       ├── segunda-toma/         # 45-second retake
-│   │       └── sparring/             # resolve findings
+│   │       ├── sparring/             # resolve findings
+│   │       └── estado/               # live-demo pause + evaluation quota
 │   ├── components/
 │   │   ├── SelectorTipoPitch.tsx, SelectorDuracion.tsx, SelectorIdioma.tsx
 │   │   ├── GrabadorVoz.tsx           # MediaRecorder + Scribe + indicator
@@ -97,6 +103,7 @@ pitch-coach/
 │   │   ├── rubricas.ts, muletillas.ts, prompts.ts, prompts-sparring.ts
 │   │   ├── diccionario-es.ts, diccionario-en.ts, idiomas.ts
 │   │   ├── salas.ts, objecion-sala.ts, cifras-dichas.ts, linea-tiempo.ts
+│   │   ├── config-evaluacion.ts, cupo-evaluacion.ts
 │   │   └── mensajes-coach.ts
 │   └── types/
 │       └── pitch.ts
@@ -156,6 +163,23 @@ Notes on the structure:
 - Business logic (rubrics, filler detection, prompt construction) lives in `src/lib/`, separate from UI components, so an agent can edit one without touching the other.
 - Pitch analysis lives in `/api/analizar-pitch`. ElevenLabs TTS and Scribe are additional server-side API routes. Do not expose keys to the client.
 - `Dockerfile` and `railway.toml` live at the root because Railway expects them there. That does not mean they are used in development (see the development-environment rule above).
+
+## Hackathon evaluation window
+
+The pause and the practice quota exist only for hackathon judging, to protect shared credits. Pitch Coach stays account-free: no login, no judge codes, no plans.
+
+`src/lib/config-evaluacion.ts` reads `LIVE_DEMO`, `EVAL_LIMIT`, `EVAL_COOKIE_SECRET`, `DEMO_VIDEO_URL`, and `CONTACTO` inside functions called per request (not as module constants). Provider routes and `GET /api/estado` are `force-dynamic`. Changing a variable and restarting the process, without a rebuild, changes the behavior.
+
+- `LIVE_DEMO` must be the exact string `true`. Otherwise the home screen replaces the recorder with a pause banner, and `/api/analizar-pitch`, `/api/enriquecer`, `/api/linea-tiempo`, `/api/segunda-toma`, `/api/sparring/pregunta`, `/api/sparring/evaluar`, `/api/transcribir`, and `/api/tts` return 503 `{ error: "demo_pausada" }` before any provider call.
+- When `EVAL_LIMIT` is a positive integer, a signed `pc_eval` cookie (`HttpOnly`, `SameSite=Lax`, `Secure` in production, about 30 days) counts practices per browser. A missing, malformed, or badly signed cookie starts a new quota at 0. It is never unlimited and it never crashes the request. A negative or over-limit counter is clamped.
+- The charge happens only after a successful, valid provider result, just before the 200: standard, fast, and Ultra analysis each cost 1 (standard and then Ultra is 2 across two requests); each resolved sparring finding costs 1; the 45-second retake costs 1. Enrich, timeline, sparring question, transcription, and TTS cost 0. Any 4xx, 5xx, timeout, abort, or invalid result costs 0. `/api/transcribir` accepts `proposito: "pitch" | "toma"` (default `pitch`). With `pitch` and no practices left it returns 429 `{ error: "cupo_evaluacion_agotado" }` before ElevenLabs. That 429 is not the rate-limit 429 (`demasiadasSolicitudes` plus `Retry-After`); `src/lib/rate-limit.ts` limits stay as they are.
+- If `EVAL_LIMIT` is set and `EVAL_COOKIE_SECRET` is missing or shorter than 32 bytes, those routes fail closed with 503. The log names the variables and does not print their values or the cookie.
+- With `EVAL_LIMIT` empty, `0`, or invalid, and `LIVE_DEMO=true`, there is no `pc_eval` cookie, no `X-Eval-*` header, and no new UI copy.
+- `GET /api/estado` returns `{ liveDemo, limite, restantes, demoVideoUrl, contacto }` with `Cache-Control: no-store`. The client must not import the evaluation modules. It may keep the last `X-Eval-Restantes` in React state (and in `sessionStorage` as a visual cache only). The server is the source of truth.
+
+Honest limitation: clearing the cookie (incognito, another browser, or clearing site data) opens a new quota. That stops a normal judge and a curious visitor. It does not stop a determined abuser. The real defenses are `LIVE_DEMO=false` outside the judging window, the per-IP limits in `src/lib/rate-limit.ts`, and the spend alerts Francisco sets by hand on Nebius, ElevenLabs, and Tavily.
+
+Known race: two simultaneous requests with the same cookie can both pass the check and both call the provider. The second `Set-Cookie` overwrites the first, so the counter goes up by 1 while the provider was used twice. That is accepted; there is no shared store to close it.
 
 ## Language convention
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cabecerasJson, etiquetaIdioma } from "@/lib/idiomas";
 import { useIdioma } from "./ProveedorIdioma";
+import { esDemoPausada, useEvaluacion } from "./ProveedorEvaluacion";
 import { IconoDetener, IconoPausa, IconoPlay } from "./ui/IconosTransporte";
 
 type Estado = "inactivo" | "cargando" | "hablando" | "pausado" | "error";
@@ -52,6 +53,7 @@ export function ReproductorVeredicto({
   className = "pc-btn pc-btn-quiet",
 }: ReproductorVeredictoProps) {
   const { idioma, textos } = useIdioma();
+  const evaluacion = useEvaluacion();
   const etiquetaReposo = etiquetaInactivo ?? textos.reproductor.escucharVeredicto;
   const [estado, setEstado] = useState<Estado>("inactivo");
   const [fuente, setFuente] = useState<Fuente>(null);
@@ -139,7 +141,20 @@ export function ReproductorVeredicto({
         });
         clearTimeout(timeout);
 
-        if (!res.ok) throw new Error(`TTS respondió ${res.status}`);
+        if (!res.ok) {
+          const tipo = res.headers.get("content-type") ?? "";
+          if (tipo.includes("application/json")) {
+            const cuerpo = (await res.json()) as { error?: string };
+            evaluacion.notar(res, cuerpo);
+            if (esDemoPausada(cuerpo)) {
+              setEstado("inactivo");
+              return;
+            }
+          }
+          throw new Error(`TTS respondió ${res.status}`);
+        }
+
+        evaluacion.notar(res, null);
 
         const vozHeader = res.headers.get("X-Voice-Gender");
         if (vozHeader === "male" || vozHeader === "female") {
@@ -176,7 +191,7 @@ export function ReproductorVeredicto({
         hablarConSpeechSynthesis(texto);
       }
     },
-    [fijarFuente, hablarConSpeechSynthesis, idioma, limpiarAudio, onFinish, onVozUsada, voz]
+    [evaluacion, fijarFuente, hablarConSpeechSynthesis, idioma, limpiarAudio, onFinish, onVozUsada, voz]
   );
 
   const pausar = useCallback(() => {

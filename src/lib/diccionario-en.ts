@@ -239,6 +239,30 @@ export const en: Diccionario = {
     demasiadasSolicitudes: "Too many requests. Wait a moment and try again.",
   },
 
+  // --- Pausa y cupo de la evaluación (solo si LIVE_DEMO / EVAL_LIMIT) --
+  evaluacion: {
+    demoPausada:
+      "The live demo is paused on purpose to protect shared credits. It will be available December 1–15 for judging. In the meantime, watch the demo video.",
+    verVideo: "Watch the demo video",
+    restantes: (quedan: number, limite: number) => `${quedan} of ${limite} practices left`,
+    nota: "Temporary limit only during hackathon judging, to protect shared credits. Pitch Coach is and will remain account-free, card-free, and frictionless.",
+    avisoUltra: "This uses 1 practice",
+    avisoEstandarUltra: "This uses 2",
+    avisoHallazgos: "Each resolved finding uses 1 practice",
+    avisoToma: "This uses 1 practice",
+    noAlcanza: "You don't have any evaluation practices left for this action.",
+    agotado: (limite: number) =>
+      `You used the ${limite} evaluation practices. Thanks for trying Pitch Coach!`,
+    miraVideo: "Watch the demo video",
+    oContacto: "or",
+    escribidme: "write to me",
+    escribidmeInicio: "Write to me",
+    agotadoSiguen: "Your results and history are still available.",
+    noConfigurada: "The demo is not available right now.",
+    cupoAgotado: (limite: number) =>
+      `You used the ${limite} evaluation practices. Thanks for trying Pitch Coach! Your results and history are still available.`,
+  },
+
   // --- Pie de página (src/components/PiePagina.tsx) ------------------------
   pie: {
     confianza:

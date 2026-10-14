@@ -73,6 +73,17 @@ describe("paridad entre diccionarios", () => {
     }
   });
 
+  it("el aviso de la demo pausada queda en los dos idiomas", () => {
+    expect(diccionario("es").evaluacion.demoPausada).toBe(
+      "La demo en vivo está pausada a propósito para cuidar los créditos compartidos. Estará disponible del 1 al 15 de diciembre para la evaluación. Mientras tanto, mira el video de demo.",
+    );
+    expect(diccionario("en").evaluacion.demoPausada).toBe(
+      "The live demo is paused on purpose to protect shared credits. It will be available December 1–15 for judging. In the meantime, watch the demo video.",
+    );
+    expect(diccionario("es").evaluacion.restantes(3, 10)).toBe("Te quedan 3 de 10 prácticas");
+    expect(diccionario("en").evaluacion.restantes(3, 10)).toBe("3 of 10 practices left");
+  });
+
   it("ningún texto visible quedó vacío", () => {
     for (const idioma of IDIOMAS) {
       for (const [ruta, texto] of hojasString(diccionario(idioma))) {

@@ -3,6 +3,7 @@ import {
   DATA_COLLECTION,
   DEFAULT_ENVIRONMENT,
   IP_HEADER_NAMES,
+  COOKIE_HEADER_NAMES,
   TRACE_LIFECYCLE,
   TRACE_PROPAGATION_TARGETS,
   sentryEnabled,
@@ -88,6 +89,11 @@ describe("sentry-options", () => {
       }
       expect(deny).toContain("x-forwarded-for");
       expect(deny).toContain("x-real-ip");
+      for (const cabecera of COOKIE_HEADER_NAMES) {
+        expect(deny).toContain(cabecera);
+      }
+      expect(deny).toContain("cookie");
+      expect(deny).toContain("set-cookie");
     });
 
     it("no nombra otras categorías (no cambia nada más de lo que ya estaba)", () => {

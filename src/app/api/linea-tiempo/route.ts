@@ -6,12 +6,14 @@ import { excedeLimiteTranscripcion } from "@/lib/limites";
 import { ubicarPuntosEnAudio } from "@/lib/linea-tiempo";
 import { nombreProveedorActivo } from "@/lib/modelo";
 import { diccionario } from "@/lib/diccionarios";
+import { iniciarEvaluacion, responderEvaluacion } from "@/lib/cupo-evaluacion";
 import { limitar } from "@/lib/rate-limit";
 import { esIdDePunto } from "@/lib/rubricas";
 import { reportarFallo } from "@/lib/sentry-reporte";
 import type { TipoPitch } from "@/types/pitch";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const TIPOS = new Set<string>(["capital", "educacion", "innovacion", "tecnologia"]);
 
@@ -22,8 +24,12 @@ const TIPOS = new Set<string>(["capital", "educacion", "innovacion", "tecnologia
  * La transcripción va al modelo. No va a Tavily.
  */
 export async function POST(req: NextRequest) {
+  const inicio = iniciarEvaluacion(req);
+  if (!inicio.continuar) return inicio.respuesta;
+  const salir = (response: Response) => responderEvaluacion(req, inicio.ctx, response, 0);
+
   const bloqueo = limitar(req, "linea-tiempo");
-  if (bloqueo) return bloqueo;
+  if (bloqueo) return salir(bloqueo);
 
   let body: {
     tipoPitch?: string;
@@ -36,21 +42,21 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   } catch {
     const textos = diccionario(idiomaDeCabecera(req));
-    return NextResponse.json({ error: textos.api.jsonInvalido }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.jsonInvalido }, { status: 400 }));
   }
 
   const idiomaRuta = resolverIdiomaDeRuta(body.idioma, req);
-  if (idiomaRuta.tipo === "invalido") return idiomaRuta.respuesta;
+  if (idiomaRuta.tipo === "invalido") return salir(idiomaRuta.respuesta);
 
   if (typeof body.tipoPitch !== "string" || !TIPOS.has(body.tipoPitch)) {
-    return NextResponse.json({ error: idiomaRuta.textos.api.tipoPitchInvalido }, { status: 400 });
+    return salir(NextResponse.json({ error: idiomaRuta.textos.api.tipoPitchInvalido }, { status: 400 }));
   }
   const transcripcion = body.transcripcion?.trim() ?? "";
   if (transcripcion === "") {
-    return NextResponse.json({ error: idiomaRuta.textos.api.transcripcionObligatoria }, { status: 400 });
+    return salir(NextResponse.json({ error: idiomaRuta.textos.api.transcripcionObligatoria }, { status: 400 }));
   }
   if (excedeLimiteTranscripcion(transcripcion)) {
-    return NextResponse.json({ error: idiomaRuta.textos.api.transcripcionLarga }, { status: 413 });
+    return salir(NextResponse.json({ error: idiomaRuta.textos.api.transcripcionLarga }, { status: 413 }));
   }
 
   const tipoPitch = body.tipoPitch as TipoPitch;
@@ -66,11 +72,11 @@ export async function POST(req: NextRequest) {
       palabras,
       puntosCumplidos: puntos,
     });
-    return NextResponse.json({ tramos });
+    return salir(NextResponse.json({ tramos }));
   } catch (err) {
     console.error("[/api/linea-tiempo] fallo:", err);
     const proveedor = nombreProveedorActivo();
     reportarFallo(err, { proveedor, nivel: "rapido" }, { proveedor, nivel: "rapido" });
-    return NextResponse.json({ tramos: [] });
+    return salir(NextResponse.json({ tramos: [] }));
   }
 }

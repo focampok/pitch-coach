@@ -3,6 +3,7 @@ import type { SolicitudPreguntaSparring, TipoPitch } from "@/types/pitch";
 import { obtenerPuntoPorId } from "@/lib/rubricas";
 import { construirPromptPreguntaSparring } from "@/lib/prompts-sparring";
 import { generarPreguntaSparring } from "@/lib/sparring-modelo";
+import { iniciarEvaluacion, responderEvaluacion } from "@/lib/cupo-evaluacion";
 import { limitar } from "@/lib/rate-limit";
 import { nombreProveedorActivo } from "@/lib/modelo";
 import { reportarFallo } from "@/lib/sentry-reporte";
@@ -14,38 +15,45 @@ import { excedeLimitePuntoSparring } from "@/lib/limites";
 // Contrato bilingüe: `idioma` ('es' | 'en'; ausente → 'es', otro valor → 400)
 // gobierna los mensajes de error de esta ruta.
 
+export const dynamic = "force-dynamic";
+
 const TIPOS_PITCH_VALIDOS = new Set<string>(["capital", "educacion", "innovacion", "tecnologia"]);
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const inicio = iniciarEvaluacion(request);
+  if (!inicio.continuar) return inicio.respuesta as NextResponse;
+  const salir = (response: Response) =>
+    responderEvaluacion(request, inicio.ctx, response, 0) as NextResponse;
+
   const bloqueo = limitar(request, "sparring-pregunta");
-  if (bloqueo) return bloqueo as NextResponse;
+  if (bloqueo) return salir(bloqueo);
 
   let body: Partial<SolicitudPreguntaSparring>;
   try {
     body = (await request.json()) as Partial<SolicitudPreguntaSparring>;
   } catch {
     const textos = diccionario(idiomaDeCabecera(request));
-    return NextResponse.json({ error: textos.api.jsonInvalido }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.jsonInvalido }, { status: 400 }));
   }
 
   const idiomaRuta = resolverIdiomaDeRuta(body.idioma, request);
-  if (idiomaRuta.tipo === "invalido") return idiomaRuta.respuesta;
+  if (idiomaRuta.tipo === "invalido") return salir(idiomaRuta.respuesta);
   const { idioma, textos } = idiomaRuta;
 
   if (typeof body.tipoPitch !== "string" || !TIPOS_PITCH_VALIDOS.has(body.tipoPitch)) {
-    return NextResponse.json({ error: textos.api.tipoPitchInvalido }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.tipoPitchInvalido }, { status: 400 }));
   }
   if (typeof body.punto !== "string" || body.punto.trim() === "") {
-    return NextResponse.json({ error: textos.api.puntoObligatorio }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.puntoObligatorio }, { status: 400 }));
   }
   if (excedeLimitePuntoSparring(body.punto)) {
-    return NextResponse.json({ error: textos.api.puntoSparringLargo }, { status: 413 });
+    return salir(NextResponse.json({ error: textos.api.puntoSparringLargo }, { status: 413 }));
   }
 
   const tipoPitch = body.tipoPitch as TipoPitch;
   const puntoRubrica = obtenerPuntoPorId(tipoPitch, body.punto.trim());
   if (!puntoRubrica) {
-    return NextResponse.json({ error: textos.api.puntoFueraDeRubrica }, { status: 400 });
+    return salir(NextResponse.json({ error: textos.api.puntoFueraDeRubrica }, { status: 400 }));
   }
 
   try {
@@ -57,7 +65,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       ),
       idioma,
     );
-    return NextResponse.json({ pregunta: resultado.pregunta });
+    return salir(NextResponse.json({ pregunta: resultado.pregunta }));
   } catch (error) {
     console.error("[/api/sparring/pregunta] fallo al generar:", error);
     // Resumen sanitizado a Sentry; el detalle del proveedor queda en el log.
@@ -67,6 +75,6 @@ export async function POST(request: Request): Promise<NextResponse> {
       { proveedor, nivel: "rapido" },
       { proveedor, nivel: "rapido" },
     );
-    return NextResponse.json({ error: textos.api.preguntaFallida }, { status: 502 });
+    return salir(NextResponse.json({ error: textos.api.preguntaFallida }, { status: 502 }));
   }
 }

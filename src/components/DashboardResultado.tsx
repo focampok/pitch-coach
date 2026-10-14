@@ -19,6 +19,7 @@ import { cabecerasJson } from "@/lib/idiomas";
 import { etiquetaPunto } from "@/lib/rubricas";
 import { construirGuion, tieneMarcasDeTiempo } from "@/lib/guion-transcripcion";
 import { useIdioma } from "./ProveedorIdioma";
+import { esCupoAgotado, esDemoPausada, useEvaluacion } from "./ProveedorEvaluacion";
 import { AnilloSenal } from "./AnilloSenal";
 import { ReproductorVeredicto } from "./ReproductorVeredicto";
 import { SegundaToma } from "./SegundaToma";
@@ -280,6 +281,8 @@ export function DashboardResultado({
   onPuntoCerrado,
 }: DashboardResultadoProps) {
   const { idioma, textos } = useIdioma();
+  const evaluacion = useEvaluacion();
+  const idAvisoUltra = useId();
   const transcripcionTituloId = useId();
   const raizRef = useRef<HTMLDivElement | null>(null);
   const tituloRef = useRef<HTMLHeadingElement | null>(null);
@@ -362,7 +365,19 @@ export function DashboardResultado({
         })),
       }),
     })
-      .then((res) => (res.ok ? res.json() : { sugerencias: [], sala: null, cifras: [] }))
+      .then(async (res) => {
+        const data = (await res.json().catch(() => null)) as {
+          sugerencias?: SugerenciaTavily[];
+          sala?: ObjecionSalaVista | null;
+          cifras?: CifraVista[];
+          error?: string;
+        } | null;
+        evaluacion.notar(res, data);
+        if (!res.ok || data === null || "error" in data) {
+          return { sugerencias: [], sala: null, cifras: [] };
+        }
+        return data;
+      })
       .then((data: { sugerencias?: SugerenciaTavily[]; sala?: ObjecionSalaVista | null; cifras?: CifraVista[] }) => {
         if (cancelado) return;
         setSugerencias(data.sugerencias ?? []);
@@ -393,7 +408,6 @@ export function DashboardResultado({
   useEffect(() => {
     if (!tieneMarcasDeTiempo(palabras) || puntosCumplidos.length === 0) return;
     let cancelado = false;
-    setCargandoLinea(true);
     fetch("/api/linea-tiempo", {
       method: "POST",
       headers: cabecerasJson(idioma),
@@ -405,7 +419,12 @@ export function DashboardResultado({
         puntosCumplidos,
       }),
     })
-      .then((res) => (res.ok ? res.json() : { tramos: [] }))
+      .then(async (res) => {
+        const data = (await res.json().catch(() => null)) as { tramos?: TramoVista[]; error?: string } | null;
+        evaluacion.notar(res, data);
+        if (!res.ok || data === null) return { tramos: [] as TramoVista[] };
+        return data;
+      })
       .then((data: { tramos?: TramoVista[] }) => {
         if (!cancelado) setTramos(data.tramos ?? []);
       })
@@ -451,8 +470,10 @@ export function DashboardResultado({
         } satisfies SolicitudAnalisis),
         signal: controlador.signal,
       });
-      const cuerpo = (await respuesta.json()) as ResultadoAnalisis | { error: string };
+      const cuerpo = (await respuesta.json()) as ResultadoAnalisis | { error: string; mensaje?: string };
+      evaluacion.notar(respuesta, cuerpo);
       if (controlador.signal.aborted) return;
+      if (esDemoPausada(cuerpo) || esCupoAgotado(cuerpo)) return;
       if (!respuesta.ok || "error" in cuerpo) {
         throw new Error("error" in cuerpo ? cuerpo.error : textos.dashboard.errorReanalisis);
       }
@@ -474,6 +495,7 @@ export function DashboardResultado({
     tipoPitch,
     textos,
     transcripcion,
+    evaluacion,
   ]);
 
   // Al llegar el resultado lo anunciamos y llevamos la vista ahí: en móvil el
@@ -593,7 +615,8 @@ export function DashboardResultado({
         <button
           type="button"
           onClick={pedirAnalisisUltra}
-          disabled={analizandoUltra}
+          disabled={analizandoUltra || !evaluacion.puede(1)}
+          aria-describedby={evaluacion.cupoActivo ? idAvisoUltra : undefined}
           className="pc-btn pc-btn-accion"
         >
           <IconoAccion>
@@ -611,6 +634,19 @@ export function DashboardResultado({
           {analizandoUltra ? textos.dashboard.reanalizando : textos.dashboard.analisisUltra}
         </button>
       </div>
+      {evaluacion.cupoActivo && (
+        <div className="mt-2 space-y-1">
+          <p id={idAvisoUltra} className="pc-masthead-hint">
+            {textos.evaluacion.avisoUltra}
+          </p>
+          <p className="pc-masthead-hint">{textos.evaluacion.avisoEstandarUltra}</p>
+          {!evaluacion.puede(1) && (
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              {textos.evaluacion.noAlcanza}
+            </p>
+          )}
+        </div>
+      )}
 
       {habilitarTavily && sala && (
         <section className="pc-tavily">

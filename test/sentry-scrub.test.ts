@@ -23,6 +23,7 @@ const PREGUNTA = "CUANTO-VALE-TU-MERCADO";
 const RESPUESTA = "NO-LO-TENGO-CLARO";
 const VEREDICTO = "TU-PITCH-NECESITA-TRABAJO";
 const AUDIO = "BLOB-DE-AUDIO-CRUDO";
+const COOKIE = "VALOR-COOKIE-FIRMADA-SECRETA";
 
 /**
  * IP del cliente, por las dos vías por las que llegaba: `user.ip_address` y la
@@ -41,6 +42,7 @@ const CENTINELAS = [
   VEREDICTO,
   AUDIO,
   IP_CLIENTE,
+  COOKIE,
 ];
 
 /**
@@ -76,6 +78,8 @@ function eventoRealista() {
         "user-agent": "Mozilla/5.0",
         "x-forwarded-for": IP_CLIENTE,
         "X-Real-IP": IP_CLIENTE,
+        cookie: `pc_eval=${COOKIE}`,
+        "Set-Cookie": `pc_eval=${COOKIE}; HttpOnly`,
       },
       data: {
         transcripcion: TRANSCRIPCION,
@@ -88,6 +92,7 @@ function eventoRealista() {
       proveedor: "nebius",
       modelo: "nvidia/nemotron-3-super-120b-a12b",
       statusCode: 502,
+      pc_eval: COOKIE,
       analisis: {
         score: 72,
         veredicto_corto: VEREDICTO,
@@ -279,6 +284,9 @@ describe("sentry-scrub", () => {
         "pitch-coach.focampo.com"
       );
       expect(leer(salida, "request", "headers", "user-agent")).toBe("Mozilla/5.0");
+      expect(leer(salida, "request", "headers", "cookie")).toBe(REDACTED);
+      expect(leer(salida, "request", "headers", "Set-Cookie")).toBe(REDACTED);
+      expect(leer(salida, "extra", "pc_eval")).toBe(REDACTED);
     });
 
     it("no muta las cabeceras ni el usuario de la entrada", () => {

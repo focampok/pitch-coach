@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { evidenciaDePitch } from "@/lib/evidencia-pitch";
+import { iniciarEvaluacion, responderEvaluacion } from "@/lib/cupo-evaluacion";
 import { limitar } from "@/lib/rate-limit";
 import { reportarFallo } from "@/lib/sentry-reporte";
 import { diccionario } from "@/lib/diccionarios";
@@ -9,6 +10,7 @@ import { obtenerRubrica } from "@/lib/rubricas";
 import type { TipoPitch } from "@/types/pitch";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const TIPOS_PITCH_VALIDOS = new Set<string>([
   "capital",
@@ -51,9 +53,13 @@ const TIPOS_PITCH_VALIDOS = new Set<string>([
  * dichas, si hay transcripción.
  */
 export async function POST(req: NextRequest) {
+  const inicio = iniciarEvaluacion(req);
+  if (!inicio.continuar) return inicio.respuesta;
+  const salir = (response: Response) => responderEvaluacion(req, inicio.ctx, response, 0);
+
   // Rate limit por IP (en memoria, por instancia — ver src/lib/rate-limit.ts).
   const bloqueo = limitar(req, "enriquecer");
-  if (bloqueo) return bloqueo;
+  if (bloqueo) return salir(bloqueo);
 
   let body: {
     tema?: string;
@@ -66,14 +72,16 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   } catch {
     const textos = diccionario(idiomaDeCabecera(req));
-    return NextResponse.json(
-      { error: textos.api.enriquecimientoInvalido },
-      { status: 400 },
+    return salir(
+      NextResponse.json(
+        { error: textos.api.enriquecimientoInvalido },
+        { status: 400 },
+      ),
     );
   }
 
   const idiomaRuta = resolverIdiomaDeRuta(body.idioma, req);
-  if (idiomaRuta.tipo === "invalido") return idiomaRuta.respuesta;
+  if (idiomaRuta.tipo === "invalido") return salir(idiomaRuta.respuesta);
 
   const tema = body.tema?.trim();
 
@@ -82,12 +90,12 @@ export async function POST(req: NextRequest) {
   const vacio = { sugerencias: [], sala: null, cifras: [] };
 
   if (!tema || !TIPOS_PITCH_VALIDOS.has(tema)) {
-    return NextResponse.json(vacio);
+    return salir(NextResponse.json(vacio));
   }
 
   if (!process.env.TAVILY_API_KEY) {
     // Degradación silenciosa: Tavily es opcional (§12).
-    return NextResponse.json(vacio);
+    return salir(NextResponse.json(vacio));
   }
 
   const tipoPitch = tema as TipoPitch;
@@ -106,7 +114,7 @@ export async function POST(req: NextRequest) {
       (p) => typeof p?.punto === "string" && idsValidos.has(p.punto),
     );
     if (puntosValidos.length === 0 && transcripcion === "") {
-      return NextResponse.json(vacio);
+      return salir(NextResponse.json(vacio));
     }
 
     const evidencia = await evidenciaDePitch(puntosValidos, {
@@ -115,12 +123,12 @@ export async function POST(req: NextRequest) {
       tipoNombre: idiomaRuta.textos.comun.tipoPitch[tipoPitch],
       idioma: idiomaRuta.idioma,
     });
-    return NextResponse.json(evidencia);
+    return salir(NextResponse.json(evidencia));
   } catch (err) {
     console.error("[/api/enriquecer] fallo Tavily:", err);
     // El proveedor acá es Tavily, no el modelo de lenguaje.
     reportarFallo(err, { proveedor: "tavily" }, { proveedor: "tavily" });
     // No crítico: se responde 200 con lista vacía en vez de romper el dashboard.
-    return NextResponse.json(vacio);
+    return salir(NextResponse.json(vacio));
   }
 }

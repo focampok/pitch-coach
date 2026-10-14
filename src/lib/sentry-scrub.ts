@@ -61,6 +61,9 @@ import { IP_HEADER_NAMES } from "./sentry-options";
  *   veredicto_corto→ ResultadoAnalisis.veredicto_corto
  *   audio          → buffer de /api/tts y campo multipart de /api/transcribir
  *   palabras       → tokens Scribe con tiempo (mismo contenido que la transcripción)
+ *   cookie         → cabecera Cookie (incluye pc_eval)
+ *   set-cookie     → cabecera Set-Cookie
+ *   pc_eval        → contador firmado del cupo de evaluación
  */
 export const SENSITIVE_KEYS: readonly string[] = [
   "transcripcion",
@@ -72,6 +75,9 @@ export const SENSITIVE_KEYS: readonly string[] = [
   "veredicto_corto",
   "audio",
   "palabras",
+  "cookie",
+  "set-cookie",
+  "pc_eval",
 ];
 
 /** Marcador que reemplaza al valor filtrado. */
@@ -159,16 +165,17 @@ export function scrub(
 }
 
 /**
- * Devuelve las cabeceras sin las que llevan la IP. Se ELIMINAN, no se redactan,
- * para que el evento no afirme siquiera que hubo una IP — mismo criterio que el
- * SDK cuando `include.ip` es falso (borra la cabecera, no la vacía).
+ * Devuelve las cabeceras sin las que llevan la IP, y con Cookie / Set-Cookie
+ * redactadas. La IP se ELIMINA (el evento no afirma que hubo una). La cookie
+ * se reemplaza por REDACTED: el nombre sigue, el valor no.
  */
-function sinCabecerasDeIp(headers: unknown): unknown {
+function filtrarCabeceras(headers: unknown): unknown {
   if (!isPlainObject(headers)) return headers;
 
   const salida: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(headers)) {
-    if (!isIpHeader(key)) salida[key] = value;
+    if (isIpHeader(key)) continue;
+    salida[key] = isSensitiveKey(key) ? REDACTED : value;
   }
   return salida;
 }
@@ -242,7 +249,7 @@ function scrubEventObject<T extends ScrubTarget>(event: T): T {
       data: scrub(request.data),
     };
     if (request.headers !== undefined) {
-      limpia.headers = sinCabecerasDeIp(request.headers);
+      limpia.headers = filtrarCabeceras(request.headers);
     }
     salida.request = limpia;
   }

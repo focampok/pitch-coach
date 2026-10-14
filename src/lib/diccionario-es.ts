@@ -252,6 +252,30 @@ export const es = {
     demasiadasSolicitudes: "Demasiadas solicitudes. Espera un momento y vuelve a intentarlo.",
   },
 
+  // --- Pausa y cupo de la evaluación (solo si LIVE_DEMO / EVAL_LIMIT) --
+  evaluacion: {
+    demoPausada:
+      "La demo en vivo está pausada a propósito para cuidar los créditos compartidos. Estará disponible del 1 al 15 de diciembre para la evaluación. Mientras tanto, mira el video de demo.",
+    verVideo: "Ver video demo",
+    restantes: (quedan: number, limite: number) => `Te quedan ${quedan} de ${limite} prácticas`,
+    nota: "Límite temporal solo durante la evaluación del hackathon, para cuidar créditos compartidos. Pitch Coach es y seguirá siendo sin cuenta, sin tarjeta y sin fricción.",
+    avisoUltra: "Esto usa 1 práctica",
+    avisoEstandarUltra: "Esto usa 2",
+    avisoHallazgos: "Cada hallazgo resuelto usa 1 práctica",
+    avisoToma: "Esto usa 1 práctica",
+    noAlcanza: "No te quedan prácticas de evaluación para esta acción.",
+    agotado: (limite: number) =>
+      `Usaste las ${limite} prácticas de evaluación. ¡Gracias por probar Pitch Coach!`,
+    miraVideo: "Mira el video demo",
+    oContacto: "o",
+    escribidme: "escríbeme",
+    escribidmeInicio: "Escríbeme",
+    agotadoSiguen: "Tus resultados e historial siguen disponibles.",
+    noConfigurada: "La demo no está disponible en este momento.",
+    cupoAgotado: (limite: number) =>
+      `Usaste las ${limite} prácticas de evaluación. ¡Gracias por probar Pitch Coach! Tus resultados e historial siguen disponibles.`,
+  },
+
   // --- Pie de página (src/components/PiePagina.tsx) ------------------------
   pie: {
     confianza:
