@@ -60,10 +60,10 @@ interface DescripcionesEntidades {
 
 const DESCRIPCIONES: Record<Idioma, DescripcionesEntidades> = {
   es: {
-    entidades: `Hasta ${MAX_ENTIDADES} entidades cortas del pitch (producto o sector, mercado, y geografía si se menciona). Cada una de ${MAX_ENTIDAD_CARACTERES} caracteres máximo, 1 a 4 palabras. NUNCA una oración ni una cita de la transcripción.`,
+    entidades: `Hasta ${MAX_ENTIDADES} entidades cortas del pitch, en este orden: la industria o categoría de producto en sustantivos comunes (ej. 'software contable', 'energía solar'; NUNCA el nombre de la marca o del producto), el cliente o mercado (ej. 'pequeños comercios'), y la geografía si se menciona. Cada una de ${MAX_ENTIDAD_CARACTERES} caracteres máximo, 1 a 4 palabras. NUNCA una oración ni una cita de la transcripción.`,
   },
   en: {
-    entidades: `Up to ${MAX_ENTIDADES} short entities from the pitch (product or sector, market, and geography if mentioned). Each one ${MAX_ENTIDAD_CARACTERES} characters max, 1 to 4 words. NEVER a sentence or a quote from the transcript.`,
+    entidades: `Up to ${MAX_ENTIDADES} short entities from the pitch, in this order: the industry or product category in common nouns (e.g. 'accounting software', 'solar energy'; NEVER the brand or product name), the customer or market (e.g. 'small shops'), and the geography if mentioned. Each one ${MAX_ENTIDAD_CARACTERES} characters max, 1 to 4 words. NEVER a sentence or a quote from the transcript.`,
   },
 };
 
@@ -141,7 +141,8 @@ function construirSystem(idioma: Idioma, tipoNombre: string): string {
     return `You extract SHORT entities from the transcript of a ${tipoNombre} pitch. Your output is only used to search for real statistics, so it must never reveal what the person said.
 
 Strict rules:
-- Return up to ${MAX_ENTIDADES} entities: the product or sector, the market or audience, and the geography only if it is explicitly mentioned.
+- Return up to ${MAX_ENTIDADES} entities, in this order: (1) the industry or product category, (2) the customer or market, (3) the geography only if it is explicitly mentioned.
+- The industry goes in COMMON NOUNS that a market report would use (e.g. "accounting software", "solar panels", "specialty tea"). NEVER the brand or product name: a brand finds no statistics. If the pitch says "Contable is a WhatsApp bookkeeping assistant", the entity is "accounting software", not "Contable".
 - Each entity is 1 to 4 words and ${MAX_ENTIDAD_CARACTERES} characters max. NEVER a sentence, NEVER a quote from the transcript.
 - If a category does not appear in the transcript, omit it. Returning fewer than ${MAX_ENTIDADES} entities, even an empty list, is valid.
 - Do not invent data that is not in the transcript. Do not include figures, verbs or full phrases.
@@ -152,7 +153,8 @@ Reply ONLY with the requested structured JSON, in English, with no extra text.`;
   return `Extraes ENTIDADES CORTAS de la transcripción de un pitch de ${tipoNombre}. Tu salida solo sirve para buscar estadísticas reales, así que nunca debe revelar lo que dijo la persona.
 
 Reglas estrictas:
-- Devuelve hasta ${MAX_ENTIDADES} entidades: el producto o sector, el mercado o audiencia, y la geografía solo si se menciona explícitamente.
+- Devuelve hasta ${MAX_ENTIDADES} entidades, en este orden: (1) la industria o categoría de producto, (2) el cliente o mercado, (3) la geografía solo si se menciona explícitamente.
+- La industria va en SUSTANTIVOS COMUNES, como la nombraría un informe de mercado (ej. "software contable", "paneles solares", "té de especialidad"). NUNCA el nombre de la marca o del producto: una marca no encuentra estadísticas. Si el pitch dice "Contable es un asistente de contabilidad por WhatsApp", la entidad es "software contable", no "Contable".
 - Cada entidad tiene 1 a 4 palabras y ${MAX_ENTIDAD_CARACTERES} caracteres como máximo. NUNCA una oración, NUNCA una cita de la transcripción.
 - Si una categoría no aparece en la transcripción, omítela. Devolver menos de ${MAX_ENTIDADES} entidades, incluso una lista vacía, es válido.
 - No inventes datos que no estén en la transcripción. No incluyas cifras, verbos ni frases completas.

@@ -43,6 +43,11 @@ export async function evidenciaDePitch(
       })
     : [];
 
+  // Diario (§6): las entidades son los mismos términos cortos que viajan en la
+  // query a Tavily; nunca la transcripción. Sin ellas no se puede saber si un
+  // "sin sugerencias" vino de la extracción o del filtro de industria.
+  console.info(`[tavily] entidades=${JSON.stringify(entidades)}`);
+
   const primero = elegirPuntosAEnriquecer(puntosSinCumplir, contexto.tipoPitch)[0];
 
   const [sugerencias, sala, cifras] = await Promise.all([

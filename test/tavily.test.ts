@@ -1372,6 +1372,86 @@ describe("relevancia por industria (contabilidad vs electrodomésticos)", () => 
   });
 });
 
+describe("entidades con industria (diagnóstico de la pasada 2: marca + países)", () => {
+  // Con ["Contable", "Guatemala", "Colombia"] la query salió sin industria
+  // ("Guatemala Colombia market size…") y ninguna cifra contable podía pasar.
+  const ENTIDADES_NUEVAS = ["accounting software", "small shops", "Colombia"];
+
+  it("el extractor pide la industria en sustantivos comunes y prohíbe la marca", async () => {
+    const fetchMock = fetchConDispatch(respuestasOk());
+    vi.stubGlobal("fetch", fetchMock);
+    await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion: "Contable is a WhatsApp bookkeeping assistant for small shops in Guatemala.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+    const entidades = cuerpoDeEsquema<CuerpoModelo>(fetchMock, NOMBRE_ENTIDADES);
+    expect(entidades.messages?.[0].content).toMatch(/NEVER the brand or product name/);
+    expect(entidades.messages?.[0].content).toMatch(/industry or product category/);
+    // El diario registra las entidades (mismos términos que viajan en la query).
+    expect(SALIDA_INFO()).toContain('[tavily] entidades=["energía solar","Guatemala"]');
+  });
+
+  it("con la industria en las entidades, una cifra contable de LATAM pasa el filtro determinista", () => {
+    expect(
+      comparteEntidad(
+        "Latin America Accounting Software Market Report. The market reached USD 1.2 billion in 2024. accounting software",
+        ENTIDADES_NUEVAS,
+      ),
+    ).toBe(true);
+    expect(comparteEntidad("Accounting Software Market in Colombia", ENTIDADES_NUEVAS)).toBe(true);
+    // Y una comparación de países sigue fuera.
+    expect(comparteEntidad("Guatemala vs Colombia: area and population", ENTIDADES_NUEVAS)).toBe(false);
+    // Con la marca como única entidad temática, "accounting" no coincidía: ese
+    // era el bloqueo estructural, no el filtro de industria.
+    expect(comparteEntidad("Accounting Software Market in Colombia", ["Contable", "Guatemala", "Colombia"])).toBe(false);
+  });
+
+  it("el diario de candidatas registra host, motivo y sector declarado, nunca la cita", async () => {
+    const respuestas = respuestasOk();
+    respuestas.entidades = ENTIDADES_NUEVAS;
+    respuestas.validacion = { util: false, relevante: false, sector: "forestry", cifra: "", cita: "SECRETA" };
+    const fetchMock = fetchConDispatch(respuestas);
+    vi.stubGlobal("fetch", fetchMock);
+    await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion: "We sell accounting software to small shops in Colombia.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+    const salida = SALIDA_INFO();
+    expect(salida).toMatch(/\[tavily\] candidata punto=mercado host=informe\.test motivo=no-relevante sector="forestry" relevante=false/);
+    expect(salida).not.toContain("SECRETA");
+    expect(salida).not.toContain(MARCA_CONTENIDO);
+  });
+
+  it("verifica hasta dos cifras dichas (tracción y ask)", async () => {
+    const respuestas = respuestasOk();
+    respuestas.entidades = ENTIDADES_NUEVAS;
+    respuestas.cifras = ["420 shops", "500000 dollars", "15 percent"];
+    const fetchMock = fetchConDispatch(respuestas);
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion:
+          "Today we have four hundred and twenty paying shops, growing fifteen percent. We are raising five hundred thousand dollars.",
+        puntosSinCumplir: [],
+      }),
+    );
+    const json = (await res.json()) as { cifras: { cifra: string }[] };
+    expect(json.cifras.map((c) => c.cifra)).toEqual(["420 shops", "500000 dollars"]);
+    // Dos cifras = dos búsquedas de contraste, ni una más.
+    expect(cuerposBusqueda(fetchMock).filter((b) => /^statistic\b/.test(b.query ?? ""))).toHaveLength(2);
+  });
+});
+
 describe("objeción de sala: pregunta de inversionista y de la industria del pitch", () => {
   const ENTIDADES = ["software de contabilidad", "pymes", "Colombia"];
   const PAGINA_GEO =
@@ -1444,7 +1524,7 @@ describe("objeción de sala: pregunta de inversionista y de la industria del pit
     );
     const json = (await res.json()) as { sala: unknown };
     expect(json.sala).toBeNull();
-    expect(SALIDA_INFO()).toContain("[sala] descartada categoria=otra motivo=no-es-pregunta-de-sala");
+    expect(SALIDA_INFO()).toMatch(/\[sala\] descartada host=\S+ categoria=otra sector="geografía" motivo=no-es-pregunta-de-sala/);
 
     // El esquema obliga a clasificar la pregunta y a nombrar el sector.
     const objecion = cuerpoDeEsquema<CuerpoModelo & { response_format?: { json_schema?: { schema?: { required?: string[] } } } }>(
@@ -1484,7 +1564,7 @@ describe("objeción de sala: pregunta de inversionista y de la industria del pit
       }),
     );
     expect(((await res.json()) as { sala: unknown }).sala).toBeNull();
-    expect(SALIDA_INFO()).toContain("[sala] descartada categoria=unit_economics motivo=otro-tema");
+    expect(SALIDA_INFO()).toMatch(/\[sala\] descartada host=\S+ categoria=unit_economics sector="electrodomésticos" motivo=otro-tema/);
   });
 });
 

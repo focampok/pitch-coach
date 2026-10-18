@@ -21,6 +21,15 @@ export interface ObjecionSala {
 export const MAX_OBJECION_CARACTERES = 240;
 export const MAX_CITA_OBJECION_CARACTERES = 300;
 
+/** Host de una URL para el diario; la URL cruda si no parsea. */
+function hostDe(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 function normalizar(texto: string): string {
   return texto.replace(/\s+/g, " ").trim().toLowerCase();
 }
@@ -240,9 +249,17 @@ export async function objecionDeSala(datos: {
     return null;
   }
 
+  if (fuentes.length === 0) {
+    console.info(`[sala] sin fuentes query="${query}"`);
+    return null;
+  }
+
   for (const fuente of fuentes) {
     const extraido = await extraerContenido(fuente.url, { personalizar: query });
-    if (!extraido) continue;
+    if (!extraido) {
+      console.info(`[sala] descartada host=${hostDe(fuente.url)} motivo=sin-extraccion`);
+      continue;
+    }
     let cruda: ObjecionCruda;
     try {
       cruda = await llamarModelo<ObjecionCruda>(
@@ -267,13 +284,17 @@ export async function objecionDeSala(datos: {
       continue;
     }
     if (!cruda.util) {
-      console.info(`[sala] descartada categoria=${cruda.categoria} motivo=no-es-pregunta-de-sala`);
+      console.info(
+        `[sala] descartada host=${hostDe(fuente.url)} categoria=${cruda.categoria} sector="${cruda.sector}" motivo=no-es-pregunta-de-sala`,
+      );
       continue;
     }
     // Mejor nada que una objeción de otra industria: la pregunta o la página
     // tienen que nombrar algo del pitch más allá del país.
     if (!esObjecionDelPitch(cruda, fuente.title, datos.entidades)) {
-      console.info(`[sala] descartada categoria=${cruda.categoria} motivo=otro-tema`);
+      console.info(
+        `[sala] descartada host=${hostDe(fuente.url)} categoria=${cruda.categoria} sector="${cruda.sector}" motivo=otro-tema`,
+      );
       continue;
     }
     return {

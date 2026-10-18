@@ -8,8 +8,11 @@ import {
 import { normalizarNumerosEnPalabras } from "./numeros-en-palabras";
 import { recortarTexto } from "./texto-corto";
 
-/** Una cifra dicha por práctica. Cada una dispara búsqueda + extract + Nano. */
-export const MAX_CIFRAS_DICHAS = 1;
+/**
+ * Cifras dichas por práctica. Cada una dispara búsqueda + extract + Nano.
+ * Dos cubren el caso típico de un pitch (tracción + ask).
+ */
+export const MAX_CIFRAS_DICHAS = 2;
 
 export const MAX_CIFRA_DICHA_CARACTERES = 40;
 
@@ -102,8 +105,8 @@ export function construirQueryCifra(datos: {
 function esquemaCifras(idioma: Idioma): EsquemaJson {
   const descripcion =
     idioma === "en"
-      ? "Up to 1 concrete figure the speaker stated (amount, users, market size). Digits and a short unit. Not a sentence."
-      : "Hasta 1 cifra concreta que la persona dijo (monto, usuarios, tamaño de mercado). Dígitos y una unidad corta. No una oración.";
+      ? `Up to ${MAX_CIFRAS_DICHAS} concrete figures the speaker stated (amount, users, market size), the most important first. Digits and a short unit. Not a sentence.`
+      : `Hasta ${MAX_CIFRAS_DICHAS} cifras concretas que la persona dijo (monto, usuarios, tamaño de mercado), la más importante primero. Dígitos y una unidad corta. No una oración.`;
   return {
     type: "object",
     additionalProperties: false,
@@ -141,19 +144,19 @@ export function validarCifrasExtraidas(datos: unknown, transcripcion: string): s
 
 function systemExtraccion(idioma: Idioma): string {
   if (idioma === "en") {
-    return `You extract at most ONE concrete figure the speaker stated in a pitch (money, users, market size, growth).
+    return `You extract at most ${MAX_CIFRAS_DICHAS} concrete figures the speaker stated in a pitch (money, users, market size, growth), the most important first.
 
 Rules:
-- Copy the figure as digits plus a short unit. No sentence, no quote.
+- Copy each figure as digits plus a short unit, copying the unit word as it appears. No sentence, no quote.
 - If the pitch states no concrete figure, return an empty list.
 - Do not invent a number that is not in the transcript.
 
 Reply ONLY with the requested JSON.`;
   }
-  return `Extraes como máximo UNA cifra concreta que la persona dijo en un pitch (dinero, usuarios, tamaño de mercado, crecimiento).
+  return `Extraes como máximo ${MAX_CIFRAS_DICHAS} cifras concretas que la persona dijo en un pitch (dinero, usuarios, tamaño de mercado, crecimiento), la más importante primero.
 
 Reglas:
-- Copia la cifra como dígitos más una unidad corta. Sin oración, sin cita.
+- Copia cada cifra como dígitos más una unidad corta, con la palabra de la unidad tal como aparece. Sin oración, sin cita.
 - Si el pitch no dice ninguna cifra concreta, devuelve una lista vacía.
 - No inventes un número que no esté en la transcripción.
 

@@ -303,6 +303,30 @@ function diarioPunto(entrada: {
   );
 }
 
+/**
+ * Registra el veredicto de UNA candidata: host, motivo y el sector que el
+ * validador le atribuyó a la página (etiqueta corta derivada de contenido
+ * público). Sin cita, sin contenido, sin transcripción. Es lo que permite
+ * saber si el filtro de industria descartó una fuente que sí era del sector.
+ */
+export function diarioCandidata(entrada: {
+  punto: string;
+  url: string;
+  motivo: string;
+  sector?: string;
+  relevante?: boolean;
+}): void {
+  let host = entrada.url;
+  try {
+    host = new URL(entrada.url).host;
+  } catch {
+    // La URL ya pasó por elegirCandidatos; si no parsea, se registra tal cual.
+  }
+  const sector = entrada.sector !== undefined ? ` sector="${entrada.sector}"` : "";
+  const relevante = entrada.relevante !== undefined ? ` relevante=${entrada.relevante}` : "";
+  console.info(`[tavily] candidata punto=${entrada.punto} host=${host} motivo=${entrada.motivo}${sector}${relevante}`);
+}
+
 // -----------------------------------------------------------------------------
 // Contexto y orquestación (pasos 1–7)
 // -----------------------------------------------------------------------------
@@ -415,6 +439,7 @@ export async function enriquecerConTavily(
           const contenido = await extraerContenido(candidato.url!, { personalizar: query });
           if (!contenido) {
             motivo = "sin-extraccion";
+            diarioCandidata({ punto, url: candidato.url!, motivo });
             continue;
           }
           extraido = true;
@@ -424,7 +449,17 @@ export async function enriquecerConTavily(
           // tema/sector del pitch, se descarta. Las entidades son el contexto
           // de comparación (mismos términos cortos que ya viajan a Tavily).
           const validacion = await validarContenido(contenido.contenido, idioma, entidades);
-          if (!validacion.util) continue;
+          if (!validacion.util) {
+            motivo = validacion.relevante ? "sin-cifra" : "no-relevante";
+            diarioCandidata({
+              punto,
+              url: candidato.url!,
+              motivo,
+              sector: validacion.sector,
+              relevante: validacion.relevante,
+            });
+            continue;
+          }
 
           // Segunda barrera, sin modelo: lo que se muestra (título, cita, cifra)
           // o el sector que el validador le atribuye a la página tiene que
@@ -434,8 +469,10 @@ export async function enriquecerConTavily(
           const corpus = `${candidato.title ?? ""} ${validacion.cita} ${validacion.cifra} ${validacion.sector}`;
           if (!comparteEntidad(corpus, entidades)) {
             motivo = "otro-tema";
+            diarioCandidata({ punto, url: candidato.url!, motivo, sector: validacion.sector, relevante: true });
             continue;
           }
+          diarioCandidata({ punto, url: candidato.url!, motivo: "ok", sector: validacion.sector });
 
           // Paso 7: frase hablada (con respaldo determinista).
           const frase = await generarFraseHablada({
