@@ -50,7 +50,7 @@ export async function verificarCifrasDichas(datos: {
       const validacion = await validarContenido(extraido.contenido, datos.idioma, datos.entidades);
       if (!validacion.util) continue;
       if (!mismaMagnitud(cifra, validacion.cifra)) continue;
-      const corpus = `${fuente.title} ${validacion.cita} ${validacion.cifra}`;
+      const corpus = `${fuente.title} ${validacion.cita} ${validacion.cifra} ${validacion.sector}`;
       if (!comparteEntidad(corpus, datos.entidades)) continue;
       hallada = {
         cifra,

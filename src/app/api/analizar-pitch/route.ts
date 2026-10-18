@@ -102,6 +102,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       tiempo_real_segundos: tiempoRealSegundos,
       tiempo_maximo_segundos: duracionMaxima * 60,
       ...(analisis.traza ? { traza: analisis.traza } : {}),
+      // Procedencia para el panel: ID exacto del modelo (Super o Ultra) y proveedor.
+      modelo: analisis.modelo,
+      proveedor: analisis.proveedor,
     };
 
     return salir(NextResponse.json(resultado), 1);

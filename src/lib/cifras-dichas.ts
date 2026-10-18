@@ -5,6 +5,7 @@ import {
   DELIMITADOR_INICIO,
   neutralizarDelimitadores,
 } from "./prompts";
+import { normalizarNumerosEnPalabras } from "./numeros-en-palabras";
 import { recortarTexto } from "./texto-corto";
 
 /** Una cifra dicha por práctica. Cada una dispara búsqueda + extract + Nano. */
@@ -174,12 +175,17 @@ ${DELIMITADOR_FIN}`;
 /**
  * Saca hasta una cifra que de verdad esté en la transcripción.
  * Best-effort: si el modelo falla, devuelve [].
+ *
+ * Scribe dicta los números en palabras ("four hundred and twenty", "quinientos
+ * mil dólares"). Antes de pedir y de verificar la cifra, la copia que va al
+ * modelo pasa por `normalizarNumerosEnPalabras`: así "420" y "500000" sí
+ * "están" en lo dicho. La transcripción visible no cambia.
  */
 export async function extraerCifrasDichas(
   transcripcion: string,
   idioma: Idioma,
 ): Promise<string[]> {
-  const texto = transcripcion.trim();
+  const texto = normalizarNumerosEnPalabras(transcripcion.trim(), idioma);
   if (texto === "") return [];
   try {
     return await llamarModelo<string[]>(

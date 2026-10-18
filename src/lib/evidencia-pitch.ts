@@ -5,11 +5,14 @@ import { objecionDeSala, type ObjecionSala } from "./objecion-sala";
 import { elegirPuntosAEnriquecer, enriquecerConTavily, type SugerenciaTavily } from "./tavily";
 import { verificarCifrasDichas } from "./verificar-cifras";
 import type { VeredictoCifra } from "./cifras-dichas";
+import { modeloConfigurado, type ProcedenciaModelo } from "./modelo";
 
-export interface EvidenciaPitch {
+export interface EvidenciaPitch extends ProcedenciaModelo {
   sugerencias: SugerenciaTavily[];
   sala: ObjecionSala | null;
   cifras: VeredictoCifra[];
+  /** Buscador que trajo las fuentes. Hoy solo Tavily. */
+  buscador: "tavily";
 }
 
 /**
@@ -18,6 +21,10 @@ export interface EvidenciaPitch {
  *
  * Las entidades se extraen una vez y se comparten. La transcripción no se
  * reenvía a Tavily. Cada rama es best-effort.
+ *
+ * La procedencia declara el modelo del nivel `rapido` (Nano): todas las
+ * llamadas de este pipeline —entidades, query, validación, frase, objeción,
+ * cifras— van a ese nivel, que no tiene fallbacks.
  */
 export async function evidenciaDePitch(
   puntosSinCumplir: { punto: string; comentario?: string }[],
@@ -52,5 +59,5 @@ export async function evidenciaDePitch(
     verificarCifrasDichas({ ...contexto, entidades }),
   ]);
 
-  return { sugerencias, sala, cifras };
+  return { sugerencias, sala, cifras, buscador: "tavily", ...modeloConfigurado("rapido") };
 }

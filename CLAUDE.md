@@ -102,7 +102,7 @@ pitch-coach/
 │   │   ├── modelo.ts, proveedor-nebius.ts, proveedor-gemini.ts
 │   │   ├── rubricas.ts, muletillas.ts, prompts.ts, prompts-sparring.ts
 │   │   ├── diccionario-es.ts, diccionario-en.ts, idiomas.ts
-│   │   ├── salas.ts, objecion-sala.ts, cifras-dichas.ts, linea-tiempo.ts
+│   │   ├── salas.ts, objecion-sala.ts, cifras-dichas.ts, numeros-en-palabras.ts, linea-tiempo.ts
 │   │   ├── config-evaluacion.ts, cupo-evaluacion.ts
 │   │   └── mensajes-coach.ts
 │   └── types/

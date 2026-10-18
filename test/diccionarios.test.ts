@@ -65,6 +65,9 @@ describe("paridad entre diccionarios", () => {
       "comun.tipoPitch.capital",
       "progreso.ultra",
       "dashboard.analisisUltra",
+      // Nombres de proveedor: marcas, no se traducen.
+      "dashboard.proveedorModelo.nebius",
+      "dashboard.proveedorModelo.gemini",
     ]);
 
     const enIngles = new Map(hojasString(DICCIONARIOS.en));

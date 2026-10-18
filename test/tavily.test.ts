@@ -14,9 +14,19 @@ import {
   estaExcluido,
   limpiarTermino,
 } from "@/lib/tavily";
-import { PREFIJOS, esEntidadAmbigua, validarRespuestaQuery } from "@/lib/query-tavily";
+import {
+  PREFIJOS,
+  construirUserQuery,
+  esEntidadAmbigua,
+  validarRespuestaQuery,
+} from "@/lib/query-tavily";
 import { MAX_ENTIDADES, MAX_ENTIDAD_CARACTERES } from "@/lib/entidades-tavily";
-import { comparteEntidad } from "@/lib/validar-sugerencia";
+import { comparteEntidad, mismaRaiz, validarRespuestaValidacion } from "@/lib/validar-sugerencia";
+import {
+  construirUserObjecion,
+  esObjecionDelPitch,
+  validarObjecionCruda,
+} from "@/lib/objecion-sala";
 import { reiniciar } from "@/lib/rate-limit";
 
 // -----------------------------------------------------------------------------
@@ -47,10 +57,22 @@ const NOMBRE_FRASE = "frase_dato_tavily";
 const NOMBRE_OBJECION = "objecion_sala";
 const NOMBRE_CIFRAS = "cifras_dichas";
 
-/** Respuesta cuando la sala y el contraste de cifras dichas no aportan nada. */
+/** Respuesta degradada: ningún proveedor fue llamado, sin procedencia. */
 const EVIDENCIA_VACIA = { sugerencias: [], sala: null, cifras: [] };
 
+/**
+ * Respuesta cuando el pipeline corrió (Nano + Tavily) y nada pasó el filtro:
+ * declara igual la procedencia (ID exacto de Nano, proveedor y buscador).
+ */
+const EVIDENCIA_VACIA_VERIFICADA = {
+  ...EVIDENCIA_VACIA,
+  buscador: "tavily",
+  modelo: MODELO_NANO,
+  proveedor: "nebius",
+};
+
 const CIFRA_OK = "USD 320 millones en 2024";
+const SECTOR_OK = "energía solar";
 const CITA_OK = "El mercado de energía solar en Guatemala alcanzó USD 320 millones en 2024";
 const FRASE_OK =
   "Según el informe del sector, el mercado de energía solar en Guatemala alcanzó 320 millones de dólares en 2024.";
@@ -116,12 +138,19 @@ interface RespuestasModelo {
   validacion?: {
     util: boolean;
     relevante?: boolean;
+    sector?: string;
     cifra?: string;
     cita?: string;
     anio?: string;
   };
   frase?: string;
-  objecion?: { util: boolean; objecion: string; cita: string };
+  objecion?: {
+    util: boolean;
+    objecion: string;
+    cita: string;
+    categoria?: string;
+    sector?: string;
+  };
   cifras?: string[];
   /** Nombres de esquema que deben FALLAR (para probar la degradación). */
   fallar?: string[];
@@ -198,6 +227,7 @@ function respuestaSegunEsquema(nombre: string, respuestas: RespuestasModelo): Re
       const v = respuestas.validacion ?? {
         util: true,
         relevante: true,
+        sector: SECTOR_OK,
         cifra: CIFRA_OK,
         cita: CITA_OK,
         anio: "2024",
@@ -205,6 +235,7 @@ function respuestaSegunEsquema(nombre: string, respuestas: RespuestasModelo): Re
       return respuestaChat({
         util: v.util,
         relevante: v.relevante ?? true,
+        sector: v.sector ?? SECTOR_OK,
         cifra: v.cifra ?? "",
         cita: v.cita ?? "",
         anio: v.anio ?? "",
@@ -212,10 +243,16 @@ function respuestaSegunEsquema(nombre: string, respuestas: RespuestasModelo): Re
     }
     case NOMBRE_FRASE:
       return respuestaChat({ frase: respuestas.frase ?? FRASE_OK });
-    case NOMBRE_OBJECION:
-      return respuestaChat(
-        respuestas.objecion ?? { util: false, objecion: "", cita: "" },
-      );
+    case NOMBRE_OBJECION: {
+      const o = respuestas.objecion ?? { util: false, objecion: "", cita: "" };
+      return respuestaChat({
+        util: o.util,
+        objecion: o.objecion,
+        cita: o.cita,
+        categoria: o.categoria ?? (o.util ? "financiacion" : "otra"),
+        sector: o.sector ?? SECTOR_OK,
+      });
+    }
     case NOMBRE_CIFRAS:
       return respuestaChat({ cifras: respuestas.cifras ?? [] });
     default:
@@ -259,7 +296,14 @@ function respuestasOk(): RespuestasModelo {
   return {
     entidades: ["energía solar", "Guatemala"],
     query: "tamaño del mercado energía solar Guatemala",
-    validacion: { util: true, relevante: true, cifra: CIFRA_OK, cita: CITA_OK, anio: "2024" },
+    validacion: {
+      util: true,
+      relevante: true,
+      sector: SECTOR_OK,
+      cifra: CIFRA_OK,
+      cita: CITA_OK,
+      anio: "2024",
+    },
     frase: FRASE_OK,
   };
 }
@@ -713,7 +757,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA_VERIFICADA);
     // La relevancia se juzga con las entidades del pitch como contexto: deben
     // viajar al validador para comparar contra el sector buscado.
     const validacion = cuerpoDeEsquema<CuerpoModelo>(fetchMock, NOMBRE_VALIDACION);
@@ -732,6 +776,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
     respuestas.validacion = {
       util: true,
       relevante: true,
+      sector: "dairy",
       cifra: "1.60 billion liters in 2024",
       cita: "The Nigeria dairy market was valued at 1.60 billion Liters in 2024.",
       anio: "2024",
@@ -760,7 +805,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA_VERIFICADA);
     expect(SALIDA_INFO()).toContain("motivo=otro-tema");
   });
 
@@ -795,7 +840,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA_VERIFICADA);
     // Sin relevancia confirmada, ni siquiera se pide la frase hablada.
     expect(
       fetchMock.mock.calls.some(([, init]) => {
@@ -820,7 +865,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA_VERIFICADA);
     // Se intentó extraer los dos candidatos, pero nunca se pidió la frase.
     expect(extraccionesDePunto(fetchMock)).toHaveLength(MAX_CANDIDATOS);
     expect(
@@ -848,7 +893,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA_VERIFICADA);
   });
 
   it("degrada a [] si la extracción no devuelve contenido", async () => {
@@ -866,7 +911,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
       }),
     );
 
-    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA_VERIFICADA);
     // Sin contenido no hay nada que validar.
     expect(SALIDA_INFO()).toContain("motivo=sin-extraccion");
   });
@@ -910,7 +955,7 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(EVIDENCIA_VACIA);
+    expect(await res.json()).toEqual(EVIDENCIA_VACIA_VERIFICADA);
   });
 
   it("usa topic 'general' cuando el tipo de pitch no es capital", async () => {
@@ -1089,6 +1134,415 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
 });
 
 // =============================================================================
+// Idioma de los prompts de Tavily (hallazgo del QA en inglés)
+// =============================================================================
+
+describe("prompts de Tavily en el idioma de la sesión", () => {
+  const datos = {
+    puntoNombre: "Market size",
+    tipoNombre: "Fundraising",
+    entidades: ["accounting software", "SMEs", "Colombia"],
+    queBuscar: "a figure for the market",
+  };
+
+  it("construirUserQuery rotula en inglés y en español", () => {
+    const en = construirUserQuery({ ...datos, idioma: "en" });
+    expect(en).toContain("Pitch data:");
+    expect(en).toContain("Point that failed: Market size");
+    expect(en).toContain("What to look for: a figure for the market");
+    expect(en).toContain("Pitch type: Fundraising");
+    expect(en).toContain("Pitch entities: accounting software, SMEs, Colombia");
+    expect(en).not.toMatch(/Datos del pitch|Punto que falló|Entidades/);
+
+    const es = construirUserQuery({ ...datos, idioma: "es", entidades: [] });
+    expect(es).toContain("Datos del pitch:");
+    expect(es).toContain("Punto que falló: Market size");
+    expect(es).toContain("Entidades del pitch: (ninguna)");
+    expect(es).not.toMatch(/Pitch data|Point that failed/);
+
+    expect(construirUserQuery({ ...datos, idioma: "en", entidades: [], tipoNombre: undefined })).toContain(
+      "Pitch entities: (none)",
+    );
+  });
+
+  it("construirUserObjecion rotula en inglés y en español, con las entidades del pitch", () => {
+    const base = {
+      puntoNombre: "Market size",
+      queBuscar: "market figure",
+      entidades: ["accounting software", "SMEs"],
+      contenido: "PAGE-CONTENT",
+    };
+    const en = construirUserObjecion({ ...base, idioma: "en" });
+    expect(en).toContain("Pitch point: Market size");
+    expect(en).toContain("What to look for: market figure");
+    expect(en).toContain("Pitch entities (industry or product, customer or market, geography): accounting software, SMEs");
+    expect(en).toContain("PAGE-CONTENT");
+    expect(en).not.toMatch(/Punto|Qué buscar/);
+
+    const es = construirUserObjecion({ ...base, idioma: "es" });
+    expect(es).toContain("Punto del pitch: Market size");
+    expect(es).toContain("Qué buscar: market figure");
+    expect(es).toContain("Entidades del pitch (industria o producto, cliente o mercado, geografía): accounting software, SMEs");
+    expect(es).not.toMatch(/Pitch point|What to look for/);
+  });
+
+  it("en una sesión en inglés, los mensajes al modelo y la query a Tavily salen en inglés", async () => {
+    const respuestas = respuestasOk();
+    respuestas.entidades = ["accounting software", "SMEs", "Colombia"];
+    respuestas.query = "accounting software market size Colombia SMEs";
+    respuestas.objecion = {
+      util: true,
+      objecion: "How many SMEs in Colombia pay for accounting software today?",
+      cita: "How much capital are you raising",
+      categoria: "traccion",
+      sector: "accounting software",
+    };
+    const fetchMock = fetchConDispatch(respuestas, {
+      extraccion: (url) =>
+        jsonResponse({
+          results: [{ url, raw_content: `${CONTENIDO_EXTRAIDO} How much capital are you raising and why?` }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion: "We sell accounting software to SMEs in Colombia.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    // Query: system pide inglés explícitamente y el user va rotulado en inglés.
+    const query = cuerpoDeEsquema<CuerpoModelo>(fetchMock, NOMBRE_QUERY);
+    expect(query.messages?.[0].content).toContain("Write it in ENGLISH");
+    expect(query.messages?.[1].content).toContain("Pitch data:");
+    expect(query.messages?.[1].content).not.toContain("Datos del pitch");
+
+    // Objeción: igual, y con las entidades como contexto.
+    const objecion = cuerpoDeEsquema<CuerpoModelo>(fetchMock, NOMBRE_OBJECION);
+    expect(objecion.messages?.[1].content).toContain("Pitch point:");
+    expect(objecion.messages?.[1].content).toContain("accounting software, SMEs, Colombia");
+    expect(objecion.messages?.[1].content).not.toContain("Punto:");
+
+    // La búsqueda de la cifra viaja con la query en inglés y el filtro de idioma.
+    const busqueda = busquedasDePunto(fetchMock)[0];
+    expect(String(busqueda?.query)).toMatch(/^accounting software market size Colombia SMEs \d{4}$/);
+    expect(busqueda?.language).toBe("en");
+  });
+
+  it("en una sesión en español, los mensajes al modelo salen en español", async () => {
+    const fetchMock = fetchConDispatch(respuestasOk());
+    vi.stubGlobal("fetch", fetchMock);
+
+    await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "es",
+        transcripcion: "Vendemos paneles solares en Guatemala.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+
+    const query = cuerpoDeEsquema<CuerpoModelo>(fetchMock, NOMBRE_QUERY);
+    expect(query.messages?.[0].content).toContain("Escríbela en ESPAÑOL");
+    expect(query.messages?.[1].content).toContain("Datos del pitch:");
+    expect(query.messages?.[1].content).not.toContain("Pitch data");
+
+    const objecion = cuerpoDeEsquema<CuerpoModelo>(fetchMock, NOMBRE_OBJECION);
+    expect(objecion.messages?.[1].content).toContain("Punto del pitch:");
+    expect(objecion.messages?.[1].content).toContain("energía solar, Guatemala");
+  });
+});
+
+// =============================================================================
+// Relevancia: misma industria, no solo el mismo país (hallazgo del QA)
+// =============================================================================
+
+describe("relevancia por industria (contabilidad vs electrodomésticos)", () => {
+  const ENTIDADES_CONTABILIDAD = ["software de contabilidad", "pymes", "Colombia"];
+  const TITULO_ELECTRO = "Mercado de Electrodomésticos en Colombia 2024";
+  const CITA_ELECTRO = "El mercado de electrodomésticos en Colombia alcanzó COP 12 billones en 2024.";
+
+  it("mismaRaiz empareja plural y género sin confundir palabras distintas", () => {
+    expect(mismaRaiz("contabilidad", "contable")).toBe(true);
+    expect(mismaRaiz("accounting", "accountants")).toBe(true);
+    expect(mismaRaiz("solar", "solares")).toBe(true);
+    expect(mismaRaiz("pymes", "pyme")).toBe(true);
+    expect(mismaRaiz("contabilidad", "contaminacion")).toBe(false);
+    expect(mismaRaiz("sol", "solar")).toBe(false);
+  });
+
+  it("comparteEntidad no acepta la geografía como coincidencia de tema", () => {
+    // Caso real: la única palabra compartida era el país.
+    expect(comparteEntidad(`${TITULO_ELECTRO} ${CITA_ELECTRO}`, ENTIDADES_CONTABILIDAD)).toBe(false);
+    // Con la industria sí, aunque esté en otra forma ("contable").
+    expect(
+      comparteEntidad(
+        "El mercado de software contable para pymes en Colombia creció 18% en 2024",
+        ENTIDADES_CONTABILIDAD,
+      ),
+    ).toBe(true);
+    // Solo geografía como entidad: no hay con qué comparar y no se bloquea.
+    expect(comparteEntidad(TITULO_ELECTRO, ["Colombia"])).toBe(true);
+  });
+
+  it("validarRespuestaValidacion exige el sector además de cifra, cita y relevancia", () => {
+    const base = { util: true, relevante: true, cifra: "COP 12 billones", cita: "alcanzó COP 12 billones", anio: "2024" };
+    expect(validarRespuestaValidacion({ ...base, sector: "electrodomésticos" }).util).toBe(true);
+    expect(validarRespuestaValidacion({ ...base, sector: "" }).util).toBe(false);
+    expect(validarRespuestaValidacion({ ...base, sector: "electrodomésticos" }).sector).toBe("electrodomésticos");
+  });
+
+  it("descarta la cifra de electrodomésticos para el pitch de contabilidad aunque Nano la marque relevante", async () => {
+    const respuestas = respuestasOk();
+    respuestas.entidades = ENTIDADES_CONTABILIDAD;
+    respuestas.validacion = {
+      util: true,
+      relevante: true,
+      sector: "electrodomésticos",
+      cifra: "COP 12 billones en 2024",
+      cita: CITA_ELECTRO,
+      anio: "2024",
+    };
+    const fetchMock = fetchConDispatch(respuestas, {
+      busqueda: () =>
+        jsonResponse({
+          results: [{ title: TITULO_ELECTRO, url: "https://informe.test/electro", score: 0.9 }],
+        }),
+      extraccion: (url) => jsonResponse({ results: [{ url, raw_content: CITA_ELECTRO }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "es",
+        transcripcion: "Vendemos software de contabilidad a pymes en Colombia.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+
+    const json = (await res.json()) as { sugerencias: unknown[]; sala: unknown; cifras: unknown[] };
+    expect(json.sugerencias).toEqual([]);
+    expect(json.sala).toBeNull();
+    expect(SALIDA_INFO()).toContain("motivo=otro-tema");
+    // El validador recibió la industria y el cliente del pitch como contexto.
+    const validacion = cuerpoDeEsquema<CuerpoModelo>(fetchMock, NOMBRE_VALIDACION);
+    expect(validacion.messages?.[1].content).toContain("software de contabilidad, pymes, Colombia");
+    expect(validacion.messages?.[0].content).toMatch(/PRIMERO LA INDUSTRIA/);
+    expect(validacion.response_format?.json_schema?.strict).toBe(true);
+  });
+
+  it("acepta la cifra cuando la industria coincide aunque el título no nombre el producto", async () => {
+    const respuestas = respuestasOk();
+    respuestas.entidades = ENTIDADES_CONTABILIDAD;
+    respuestas.validacion = {
+      util: true,
+      relevante: true,
+      sector: "software contable",
+      cifra: "USD 48 millones en 2024",
+      cita: "El gasto de las pymes en herramientas de gestión llegó a USD 48 millones en 2024.",
+      anio: "2024",
+    };
+    const fetchMock = fetchConDispatch(respuestas, {
+      busqueda: () =>
+        jsonResponse({
+          results: [{ title: "Informe de gestión empresarial", url: "https://informe.test/gestion", score: 0.9 }],
+        }),
+      extraccion: (url) =>
+        jsonResponse({
+          results: [{ url, raw_content: "El gasto de las pymes en herramientas de gestión llegó a USD 48 millones en 2024." }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "es",
+        transcripcion: "Vendemos software de contabilidad a pymes en Colombia.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+    const json = (await res.json()) as { sugerencias: { cifra: string }[] };
+    expect(json.sugerencias.map((s) => s.cifra)).toEqual(["USD 48 millones en 2024"]);
+  });
+});
+
+describe("objeción de sala: pregunta de inversionista y de la industria del pitch", () => {
+  const ENTIDADES = ["software de contabilidad", "pymes", "Colombia"];
+  const PAGINA_GEO =
+    "Colombia tiene 1.141.748 km² y Guatemala 108.889 km². La ratio de área entre Colombia y Guatemala es de 10,5.";
+
+  it("validarObjecionCruda rechaza la categoría 'otra' y acepta una pregunta de negocio", () => {
+    const geo = {
+      util: true,
+      objecion: "¿Cuál es la ratio de área entre Colombia y Guatemala?",
+      cita: "La ratio de área entre Colombia y Guatemala es de 10,5.",
+      categoria: "otra",
+      sector: "geografía",
+    };
+    expect(validarObjecionCruda(geo, PAGINA_GEO).util).toBe(false);
+    expect(validarObjecionCruda({ ...geo, categoria: "inventada" }, PAGINA_GEO).util).toBe(false);
+    expect(validarObjecionCruda({ ...geo, categoria: undefined }, PAGINA_GEO).categoria).toBe("otra");
+
+    const negocio = {
+      util: true,
+      objecion: "¿Cuántas pymes pagan hoy por su software de contabilidad?",
+      cita: "La ratio de área entre Colombia y Guatemala es de 10,5.",
+      categoria: "traccion",
+      sector: "software contable",
+    };
+    const cruda = validarObjecionCruda(negocio, PAGINA_GEO);
+    expect(cruda.util).toBe(true);
+    expect(cruda.categoria).toBe("traccion");
+    expect(cruda.sector).toBe("software contable");
+  });
+
+  it("esObjecionDelPitch exige una palabra temática del pitch; el país no basta", () => {
+    expect(
+      esObjecionDelPitch(
+        { objecion: "¿Cuál es la ratio de área entre Colombia y Guatemala?", sector: "geografía", cita: "" },
+        "Colombia vs Guatemala: comparación",
+        ENTIDADES,
+      ),
+    ).toBe(false);
+    expect(
+      esObjecionDelPitch(
+        { objecion: "¿Cuántas pymes pagan hoy por su software contable?", sector: "", cita: "" },
+        "Preguntas que hacen los inversionistas",
+        ENTIDADES,
+      ),
+    ).toBe(true);
+  });
+
+  it("caso real: la 'ratio de área Colombia/Guatemala' no se muestra como objeción", async () => {
+    const respuestas = respuestasOk();
+    respuestas.entidades = ENTIDADES;
+    respuestas.objecion = {
+      util: true,
+      objecion: "¿Cuál es la ratio de área entre Colombia y Guatemala?",
+      cita: "La ratio de área entre Colombia y Guatemala es de 10,5.",
+      categoria: "otra",
+      sector: "geografía",
+    };
+    const fetchMock = fetchConDispatch(respuestas, {
+      extraccion: (url) => jsonResponse({ results: [{ url, raw_content: PAGINA_GEO }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "es",
+        transcripcion: "Vendemos software de contabilidad a pymes en Colombia.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+    const json = (await res.json()) as { sala: unknown };
+    expect(json.sala).toBeNull();
+    expect(SALIDA_INFO()).toContain("[sala] descartada categoria=otra motivo=no-es-pregunta-de-sala");
+
+    // El esquema obliga a clasificar la pregunta y a nombrar el sector.
+    const objecion = cuerpoDeEsquema<CuerpoModelo & { response_format?: { json_schema?: { schema?: { required?: string[] } } } }>(
+      fetchMock,
+      NOMBRE_OBJECION,
+    );
+    expect(objecion.response_format?.json_schema?.schema?.required).toEqual(
+      expect.arrayContaining(["categoria", "sector"]),
+    );
+  });
+
+  it("una pregunta de negocio pero de otra industria tampoco se muestra", async () => {
+    const respuestas = respuestasOk();
+    respuestas.entidades = ENTIDADES;
+    respuestas.objecion = {
+      util: true,
+      objecion: "¿Cuántas neveras vende al año y con qué margen?",
+      cita: "La ratio de área entre Colombia y Guatemala es de 10,5.",
+      categoria: "unit_economics",
+      sector: "electrodomésticos",
+    };
+    const fetchMock = fetchConDispatch(respuestas, {
+      busqueda: () =>
+        jsonResponse({
+          results: [{ title: "Electrodomésticos en Colombia", url: "https://informe.test/electro", score: 0.9 }],
+        }),
+      extraccion: (url) => jsonResponse({ results: [{ url, raw_content: PAGINA_GEO }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "es",
+        transcripcion: "Vendemos software de contabilidad a pymes en Colombia.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+    expect(((await res.json()) as { sala: unknown }).sala).toBeNull();
+    expect(SALIDA_INFO()).toContain("[sala] descartada categoria=unit_economics motivo=otro-tema");
+  });
+});
+
+// =============================================================================
+// Cifras dichas en palabras y procedencia del enriquecimiento
+// =============================================================================
+
+describe("cifras dichas en palabras y procedencia", () => {
+  it("normaliza los números en palabras antes de extraer y verificar la cifra dicha", async () => {
+    const respuestas = respuestasOk();
+    respuestas.entidades = ["accounting software", "SMEs"];
+    respuestas.cifras = ["500000 dollars"];
+    const fetchMock = fetchConDispatch(respuestas);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion:
+          "We already have four hundred and twenty paying users and we are raising five hundred thousand dollars.",
+        puntosSinCumplir: [],
+      }),
+    );
+
+    const json = (await res.json()) as { cifras: { cifra: string; estado: string }[] };
+    // La cifra en dígitos "está" en lo dicho; la fuente mock es de otro orden.
+    expect(json.cifras).toEqual([{ cifra: "500000 dollars", estado: "sin_fuente" }]);
+
+    // El extractor recibió la transcripción con dígitos, no con palabras.
+    const extraccion = cuerpoDeEsquema<CuerpoModelo>(fetchMock, NOMBRE_CIFRAS);
+    const user = extraccion.messages?.[1].content ?? "";
+    expect(user).toContain("420 paying users");
+    expect(user).toContain("500000 dollars");
+    expect(user).not.toContain("four hundred");
+  });
+
+  it("declara el modelo Nano exacto, el proveedor y el buscador en la respuesta", async () => {
+    const fetchMock = fetchConDispatch(respuestasOk());
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "es",
+        transcripcion: "Vendemos paneles solares en Guatemala.",
+        puntosSinCumplir: [{ punto: "ask" }],
+      }),
+    );
+    const json = (await res.json()) as { modelo: string; proveedor: string; buscador: string; sugerencias: unknown[] };
+    expect(json.sugerencias).toHaveLength(1);
+    expect(json.modelo).toBe(MODELO_NANO);
+    expect(json.proveedor).toBe("nebius");
+    expect(json.buscador).toBe("tavily");
+  });
+});
+
+// =============================================================================
 // Diario de diagnóstico y privacidad (Tareas 6 y 7)
 // =============================================================================
 
@@ -1154,7 +1608,7 @@ describe("diario de diagnóstico (§6) y regla de privacidad", () => {
     // El fallo doble no rompe el dashboard: 200 con lista vacía...
     expect(res.status).toBe(200);
     const texto = await res.text();
-    expect(JSON.parse(texto)).toEqual(EVIDENCIA_VACIA);
+    expect(JSON.parse(texto)).toEqual(EVIDENCIA_VACIA_VERIFICADA);
     // ...y ni el cuerpo ni las cabeceras arrastran la transcripción.
     expect(texto).not.toContain(marca);
     expect(texto).not.toContain(transcripcion);

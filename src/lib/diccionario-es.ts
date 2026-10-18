@@ -148,6 +148,13 @@ export const es = {
     reanalizando: "Reanalizando con Nemotron Ultra…",
     tituloUltra: "Análisis Ultra — razonamiento extendido con Nemotron Ultra",
     traza: "Traza del razonamiento",
+    /** Procedencia del resultado: ID exacto del modelo y proveedor. */
+    procedenciaModelo: (modelo: string, proveedor: string) => `Modelo: ${modelo} · ${proveedor}`,
+    procedenciaBusqueda: "Búsqueda: Tavily",
+    proveedorModelo: {
+      nebius: "Nebius Token Factory",
+      gemini: "Google Gemini",
+    },
     tiempoUsado: (real: number, maximo: number) => `${real}s de ${maximo}s usados`,
     errorReanalisis: "Error al reanalizar el pitch.",
     errorReanalisisInesperado: "Error inesperado al reanalizar el pitch.",

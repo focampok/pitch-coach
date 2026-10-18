@@ -126,6 +126,20 @@
   color: var(--signal);
 }
 
+/* Procedencia: ID exacto del modelo y proveedor (y buscador en la evidencia).
+   Metadato pequeño en Source Sans 3 (no hay mono de marca; ver DESIGN.md). */
+.pc-procedencia {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-source), "Source Sans 3", sans-serif;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.pc-tavily .pc-procedencia {
+  margin: 0.6rem 0 0;
+}
+
 .pc-tiempo-barra {
   height: 4px;
   border-radius: 999px;

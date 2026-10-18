@@ -206,7 +206,7 @@ Rules:
 - The phrase must target a NUMERIC datum (market size, growth, price, users), never a concept or a methodology.
 - Use only the terms you receive. Do not invent proper nouns, countries, or numbers.
 - FORBIDDEN: commentary or evaluation terms such as "lacks", "no data", "missing", "without figure", "does not mention".
-- Write it in the pitch's language. No punctuation, no quotes.
+- Write it in ENGLISH, the language of this session, even if an entity is in another language. No punctuation, no quotes.
 
 Reply ONLY with the requested structured JSON.`;
   }
@@ -217,12 +217,25 @@ Reglas:
 - La frase debe apuntar a un DATO numérico (tamaño de mercado, crecimiento, precio, usuarios), nunca a un concepto ni a una metodología.
 - Usa solo los términos que recibes. No inventes nombres propios, países ni números.
 - PROHIBIDO: términos de comentario o evaluación como "carece", "no da", "falta", "sin cifra", "no se menciona".
-- Escríbela en el idioma del pitch. Sin puntuación, sin comillas.
+- Escríbela en ESPAÑOL, el idioma de esta sesión, aunque alguna entidad venga en otro idioma. Sin puntuación, sin comillas.
 
 Responde ÚNICAMENTE con el JSON estructurado solicitado.`;
 }
 
-function construirUserQuery(datos: DatosQueryTavily & { queBuscar?: string }): string {
+/**
+ * Mensaje `user` de la query, en el idioma de la sesión. Las etiquetas también
+ * se traducen: un mensaje con rótulos en español empuja a Nano a responder en
+ * español aunque el system pida inglés (hallazgo del QA en inglés).
+ */
+export function construirUserQuery(datos: DatosQueryTavily & { queBuscar?: string }): string {
+  if (datos.idioma === "en") {
+    const entidades = (datos.entidades ?? []).join(", ") || "(none)";
+    const contexto = datos.queBuscar ? `\n- What to look for: ${datos.queBuscar}` : "";
+    return `Pitch data:
+- Point that failed: ${datos.puntoNombre}${contexto}
+- Pitch type: ${datos.tipoNombre ?? "(not specified)"}
+- Pitch entities: ${entidades}`;
+  }
   const entidades = (datos.entidades ?? []).join(", ") || "(ninguna)";
   const contexto = datos.queBuscar ? `\n- Qué se busca: ${datos.queBuscar}` : "";
   return `Datos del pitch:

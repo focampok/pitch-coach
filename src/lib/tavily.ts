@@ -427,9 +427,11 @@ export async function enriquecerConTavily(
           if (!validacion.util) continue;
 
           // Segunda barrera, sin modelo: lo que se muestra (título, cita, cifra)
-          // tiene que repetir una palabra del pitch. Cierra el caso en que el
-          // validador acepta una cifra vecina (helado → lácteos de otro país).
-          const corpus = `${candidato.title ?? ""} ${validacion.cita} ${validacion.cifra}`;
+          // o el sector que el validador le atribuye a la página tiene que
+          // repetir una palabra TEMÁTICA del pitch (la geografía no cuenta).
+          // Cierra el caso en que el validador acepta una cifra vecina (helado
+          // → lácteos de otro país; electrodomésticos → contabilidad en Colombia).
+          const corpus = `${candidato.title ?? ""} ${validacion.cita} ${validacion.cifra} ${validacion.sector}`;
           if (!comparteEntidad(corpus, entidades)) {
             motivo = "otro-tema";
             continue;

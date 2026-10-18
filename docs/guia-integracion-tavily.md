@@ -457,7 +457,7 @@ export async function sugerirFuentes(
 }
 ```
 
-`validarConModelo` is a model call with a **constrained schema** (`additionalProperties: false`) that returns `{ util, relevante, cifra, cita, anio }`: `util` is `true` only if `cifra` and `cita` come back non-empty **and** `relevante` is `true` (the model confirms that the figure matches the pitch entities). `relevante` is required: if it is missing, it is treated as `false`. If the model fails, it is treated as `util: false` (degradation, not an exception). `generarFrase` produces the spoken sentence; if the model fails, there is a **deterministic fallback sentence** built from the figure and the source. The schema detail is in `src/lib/validar-sugerencia.ts`.
+`validarConModelo` is a model call with a **constrained schema** (`additionalProperties: false`) that returns `{ util, relevante, sector, cifra, cita, anio }`: `util` is `true` only if `cifra`, `cita` and `sector` come back non-empty **and** `relevante` is `true` (the model names the industry of the figure and confirms that it matches the pitch entities). `relevante` is required: if it is missing, it is treated as `false`. After the model, `comparteEntidad` requires a topical word of the pitch (geography does not count) in the title, quote, figure or `sector`. If the model fails, it is treated as `util: false` (degradation, not an exception). `generarFrase` produces the spoken sentence; if the model fails, there is a **deterministic fallback sentence** built from the figure and the source. The schema detail is in `src/lib/validar-sugerencia.ts`.
 
 If you prefer to keep the repo's original shape (key in the body), change only the headers:
 
@@ -619,7 +619,7 @@ What does **not** go through Tavily in this project: detecting *what* is missing
 | All results | `elegirCandidatos`: domain not excluded + `score ≥ SCORE_MINIMO`, sorted, up to `MAX_CANDIDATOS` |
 | `exclude_domains` | `DOMINIOS_EXCLUIDOS` (FasterCapital, Quora, Reddit, aggregators…, translation proxies such as `translate.goog`) |
 | Extract | `/extract` with `query` + `chunks_per_source: 3`, `format: "markdown"` |
-| Validation | mandatory, `rapido` tier, constrained schema `{ util, relevante, cifra, cita, anio }`; no quoted figure **or no confirmed relevance** → discard |
+| Validation | mandatory, `rapido` tier, constrained schema `{ util, relevante, sector, cifra, cita, anio }`; no quoted figure, **no confirmed relevance or no shared industry** → discard |
 | Spoken sentence | `rapido` tier, 8–12 s, with a deterministic fallback |
 | Suggestion shape | `{ punto, query, cifra, cita, fecha, titulo, url, frase }` |
 | Diagnostics | `console.info` with query + verdict; never the transcript or the content |

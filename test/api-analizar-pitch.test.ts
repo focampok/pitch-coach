@@ -94,11 +94,19 @@ describe("POST /api/analizar-pitch — nivel", () => {
 
     const res = await POST(peticion(SOLICITUD_BASE));
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { score: number; rubrica: unknown[] };
+    const json = (await res.json()) as {
+      score: number;
+      rubrica: unknown[];
+      modelo?: string;
+      proveedor?: string;
+    };
     expect(json.rubrica).toHaveLength(5);
     expect(typeof json.score).toBe("number");
     expect(cuerpoDe(fetchMock).model).toBe("nvidia/nemotron-3-super-120b-a12b");
     expect(cuerpoDe(fetchMock).chat_template_kwargs).toEqual({ enable_thinking: false });
+    // Procedencia para el panel: el ID exacto del modelo que respondió.
+    expect(json.modelo).toBe("nvidia/nemotron-3-super-120b-a12b");
+    expect(json.proveedor).toBe("nebius");
   });
 
   it("nivel ultra usa NEBIUS_MODEL_ULTRA y omite thinking", async () => {
@@ -109,9 +117,12 @@ describe("POST /api/analizar-pitch — nivel", () => {
 
     const res = await POST(peticion({ ...SOLICITUD_BASE, nivel: "ultra" }));
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { traza?: string[] };
+    const json = (await res.json()) as { traza?: string[]; modelo?: string; proveedor?: string };
     expect(json.traza).toEqual(TRAZA_ULTRA);
     expect(cuerpoDe(fetchMock).model).toBe("nvidia/Nemotron-3-Ultra-550b-a55b");
+    // El Ultra declara su propio ID, no el del estándar.
+    expect(json.modelo).toBe("nvidia/Nemotron-3-Ultra-550b-a55b");
+    expect(json.proveedor).toBe("nebius");
     expect(cuerpoDe(fetchMock)).not.toHaveProperty("chat_template_kwargs");
 
     const formato = cuerpoDe(fetchMock).response_format as {

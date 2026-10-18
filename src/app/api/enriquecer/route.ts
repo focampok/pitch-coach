@@ -51,6 +51,11 @@ const TIPOS_PITCH_VALIDOS = new Set<string>([
  * objeción de sala (el primer punto no cumplido) y el contraste de una cifra
  * que la persona ya dijo. Sin puntos fallidos igual se contrastan las cifras
  * dichas, si hay transcripción.
+ *
+ * Cuando el pipeline corre, la respuesta trae la procedencia: `modelo` (ID
+ * exacto del modelo Nano que validó), `proveedor` y `buscador: "tavily"`. La
+ * respuesta vacía por degradación (sin clave, tipo inválido, fallo) no la
+ * trae: ningún proveedor fue llamado.
  */
 export async function POST(req: NextRequest) {
   const inicio = iniciarEvaluacion(req);

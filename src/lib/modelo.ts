@@ -202,6 +202,36 @@ function parsearRespuesta<T>(texto: string | null, modelo: string): T {
 }
 
 /**
+ * Procedencia de una respuesta: qué proveedor y qué modelo exacto la dieron.
+ * Se devuelve al cliente para que el panel muestre el ID (p. ej.
+ * `nvidia/nemotron-3-super-120b-a12b`). No lleva claves ni URLs.
+ */
+export interface ProcedenciaModelo {
+  proveedor: NombreProveedor;
+  /** ID exacto del modelo que respondió (el que figura en el proveedor). */
+  modelo: string;
+}
+
+/** Resultado tipado más la procedencia. */
+export interface RespuestaModelo<T> extends ProcedenciaModelo {
+  resultado: T;
+}
+
+/**
+ * Modelo principal configurado para un nivel, sin llamar a nada. Lo usan las
+ * rutas que encadenan varias llamadas al mismo nivel (el enriquecimiento con
+ * Nano) para declarar la procedencia; en `ultra` y `rapido` no hay fallbacks,
+ * así que coincide con el modelo que responde.
+ */
+export function modeloConfigurado(nivel: NivelAnalisis): ProcedenciaModelo {
+  const proveedor = proveedorActivo(nivel);
+  return {
+    proveedor: nombreProveedorActivo(),
+    modelo: proveedor.listarModelos()[0] ?? "",
+  };
+}
+
+/**
  * Única puerta de entrada al modelo de lenguaje.
  *
  * Devuelve el JSON ya parseado y tipado como `T`. Toda la política de
@@ -217,6 +247,18 @@ export async function llamarModelo<T>(
   entrada: EntradaLlamarModelo<T>,
   nivel: NivelAnalisis = "estandar",
 ): Promise<T> {
+  const { resultado } = await llamarModeloConProcedencia(entrada, nivel);
+  return resultado;
+}
+
+/**
+ * Igual que `llamarModelo`, pero devuelve además el proveedor y el ID exacto
+ * del modelo que respondió (tras fallbacks y reintentos).
+ */
+export async function llamarModeloConProcedencia<T>(
+  entrada: EntradaLlamarModelo<T>,
+  nivel: NivelAnalisis = "estandar",
+): Promise<RespuestaModelo<T>> {
   const proveedor = proveedorActivo(nivel);
   const modelos = proveedor.listarModelos();
   const intentos = leerEnteroPositivo(
@@ -244,7 +286,7 @@ export async function llamarModelo<T>(
         });
         const resultado = entrada.validar(parsearRespuesta<unknown>(texto, modelo));
         console.log(`[modelo] proveedor=${proveedor.nombre} modelo=${modelo}`);
-        return resultado;
+        return { resultado, proveedor: nombreProveedorActivo(), modelo };
       } catch (error) {
         const err = normalizarError(error, modelo);
         ultimoError = err;

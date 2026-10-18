@@ -1,6 +1,11 @@
 import type { Idioma } from "@/types/idioma";
 import type { PuntoRubrica } from "./rubricas";
-import { llamarModelo, type EsquemaJson, type NivelAnalisis } from "./modelo";
+import {
+  llamarModeloConProcedencia,
+  type EsquemaJson,
+  type NivelAnalisis,
+  type ProcedenciaModelo,
+} from "./modelo";
 import type { PromptAnalisis } from "./prompts";
 import {
   esquemaAnalisis,
@@ -19,15 +24,18 @@ import {
  * La validación se hace DENTRO del `llamarModelo` para que una respuesta con
  * forma incorrecta (p. ej. un número de ítems distinto al de la rúbrica) se
  * trate como error y aproveche el reintento existente.
+ *
+ * Devuelve también la procedencia (proveedor + ID exacto del modelo que
+ * respondió) para que la ruta la exponga al panel.
  */
 export async function analizarConModelo(
   prompt: PromptAnalisis,
   rubrica: readonly PuntoRubrica[],
   idioma: Idioma,
   nivel: NivelAnalisis = "estandar",
-): Promise<AnalisisModelo & { score: number }> {
+): Promise<AnalisisModelo & { score: number } & ProcedenciaModelo> {
   const esUltra = nivel === "ultra";
-  return llamarModelo<AnalisisModelo & { score: number }>(
+  const respuesta = await llamarModeloConProcedencia<AnalisisModelo & { score: number }>(
     {
       system: prompt.system,
       user: prompt.user,
@@ -43,4 +51,5 @@ export async function analizarConModelo(
     },
     nivel,
   );
+  return { ...respuesta.resultado, proveedor: respuesta.proveedor, modelo: respuesta.modelo };
 }

@@ -71,7 +71,18 @@ export interface ResultadoAnalisis {
    * Ausente en el análisis estándar.
    */
   traza?: string[];
+  /**
+   * Procedencia: ID exacto del modelo que respondió en el proveedor (p. ej.
+   * `nvidia/nemotron-3-super-120b-a12b`) y el proveedor. El panel los muestra
+   * como texto pequeño. Opcionales: las sesiones guardadas antes de este campo
+   * no lo tienen.
+   */
+  modelo?: string;
+  proveedor?: ProveedorModelo;
 }
+
+/** Proveedor del modelo de lenguaje, tal como lo expone la API al panel. */
+export type ProveedorModelo = "nebius" | "gemini";
 
 // Cuerpo de la petición POST a /api/analizar-pitch. El frontend envía la
 // transcripción + contexto; el análisis (modelo + muletillas) corre server-side.

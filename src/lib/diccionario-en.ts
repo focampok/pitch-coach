@@ -131,6 +131,13 @@ export const en: Diccionario = {
     reanalizando: "Re-analyzing with Nemotron Ultra…",
     tituloUltra: "Ultra analysis — extended reasoning with Nemotron Ultra",
     traza: "Reasoning trace",
+    /** Provenance of the result: exact model ID and provider. */
+    procedenciaModelo: (modelo: string, proveedor: string) => `Model: ${modelo} · ${proveedor}`,
+    procedenciaBusqueda: "Search: Tavily",
+    proveedorModelo: {
+      nebius: "Nebius Token Factory",
+      gemini: "Google Gemini",
+    },
     tiempoUsado: (real: number, maximo: number) => `${real}s of ${maximo}s used`,
     errorReanalisis: "Could not re-analyze the pitch.",
     errorReanalisisInesperado: "Unexpected error while re-analyzing the pitch.",

@@ -6,10 +6,12 @@ import type {
   DuracionMaxima,
   EvaluacionRubrica,
   PalabraTranscripcion,
+  ProveedorModelo,
   ResultadoAnalisis,
   SolicitudAnalisis,
   TipoPitch,
 } from "@/types/pitch";
+import type { Diccionario } from "@/lib/diccionarios";
 import {
   patronesMuletillas,
   resaltarMuletillas,
@@ -62,6 +64,17 @@ interface TramoVista {
   punto: string;
   inicio: number;
   fin: number;
+}
+
+/** Cuerpo de /api/enriquecer tal como lo lee el panel. */
+interface RespuestaEnriquecer {
+  sugerencias?: SugerenciaTavily[];
+  sala?: ObjecionSalaVista | null;
+  cifras?: CifraVista[];
+  /** ID exacto del modelo Nano que validó la evidencia. */
+  modelo?: string;
+  proveedor?: ProveedorModelo;
+  error?: string;
 }
 
 interface DashboardResultadoProps {
@@ -225,6 +238,20 @@ function TituloRubrica({
   );
 }
 
+/**
+ * Línea de procedencia del modelo ("Model: <id> · Nebius Token Factory").
+ * Devuelve null si la respuesta no trajo el ID (sesiones viejas).
+ */
+function textoProcedencia(
+  textos: Diccionario,
+  modelo: string | undefined,
+  proveedor: ProveedorModelo | undefined,
+): string | null {
+  if (!modelo) return null;
+  const nombreProveedor = proveedor ? textos.dashboard.proveedorModelo[proveedor] : "";
+  return textos.dashboard.procedenciaModelo(modelo, nombreProveedor).replace(/ · $/, "");
+}
+
 function CabeceraScore({
   score,
   veredicto,
@@ -232,6 +259,8 @@ function CabeceraScore({
   vozSesion,
   onVozUsada,
   etiquetaScore,
+  procedencia,
+  testId,
 }: {
   score: number;
   veredicto: string;
@@ -239,10 +268,14 @@ function CabeceraScore({
   vozSesion: "male" | "female" | "random";
   onVozUsada?: (voz: "male" | "female") => void;
   etiquetaScore: string;
+  /** Texto pequeño con el ID exacto del modelo y el proveedor. */
+  procedencia?: string | null;
+  /** Ancla estable para pruebas e2e (el score visible es solo un aria-label). */
+  testId: string;
 }) {
   return (
     <header className="pc-dashboard-header">
-      <div className="pc-score">
+      <div className="pc-score" data-testid={testId} data-score={score}>
         <AnilloSenal modo="asentado" score={score} etiqueta={etiquetaScore} />
         {/* Cifra visible duplicada: el nombre accesible del anillo ya anuncia
             el score completo ("Score 64 de 100"), así que la leyenda se oculta
@@ -255,6 +288,7 @@ function CabeceraScore({
       <div className="pc-veredicto">
         <p>{veredicto}</p>
         {sesion && <p className="pc-sesion">{sesion}</p>}
+        {procedencia && <p className="pc-procedencia">{procedencia}</p>}
         <ReproductorVeredicto
           veredicto={veredicto}
           autoPlay={false}
@@ -290,6 +324,8 @@ export function DashboardResultado({
   const [sugerencias, setSugerencias] = useState<SugerenciaTavily[]>([]);
   const [sala, setSala] = useState<ObjecionSalaVista | null>(null);
   const [cifras, setCifras] = useState<CifraVista[]>([]);
+  // Procedencia del enriquecimiento: modelo Nano que validó + buscador Tavily.
+  const [procedenciaTavily, setProcedenciaTavily] = useState<string | null>(null);
   const [tramos, setTramos] = useState<TramoVista[]>([]);
   const [cargandoLinea, setCargandoLinea] = useState(
     () => tieneMarcasDeTiempo(palabras) && resultado.rubrica.some((punto) => punto.cumplido),
@@ -366,23 +402,22 @@ export function DashboardResultado({
       }),
     })
       .then(async (res) => {
-        const data = (await res.json().catch(() => null)) as {
-          sugerencias?: SugerenciaTavily[];
-          sala?: ObjecionSalaVista | null;
-          cifras?: CifraVista[];
-          error?: string;
-        } | null;
+        const data = (await res.json().catch(() => null)) as RespuestaEnriquecer | null;
         evaluacion.notar(res, data);
         if (!res.ok || data === null || "error" in data) {
-          return { sugerencias: [], sala: null, cifras: [] };
+          return { sugerencias: [], sala: null, cifras: [] } as RespuestaEnriquecer;
         }
         return data;
       })
-      .then((data: { sugerencias?: SugerenciaTavily[]; sala?: ObjecionSalaVista | null; cifras?: CifraVista[] }) => {
+      .then((data: RespuestaEnriquecer) => {
         if (cancelado) return;
         setSugerencias(data.sugerencias ?? []);
         setSala(data.sala ?? null);
         setCifras(data.cifras ?? []);
+        const modelo = textoProcedencia(textos, data.modelo, data.proveedor);
+        setProcedenciaTavily(
+          modelo ? `${modelo} · ${textos.dashboard.procedenciaBusqueda}` : null,
+        );
       })
       .catch(() => {
         if (cancelado) return;
@@ -552,6 +587,8 @@ export function DashboardResultado({
         vozSesion={vozSesion}
         onVozUsada={onVozUsada}
         etiquetaScore={textos.dashboard.score(resultado.score)}
+        procedencia={textoProcedencia(textos, resultado.modelo, resultado.proveedor)}
+        testId="score-pitch"
       />
 
       <section className="pc-tiempo">
@@ -663,6 +700,7 @@ export function DashboardResultado({
               {sala.titulo || textos.dashboard.fuente}
             </a>
           </p>
+          {procedenciaTavily && <p className="pc-procedencia">{procedenciaTavily}</p>}
         </section>
       )}
 
@@ -712,6 +750,9 @@ export function DashboardResultado({
               </li>
             ))}
           </ul>
+          {procedenciaTavily && sugerencias.length > 0 && (
+            <p className="pc-procedencia">{procedenciaTavily}</p>
+          )}
         </section>
       )}
 
@@ -745,6 +786,9 @@ export function DashboardResultado({
               </li>
             ))}
           </ul>
+          {procedenciaTavily && cifras.length > 0 && (
+            <p className="pc-procedencia">{procedenciaTavily}</p>
+          )}
         </section>
       )}
 
@@ -827,6 +871,8 @@ export function DashboardResultado({
               vozSesion={vozSesion}
               onVozUsada={onVozUsada}
               etiquetaScore={textos.dashboard.score(analisisUltra.score)}
+              procedencia={textoProcedencia(textos, analisisUltra.modelo, analisisUltra.proveedor)}
+              testId="score-ultra"
             />
             {analisisUltra.traza && analisisUltra.traza.length > 0 && (
               <section className="space-y-2">
