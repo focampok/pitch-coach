@@ -170,8 +170,10 @@ rest of the result continues.
 - Visual-direction material and references in `docs/referencias-ui/`.
 - **The submission video does not exist.** It is a requirement (public YouTube,
   ≤3 min, English, with audio). Do not invent a link.
-- **The submission-period delta is not written.** The project predates August
-  26, 2026; the explanation is mandatory and does not exist yet.
+- **The submission-period delta is written.** The project predates August 26,
+  2026 (first commit 18 August 2026); the mandatory explanation of what changed
+  with Nebius tools is in `docs/formulario-devpost.md` §6, and the public
+  project story (Devpost fields) is in `docs/SUBMISSION.md`.
 
 **Absences future work must NOT fabricate:** there are no testimonials,
 customers, case studies, usage metrics, benchmarks, press, or a price. Any

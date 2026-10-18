@@ -39,6 +39,7 @@ direction, not yet a contract). If the visuals disagree, `DESIGN.md` wins.
 | [`.env.example`](../.env.example) | Full variable list and documented defaults |
 | [CLAUDE.md](../CLAUDE.md) | Repo conventions for people and agents |
 | [formulario-devpost.md](formulario-devpost.md) | Devpost additional-info fields, ready to paste |
+| [SUBMISSION.md](SUBMISSION.md) | Devpost public project story (tagline, inspiration, how it was built, runtime map) |
 
 ### API routes (server)
 

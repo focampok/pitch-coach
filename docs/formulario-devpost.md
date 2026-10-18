@@ -247,7 +247,7 @@ Guatemala is not on the rules' list of excluded territories (Brazil, Quebec, Rus
 ## 21. Before submitting
 
 - The repository `https://github.com/focampok/pitch-coach` is already public. The MIT license is in `LICENSE` and in the README; confirm it in the GitHub About before submitting.
-- The README (section «Cómo corre») already names Nebius Token Factory, the three NVIDIA Nemotron ids (Super, Ultra, and Nano), that the server computes the score, and Tavily (search and extract, without sending the transcript, at most two points). There is no other Nebius service in the project: inference is Token Factory. With that, a judge sees the Nemotron usage without opening the code.
+- The README (section "How the models run") already names Nebius Token Factory, the three NVIDIA Nemotron ids (Super, Ultra, and Nano), that the server computes the score, and Tavily (search and extract, without sending the transcript, at most two points). There is no other Nebius service in the project: inference is Token Factory. With that, a judge sees the Nemotron usage without opening the code.
 - Demo: `https://pitch-coach.focampo.com`.
 - A public YouTube video, under 3 minutes, with the project working and with Token Factory and Nemotron visible in the narration. It is not part of this sheet.
 - Do not upload a file in "Upload a File". The repo and the demo cover the submission.
