@@ -11,6 +11,7 @@ import { POST as pregunta } from "@/app/api/sparring/pregunta/route";
 import { POST as transcribir } from "@/app/api/transcribir/route";
 import { POST as tts } from "@/app/api/tts/route";
 import { leerCupo, serializarCookie, type Cupo } from "@/lib/cupo-evaluacion";
+import { diccionario } from "@/lib/diccionarios";
 import { MAX_SOLICITUDES, consumir as consumirVentana, reiniciar } from "@/lib/rate-limit";
 
 const SECRETO = "test-eval-cookie-secret-32bytes-min";
@@ -177,6 +178,33 @@ describe("pausa y cupo en las rutas de proveedor", () => {
       }
     }
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("el mensaje del 503 sale en el idioma de X-Idioma o, sin ella, del Accept-Language", async () => {
+    process.env.LIVE_DEMO = "false";
+    vi.stubGlobal("fetch", vi.fn());
+    const casos: { cabeceras: Record<string, string>; idioma: "es" | "en" }[] = [
+      { cabeceras: { "x-idioma": "en" }, idioma: "en" },
+      { cabeceras: { "x-idioma": "es", "accept-language": "en-US" }, idioma: "es" },
+      // Una petición hecha a mano (curl, un juez) no manda X-Idioma.
+      { cabeceras: { "accept-language": "en-US,en;q=0.9,es;q=0.8" }, idioma: "en" },
+      { cabeceras: { "accept-language": "es-MX,es;q=0.9" }, idioma: "es" },
+      { cabeceras: {}, idioma: "es" },
+    ];
+    for (const caso of casos) {
+      const res = await analizar(
+        new Request("http://localhost/api/analizar-pitch", {
+          method: "POST",
+          headers: { "x-forwarded-for": "8.8.8.8", ...caso.cabeceras },
+        }),
+      );
+      expect(res.status).toBe(503);
+      const cuerpo = (await res.json()) as { error: string; mensaje: string };
+      expect(cuerpo.error).toBe("demo_pausada");
+      expect(cuerpo.mensaje, JSON.stringify(caso.cabeceras)).toBe(
+        diccionario(caso.idioma).evaluacion.demoPausada,
+      );
+    }
   });
 
   it("EVAL_LIMIT activo sin secreto responde 503 y no imprime el secreto", async () => {

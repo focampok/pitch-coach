@@ -282,17 +282,31 @@ plural functions.
 
 ### How the language is chosen
 
+On the server, the root layout reads the `Accept-Language` header: the tag
+with the highest `q` weight decides (`es*` → Spanish, anything else → English;
+no header → Spanish). That language drives `<html lang>`, `<title>`, the
+description, the Open Graph / Twitter tags, and the first server render. The
+home page is therefore **rendered per request** (not prerendered at build): a
+browser in English, a link preview, or a `curl -H 'Accept-Language: en-US'`
+all receive English HTML.
+
+On the client:
+
 1. The value saved in `localStorage` (`pitch-coach:idioma`), if there is one.
 2. If not, `navigator.languages[0]`: `es*` → Spanish, anything else → English.
-3. If there is no signal at all, Spanish (also the server's value).
+3. If there is no signal at all, the language the server chose.
 
-The home page is **static** (prerendered at build), so the server cannot read
-`localStorage` or `navigator`. A script in the `<head>` therefore sets
+The server cannot read `localStorage`, so a user who picked the other language
+with the selector would otherwise see a flash. A script in the `<head>` sets
 `<html lang>` **before the first paint**, and the React tree starts with the
-same default language as the server — with no hydration warning — and corrects
-itself in a *layout effect*, which React runs before the browser paints. The
-result: the first frame is already in the right language, and the home page
-keeps being served static.
+same language as the server — with no hydration warning — and corrects itself
+in a *layout effect*, which React runs before the browser paints. The result:
+the first frame is already in the right language.
+
+API routes follow the same idea for the messages they return before the body
+can be read (the pause 503, rate-limit 429, oversized-body 413): `X-Idioma` if
+the client sent it, otherwise `Accept-Language`, otherwise Spanish. Once the
+body is parsed, its `idioma` field governs (absent still means `es`).
 
 ### Stable rubric-point ids
 

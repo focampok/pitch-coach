@@ -7,9 +7,10 @@ import { IDIOMAS } from "@/types/idioma";
 // metadatos". Agregar un idioma nuevo debe ser agregar datos acá (más su
 // diccionario en src/lib/diccionarios/), nunca tocar lógica de componentes.
 //
-// La resolución del idioma (localStorage → navegador → default) y el script que
-// fija `<html lang>` antes del primer paint viven acá, para que el HTML servido
-// y el estado de React no puedan divergir.
+// La resolución del idioma (servidor: Accept-Language; cliente: localStorage →
+// navegador → el del servidor) y el script que fija `<html lang>` antes del
+// primer paint viven acá, para que el HTML servido y el estado de React no
+// puedan divergir.
 
 export interface RegistroIdioma {
   /** Código corto, el valor que viaja por la API y por el historial. */
@@ -18,6 +19,8 @@ export interface RegistroIdioma {
   nombre: string;
   /** Etiqueta BCP-47: `<html lang>`, `Intl` y `SpeechSynthesisUtterance.lang`. */
   etiqueta: string;
+  /** Locale de Open Graph (`og:locale`, formato `ll_TT`; Facebook no acepta `es_419`). */
+  etiquetaOpenGraph: string;
   // La voz de TTS no vive acá: son secretos de entorno, resueltos en
   // src/lib/elevenlabs.ts (par sin sufijo en español, par `_EN_` en inglés).
   // `codigoStt` es el hint `language_code` de Scribe (ISO 639-1). Los
@@ -36,6 +39,7 @@ export const IDIOMAS_REGISTRO: Record<Idioma, RegistroIdioma> = {
     codigo: "es",
     nombre: "Español",
     etiqueta: "es-419",
+    etiquetaOpenGraph: "es_LA",
     voces: {},
     codigoStt: "es",
     muletillas: [],
@@ -44,6 +48,7 @@ export const IDIOMAS_REGISTRO: Record<Idioma, RegistroIdioma> = {
     codigo: "en",
     nombre: "English",
     etiqueta: "en-US",
+    etiquetaOpenGraph: "en_US",
     voces: {},
     codigoStt: "en",
     muletillas: [],
@@ -54,8 +59,8 @@ export const IDIOMAS_REGISTRO: Record<Idioma, RegistroIdioma> = {
 export const CLAVE_IDIOMA = "pitch-coach:idioma";
 
 /**
- * Idioma que se usa cuando no hay ninguna señal: en el servidor (que no puede
- * leer localStorage ni `navigator`), y como valor de hidratación en el cliente.
+ * Idioma que se usa cuando no hay ninguna señal: una petición sin
+ * `Accept-Language` en el servidor, o un navegador sin idiomas en el cliente.
  */
 export const IDIOMA_POR_DEFECTO: Idioma = "es";
 
@@ -72,6 +77,11 @@ export function registroIdioma(idioma: Idioma): RegistroIdioma {
 /** Etiqueta BCP-47 del idioma (`es-419`, `en-US`). */
 export function etiquetaIdioma(idioma: Idioma): string {
   return IDIOMAS_REGISTRO[idioma].etiqueta;
+}
+
+/** Locale de Open Graph del idioma (`es_LA`, `en_US`). */
+export function etiquetaOpenGraph(idioma: Idioma): string {
+  return IDIOMAS_REGISTRO[idioma].etiquetaOpenGraph;
 }
 
 // --- Idioma pedido por una petición -----------------------------------------
@@ -102,10 +112,53 @@ export function idiomaDeSolicitud(valor: unknown): Idioma | null {
  */
 export const CABECERA_IDIOMA = "x-idioma";
 
-/** Idioma de la cabecera `X-Idioma`; si falta o no es válido, el default. */
+/**
+ * Idioma de la cabecera `X-Idioma`. Si falta o no es válido (una petición hecha
+ * a mano, sin pasar por el cliente), se cae al `Accept-Language` del navegador
+ * y, sin ese tampoco, al default. Así el 503 de la demo pausada o un 429 le
+ * llegan en inglés a quien navega en inglés aunque no mande `X-Idioma`.
+ */
 export function idiomaDeCabecera(request: Request): Idioma {
   const valor = request.headers.get(CABECERA_IDIOMA);
-  return esIdioma(valor) ? valor : IDIOMA_POR_DEFECTO;
+  if (esIdioma(valor)) return valor;
+  return idiomaDeAcceptLanguage(request.headers.get("accept-language"));
+}
+
+// --- Idioma de la petición HTTP (servidor) ----------------------------------
+
+/**
+ * Idioma a partir de la cabecera `Accept-Language` (RFC 9110 §12.5.4), por
+ * ejemplo `en-US,en;q=0.9,es;q=0.8`.
+ *
+ * Se ordenan las etiquetas por su peso `q` (ausente vale 1; `0` o inválido
+ * descarta la etiqueta; a igual peso manda el orden de aparición), se ignora
+ * el comodín `*`, y la etiqueta ganadora pasa por la misma regla que el
+ * navegador (`idiomaDeEtiquetas`). Sin cabecera o sin etiquetas útiles → default.
+ *
+ * Es lo que usa el layout raíz para servir `<html lang>`, el metadata y el
+ * primer render en el idioma del navegador, en lugar de siempre el default.
+ */
+export function idiomaDeAcceptLanguage(cabecera: string | null | undefined): Idioma {
+  if (!cabecera) return IDIOMA_POR_DEFECTO;
+
+  const etiquetas = cabecera
+    .split(",")
+    .map((parte, orden) => {
+      const [etiqueta = "", ...parametros] = parte.trim().split(";");
+      let peso = 1;
+      for (const parametro of parametros) {
+        const [clave, valor] = parametro.trim().split("=");
+        if (clave?.trim().toLowerCase() !== "q") continue;
+        const numero = Number(valor);
+        peso = Number.isFinite(numero) ? numero : 0;
+      }
+      return { etiqueta: etiqueta.trim(), peso, orden };
+    })
+    .filter((entrada) => entrada.etiqueta !== "" && entrada.etiqueta !== "*" && entrada.peso > 0)
+    .sort((a, b) => b.peso - a.peso || a.orden - b.orden)
+    .map((entrada) => entrada.etiqueta);
+
+  return idiomaDeEtiquetas(etiquetas);
 }
 
 /** Cabeceras de una petición del cliente: JSON + idioma. */
@@ -165,13 +218,14 @@ export function guardarIdioma(idioma: Idioma): void {
 
 /**
  * Idioma con el que arranca la app en el cliente: el guardado si lo hay, si no
- * el del navegador, y si no hay ninguna señal el default.
+ * el del navegador, y si no hay ninguna señal `respaldo` (el idioma con el que
+ * el servidor sirvió la página, que a su vez salió de `Accept-Language`).
  */
-export function resolverIdiomaInicial(): Idioma {
+export function resolverIdiomaInicial(respaldo: Idioma = IDIOMA_POR_DEFECTO): Idioma {
   const guardado = leerIdiomaGuardado();
   if (guardado) return guardado;
   const etiquetas = etiquetasDelNavegador();
-  if (etiquetas.length === 0) return IDIOMA_POR_DEFECTO;
+  if (etiquetas.length === 0) return respaldo;
   return idiomaDeEtiquetas(etiquetas);
 }
 
@@ -180,22 +234,25 @@ export function resolverIdiomaInicial(): Idioma {
 /**
  * Script que se inyecta en el `<head>` y corre ANTES del primer paint.
  *
- * Por qué existe: la home es estática (se prerenderiza en build) y tanto
- * localStorage como `navigator` viven solo en el cliente, así que el servidor no
- * puede saber el idioma. Sin este script, el HTML viajaría con `lang="es"` y el
- * atributo se corregiría recién después de hidratar. Con él, el `<html lang>`
- * correcto ya está puesto en el primer frame.
+ * Por qué existe: el servidor elige el idioma por `Accept-Language`, pero el
+ * usuario puede haber guardado otro en localStorage (el selector), y eso solo
+ * se puede leer en el cliente. Sin este script, el HTML viajaría con el `lang`
+ * del navegador y el atributo se corregiría recién después de hidratar. Con él,
+ * el `<html lang>` correcto ya está puesto en el primer frame.
  *
  * No parpadea ni rompe la hidratación porque NO cambia texto: solo mueve un
  * atributo fuera del árbol de React. El texto lo resuelve el proveedor (ver
- * ProveedorIdioma), que arranca con el valor por defecto —idéntico al del
- * servidor— y lo corrige en un layout effect, antes de que el navegador pinte.
+ * ProveedorIdioma), que arranca con el idioma del servidor y lo corrige en un
+ * layout effect, antes de que el navegador pinte.
+ *
+ * `idiomaServidor` es el respaldo cuando no hay nada guardado ni idiomas en el
+ * navegador: el mismo valor con el que el servidor renderizó la página.
  *
  * Se genera desde IDIOMAS_REGISTRO para que la clave, los códigos y las
  * etiquetas no se dupliquen a mano; `test/idiomas.test.ts` ejecuta el script
  * generado y verifica que elija el mismo idioma que `resolverIdiomaInicial`.
  */
-export function scriptIdiomaInicial(): string {
+export function scriptIdiomaInicial(idiomaServidor: Idioma = IDIOMA_POR_DEFECTO): string {
   const etiquetas = IDIOMAS.map(
     (idioma) => `${JSON.stringify(idioma)}:${JSON.stringify(etiquetaIdioma(idioma))}`,
   ).join(",");
@@ -204,7 +261,7 @@ export function scriptIdiomaInicial(): string {
     "(function(){try{",
     `var etiquetas={${etiquetas}};`,
     `var clave=${JSON.stringify(CLAVE_IDIOMA)};`,
-    `var defecto=${JSON.stringify(IDIOMA_POR_DEFECTO)};`,
+    `var defecto=${JSON.stringify(idiomaServidor)};`,
     "var guardado=null;",
     "try{guardado=localStorage.getItem(clave);}catch(e){}",
     "var idioma=(guardado&&etiquetas[guardado])?guardado:elegir();",

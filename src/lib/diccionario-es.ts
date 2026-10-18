@@ -16,6 +16,16 @@
 // (Parte B).
 
 export const es = {
+  // --- Metadata del documento (src/app/layout.tsx) -------------------------
+  // <title>, <meta name="description"> y las etiquetas Open Graph / Twitter.
+  // Lo que ve un buscador, una vista previa de enlace o la pestaña del
+  // navegador: sale en el idioma del Accept-Language de la petición.
+  meta: {
+    titulo: "Pitch Coach",
+    descripcion:
+      "Entrena tu pitch en voz alta y recibe un veredicto hablado con feedback estructurado según el tipo de pitch.",
+  },
+
   // --- Selector de idioma --------------------------------------------------
   selectorIdioma: {
     /** Etiqueta accesible del grupo de botones. */

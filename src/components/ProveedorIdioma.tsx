@@ -24,13 +24,13 @@ import { diccionario, type Diccionario } from "@/lib/diccionarios";
  *
  * CÓMO SE EVITA EL PARPADEO Y LA ADVERTENCIA DE HIDRATACIÓN
  *
- * La home es estática: se prerenderiza en build con `IDIOMA_POR_DEFECTO`, y el
- * servidor no puede leer localStorage ni `navigator`. Por eso el estado arranca
- * en el default en el servidor Y en el primer render del cliente (así ambos
- * árboles coinciden y React no reporta mismatch), y el idioma real se resuelve
- * en un LAYOUT effect: React lo ejecuta en el mismo commit de la hidratación y
- * antes de que el navegador pinte, así que el primer frame visible ya sale en
- * el idioma correcto.
+ * El servidor elige el idioma por `Accept-Language` (ver layout.tsx) y lo pasa
+ * como `idiomaInicial`. El estado arranca en ese valor en el servidor Y en el
+ * primer render del cliente (así ambos árboles coinciden y React no reporta
+ * mismatch). Lo que el servidor no puede leer —el idioma guardado con el
+ * selector en localStorage— se resuelve en un LAYOUT effect: React lo ejecuta
+ * en el mismo commit de la hidratación y antes de que el navegador pinte, así
+ * que el primer frame visible ya sale en el idioma correcto.
  *
  * El `<html lang>` no lo maneja React (vive en el layout, un Server Component):
  * lo fija el script de `scriptIdiomaInicial()` antes del primer paint y lo
@@ -53,15 +53,22 @@ export interface ValorIdioma {
 
 const ContextoIdioma = createContext<ValorIdioma | null>(null);
 
-export function ProveedorIdioma({ children }: { children: ReactNode }) {
-  const [idioma, setIdiomaEstado] = useState<Idioma>(IDIOMA_POR_DEFECTO);
+export function ProveedorIdioma({
+  children,
+  idiomaInicial = IDIOMA_POR_DEFECTO,
+}: {
+  children: ReactNode;
+  /** Idioma con el que el servidor renderizó la página (Accept-Language). */
+  idiomaInicial?: Idioma;
+}) {
+  const [idioma, setIdiomaEstado] = useState<Idioma>(idiomaInicial);
 
-  // Resolución inicial: localStorage → navegador → default.
+  // Resolución inicial: localStorage → navegador → el del servidor.
   useEfectoDeLayout(() => {
-    const inicial = resolverIdiomaInicial();
+    const inicial = resolverIdiomaInicial(idiomaInicial);
     setIdiomaEstado(inicial);
     aplicarIdiomaAlDocumento(inicial);
-  }, []);
+  }, [idiomaInicial]);
 
   // Cambios posteriores (el usuario usa el selector).
   useEfectoDeLayout(() => {

@@ -60,6 +60,8 @@ describe("paridad entre diccionarios", () => {
   it("ninguna clave se quedó sin traducir (misma ruta, distinto texto)", () => {
     // Casos legítimos: son palabras iguales en los dos idiomas.
     const IGUALES_A_PROPOSITO = new Set([
+      // El nombre del producto no se traduce.
+      "meta.titulo",
       "comun.tipoPitch.capital",
       "progreso.ultra",
       "dashboard.analisisUltra",

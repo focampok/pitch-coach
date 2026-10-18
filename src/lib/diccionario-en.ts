@@ -4,6 +4,13 @@ import type { Diccionario } from "./diccionario-es";
 // clave o sobra una que no existe en `es.ts`, `tsc` falla en el build.
 
 export const en: Diccionario = {
+  // --- Metadata del documento (src/app/layout.tsx) -------------------------
+  meta: {
+    titulo: "Pitch Coach",
+    descripcion:
+      "Practice your pitch out loud and get a spoken verdict with structured feedback for your pitch type.",
+  },
+
   // --- Selector de idioma --------------------------------------------------
   selectorIdioma: {
     etiqueta: "Language",

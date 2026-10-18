@@ -5,7 +5,10 @@ import {
   IDIOMA_POR_DEFECTO,
   esIdioma,
   etiquetaIdioma,
+  etiquetaOpenGraph,
   guardarIdioma,
+  idiomaDeAcceptLanguage,
+  idiomaDeCabecera,
   idiomaDeEtiquetas,
   idiomaDeSolicitud,
   leerIdiomaGuardado,
@@ -35,6 +38,7 @@ function ejecutarScript(opciones: {
   idiomas?: string[];
   language?: string;
   storageFalla?: boolean;
+  servidor?: "es" | "en";
 }): string {
   const documento = { documentElement: { lang: "" } };
   const almacenamiento = {
@@ -53,7 +57,7 @@ function ejecutarScript(opciones: {
     "navigator",
     "localStorage",
     "document",
-    scriptIdiomaInicial(),
+    scriptIdiomaInicial(opciones.servidor),
   );
   ejecutar(navegador, almacenamiento, documento);
   return documento.documentElement.lang;
@@ -92,6 +96,68 @@ describe("idiomaDeEtiquetas", () => {
   it("cae al idioma por defecto si no hay ninguna etiqueta", () => {
     expect(idiomaDeEtiquetas([])).toBe(IDIOMA_POR_DEFECTO);
     expect(idiomaDeEtiquetas([""])).toBe(IDIOMA_POR_DEFECTO);
+  });
+});
+
+describe("etiquetaOpenGraph", () => {
+  it("usa el formato ll_TT que acepta Open Graph", () => {
+    expect(etiquetaOpenGraph("es")).toBe("es_LA");
+    expect(etiquetaOpenGraph("en")).toBe("en_US");
+  });
+});
+
+describe("idiomaDeAcceptLanguage (servidor)", () => {
+  it("elige por la etiqueta de mayor peso", () => {
+    expect(idiomaDeAcceptLanguage("en-US,en;q=0.9,es;q=0.8")).toBe("en");
+    expect(idiomaDeAcceptLanguage("es-MX,es;q=0.9,en;q=0.8")).toBe("es");
+    // El peso manda sobre el orden de aparición.
+    expect(idiomaDeAcceptLanguage("es;q=0.5,en-GB;q=0.9")).toBe("en");
+    expect(idiomaDeAcceptLanguage("en;q=0.5, es-419;q=0.9")).toBe("es");
+  });
+
+  it("a igual peso manda el orden de aparición", () => {
+    expect(idiomaDeAcceptLanguage("en-US, es-MX")).toBe("en");
+    expect(idiomaDeAcceptLanguage("es-MX, en-US")).toBe("es");
+  });
+
+  it("ignora el comodín y las etiquetas con q=0", () => {
+    expect(idiomaDeAcceptLanguage("*")).toBe(IDIOMA_POR_DEFECTO);
+    expect(idiomaDeAcceptLanguage("*, en;q=0.5")).toBe("en");
+    expect(idiomaDeAcceptLanguage("es;q=0, en;q=0.1")).toBe("en");
+    expect(idiomaDeAcceptLanguage("en;q=abc, es")).toBe("es");
+  });
+
+  it("mapea cualquier idioma que no sea español a inglés", () => {
+    expect(idiomaDeAcceptLanguage("pt-BR,pt;q=0.9")).toBe("en");
+    expect(idiomaDeAcceptLanguage("fr")).toBe("en");
+  });
+
+  it("cae al idioma por defecto sin cabecera", () => {
+    expect(idiomaDeAcceptLanguage(null)).toBe(IDIOMA_POR_DEFECTO);
+    expect(idiomaDeAcceptLanguage(undefined)).toBe(IDIOMA_POR_DEFECTO);
+    expect(idiomaDeAcceptLanguage("")).toBe(IDIOMA_POR_DEFECTO);
+    expect(idiomaDeAcceptLanguage(" , ;q=1")).toBe(IDIOMA_POR_DEFECTO);
+  });
+});
+
+describe("idiomaDeCabecera (X-Idioma con respaldo en Accept-Language)", () => {
+  function peticion(cabeceras: Record<string, string>): Request {
+    return new Request("http://localhost/api/x", { headers: cabeceras });
+  }
+
+  it("X-Idioma válido manda", () => {
+    expect(idiomaDeCabecera(peticion({ "x-idioma": "en", "accept-language": "es-MX" }))).toBe("en");
+    expect(idiomaDeCabecera(peticion({ "x-idioma": "es", "accept-language": "en-US" }))).toBe("es");
+  });
+
+  it("sin X-Idioma (o inválido) usa Accept-Language", () => {
+    expect(idiomaDeCabecera(peticion({ "accept-language": "en-US,en;q=0.9" }))).toBe("en");
+    expect(idiomaDeCabecera(peticion({ "x-idioma": "fr", "accept-language": "en-US" }))).toBe("en");
+    expect(idiomaDeCabecera(peticion({ "accept-language": "es-AR" }))).toBe("es");
+  });
+
+  it("sin ninguna cabecera cae al idioma por defecto", () => {
+    expect(idiomaDeCabecera(peticion({}))).toBe(IDIOMA_POR_DEFECTO);
   });
 });
 
@@ -162,6 +228,18 @@ describe("idioma guardado en el navegador", () => {
     vi.stubGlobal("navigator", { languages: [], language: "" });
     expect(resolverIdiomaInicial()).toBe(IDIOMA_POR_DEFECTO);
   });
+
+  it("sin señal en el cliente respeta el idioma con el que sirvió el servidor", () => {
+    vi.stubGlobal("localStorage", almacen());
+    vi.stubGlobal("navigator", { languages: [], language: "" });
+    expect(resolverIdiomaInicial("en")).toBe("en");
+    expect(resolverIdiomaInicial("es")).toBe("es");
+    // Con señal del navegador o guardado, el respaldo no interviene.
+    vi.stubGlobal("navigator", { languages: ["es-MX"], language: "es-MX" });
+    expect(resolverIdiomaInicial("en")).toBe("es");
+    vi.stubGlobal("localStorage", almacen({ [CLAVE_IDIOMA]: "en" }));
+    expect(resolverIdiomaInicial("es")).toBe("en");
+  });
 });
 
 describe("script de arranque (<html lang> antes del primer paint)", () => {
@@ -188,15 +266,30 @@ describe("script de arranque (<html lang> antes del primer paint)", () => {
     expect(ejecutarScript({})).toBe(etiquetaIdioma(IDIOMA_POR_DEFECTO));
   });
 
+  it("sin ninguna señal respeta el idioma con el que sirvió el servidor", () => {
+    expect(ejecutarScript({ servidor: "en" })).toBe("en-US");
+    expect(ejecutarScript({ servidor: "es" })).toBe("es-419");
+    // Lo guardado y el navegador siguen mandando sobre el servidor.
+    expect(ejecutarScript({ servidor: "en", idiomas: ["es-MX"] })).toBe("es-419");
+    expect(ejecutarScript({ servidor: "es", guardado: "en", idiomas: ["es-MX"] })).toBe("en-US");
+  });
+
   it("elige el mismo idioma que resolverIdiomaInicial", () => {
     // Guarda contra divergencia entre el script inline y el proveedor de React.
-    const casos: { guardado: string | null; idiomas: string[]; language: string }[] = [
+    const casos: {
+      guardado: string | null;
+      idiomas: string[];
+      language: string;
+      servidor?: "es" | "en";
+    }[] = [
       { guardado: "en", idiomas: ["es-MX"], language: "es-MX" },
       { guardado: "es", idiomas: ["en-US"], language: "en-US" },
       { guardado: null, idiomas: ["es-MX"], language: "es-MX" },
       { guardado: null, idiomas: ["en-US"], language: "en-US" },
       { guardado: null, idiomas: ["pt-BR"], language: "pt-BR" },
       { guardado: null, idiomas: [], language: "" },
+      { guardado: null, idiomas: [], language: "", servidor: "en" },
+      { guardado: null, idiomas: ["es-MX"], language: "es-MX", servidor: "en" },
     ];
 
     for (const caso of casos) {
@@ -212,9 +305,10 @@ describe("script de arranque (<html lang> antes del primer paint)", () => {
         guardado: caso.guardado,
         idiomas: caso.idiomas,
         language: caso.language,
+        servidor: caso.servidor,
       });
 
-      expect(delScript).toBe(etiquetaIdioma(resolverIdiomaInicial()));
+      expect(delScript).toBe(etiquetaIdioma(resolverIdiomaInicial(caso.servidor)));
       vi.unstubAllGlobals();
     }
   });
