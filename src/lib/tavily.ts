@@ -42,8 +42,10 @@ import type { TipoPitch } from "@/types/pitch";
 import { extraerEntidades } from "./entidades-tavily";
 import { etiquetaPunto, obtenerPuntoPorId, obtenerRubrica } from "./rubricas";
 import {
+  ALCANCES_QUERY,
   construirQueryTavily,
   redactarQueryConModelo,
+  type AlcanceQuery,
   type DatosQueryTavily,
 } from "./query-tavily";
 import { extraerContenido } from "./tavily-extract";
@@ -292,6 +294,7 @@ async function buscarEnTavily(
  */
 function diarioPunto(entrada: {
   punto: string;
+  alcance: AlcanceQuery;
   query: string;
   candidatos: number;
   extraido: boolean;
@@ -299,7 +302,7 @@ function diarioPunto(entrada: {
   motivo: string;
 }): void {
   console.info(
-    `[tavily] punto=${entrada.punto} candidatos=${entrada.candidatos} extraido=${entrada.extraido} aprobado=${entrada.aprobado} motivo=${entrada.motivo} query="${entrada.query}"`,
+    `[tavily] punto=${entrada.punto} alcance=${entrada.alcance} candidatos=${entrada.candidatos} extraido=${entrada.extraido} aprobado=${entrada.aprobado} motivo=${entrada.motivo} query="${entrada.query}"`,
   );
 }
 
@@ -375,6 +378,100 @@ export interface ContextoTavily {
 }
 
 /**
+ * Una query completa para un punto: búsqueda, candidatos, extracción,
+ * validación y frase. Devuelve la sugerencia aprobada o `null`. Deja en el
+ * diario el veredicto por candidata y el resumen del intento (`alcance`).
+ */
+async function intentarQuery(datos: {
+  query: string;
+  alcance: AlcanceQuery;
+  punto: string;
+  puntoNombre: string;
+  idioma: Idioma;
+  tipoPitch: TipoPitch;
+  entidades: readonly string[];
+}): Promise<SugerenciaTavily | null> {
+  const { query, alcance, punto, puntoNombre, idioma, tipoPitch, entidades } = datos;
+
+  // Paso 3: búsqueda con filtros duros.
+  const resultados = await buscarEnTavily(query, { idioma, tipoPitch });
+
+  // Paso 4: elegir los mejores candidatos (no el primero a ciegas).
+  const candidatos = elegirCandidatos(resultados);
+  let extraido = false;
+  let aprobado = false;
+  let motivo = candidatos.length === 0 ? "sin-candidatos" : "sin-cifra";
+  let sugerencia: SugerenciaTavily | null = null;
+
+  for (const candidato of candidatos) {
+    // Paso 5: contenido real.
+    const contenido = await extraerContenido(candidato.url!, { personalizar: query });
+    if (!contenido) {
+      motivo = "sin-extraccion";
+      diarioCandidata({ punto, url: candidato.url!, motivo });
+      continue;
+    }
+    extraido = true;
+    motivo = "sin-cifra";
+
+    // Paso 6: validación obligatoria — sin cifra citable Y RELEVANTE al
+    // tema/sector del pitch, se descarta. Las entidades son el contexto
+    // de comparación (mismos términos cortos que ya viajan a Tavily).
+    const validacion = await validarContenido(contenido.contenido, idioma, entidades);
+    if (!validacion.util) {
+      motivo = validacion.relevante ? "sin-cifra" : "no-relevante";
+      diarioCandidata({
+        punto,
+        url: candidato.url!,
+        motivo,
+        sector: validacion.sector,
+        relevante: validacion.relevante,
+      });
+      continue;
+    }
+
+    // Segunda barrera, sin modelo: lo que se muestra (título, cita, cifra)
+    // o el sector que el validador le atribuye a la página tiene que
+    // repetir una palabra TEMÁTICA del pitch (la geografía no cuenta).
+    // Cierra el caso en que el validador acepta una cifra vecina (helado
+    // → lácteos de otro país; electrodomésticos → contabilidad en Colombia).
+    const corpus = `${candidato.title ?? ""} ${validacion.cita} ${validacion.cifra} ${validacion.sector}`;
+    if (!comparteEntidad(corpus, entidades)) {
+      motivo = "otro-tema";
+      diarioCandidata({ punto, url: candidato.url!, motivo, sector: validacion.sector, relevante: true });
+      continue;
+    }
+    diarioCandidata({ punto, url: candidato.url!, motivo: "ok", sector: validacion.sector });
+
+    // Paso 7: frase hablada (con respaldo determinista).
+    const frase = await generarFraseHablada({
+      cifra: validacion.cifra,
+      fechaEtiqueta: validacion.fecha.etiqueta,
+      tituloFuente: candidato.title ?? candidato.url!,
+      puntoNombre,
+      idioma,
+    });
+
+    aprobado = true;
+    motivo = "ok";
+    sugerencia = {
+      punto,
+      query,
+      cifra: validacion.cifra,
+      cita: validacion.cita,
+      fecha: validacion.fecha.etiqueta,
+      titulo: candidato.title ?? candidato.url!,
+      url: candidato.url!,
+      frase,
+    };
+    break;
+  }
+
+  diarioPunto({ punto, alcance, query, candidatos: candidatos.length, extraido, aprobado, motivo });
+  return sugerencia;
+}
+
+/**
  * Para los puntos de rúbrica NO cumplidos que entran en el techo
  * (`MAX_PUNTOS_ENRIQUECIDOS`, en orden de rúbrica): arma una query orientada a
  * cifras, busca, elige los mejores candidatos, extrae, valida y redacta la
@@ -421,91 +518,28 @@ export async function enriquecerConTavily(
       };
 
       try {
-        // Paso 2: query orientada a cifras (con respaldo determinista).
-        const queryModelo = await redactarQueryConModelo(datosQuery);
-        const query = queryModelo ?? construirQueryTavily(datosQuery);
+        // Hasta `ALCANCES_QUERY.length` queries por punto: primero industria +
+        // región; si ninguna candidata aprueba, industria global. La segunda
+        // solo corre si la primera no aprobó (una aprobada corta el bucle).
+        for (const alcance of ALCANCES_QUERY) {
+          // Paso 2: query orientada a cifras (con respaldo determinista).
+          const queryModelo = await redactarQueryConModelo(datosQuery, alcance);
+          const query = queryModelo ?? construirQueryTavily(datosQuery, alcance);
 
-        // Paso 3: búsqueda con filtros duros.
-        const resultados = await buscarEnTavily(query, { idioma, tipoPitch });
-
-        // Paso 4: elegir los mejores candidatos (no el primero a ciegas).
-        const candidatos = elegirCandidatos(resultados);
-        let extraido = false;
-        let aprobado = false;
-        let motivo = candidatos.length === 0 ? "sin-candidatos" : "sin-cifra";
-
-        for (const candidato of candidatos) {
-          // Paso 5: contenido real.
-          const contenido = await extraerContenido(candidato.url!, { personalizar: query });
-          if (!contenido) {
-            motivo = "sin-extraccion";
-            diarioCandidata({ punto, url: candidato.url!, motivo });
-            continue;
-          }
-          extraido = true;
-          motivo = "sin-cifra";
-
-          // Paso 6: validación obligatoria — sin cifra citable Y RELEVANTE al
-          // tema/sector del pitch, se descarta. Las entidades son el contexto
-          // de comparación (mismos términos cortos que ya viajan a Tavily).
-          const validacion = await validarContenido(contenido.contenido, idioma, entidades);
-          if (!validacion.util) {
-            motivo = validacion.relevante ? "sin-cifra" : "no-relevante";
-            diarioCandidata({
-              punto,
-              url: candidato.url!,
-              motivo,
-              sector: validacion.sector,
-              relevante: validacion.relevante,
-            });
-            continue;
-          }
-
-          // Segunda barrera, sin modelo: lo que se muestra (título, cita, cifra)
-          // o el sector que el validador le atribuye a la página tiene que
-          // repetir una palabra TEMÁTICA del pitch (la geografía no cuenta).
-          // Cierra el caso en que el validador acepta una cifra vecina (helado
-          // → lácteos de otro país; electrodomésticos → contabilidad en Colombia).
-          const corpus = `${candidato.title ?? ""} ${validacion.cita} ${validacion.cifra} ${validacion.sector}`;
-          if (!comparteEntidad(corpus, entidades)) {
-            motivo = "otro-tema";
-            diarioCandidata({ punto, url: candidato.url!, motivo, sector: validacion.sector, relevante: true });
-            continue;
-          }
-          diarioCandidata({ punto, url: candidato.url!, motivo: "ok", sector: validacion.sector });
-
-          // Paso 7: frase hablada (con respaldo determinista).
-          const frase = await generarFraseHablada({
-            cifra: validacion.cifra,
-            fechaEtiqueta: validacion.fecha.etiqueta,
-            tituloFuente: candidato.title ?? candidato.url!,
+          const sugerencia = await intentarQuery({
+            query,
+            alcance,
+            punto,
             puntoNombre,
             idioma,
+            tipoPitch,
+            entidades,
           });
-
-          aprobado = true;
-          motivo = "ok";
-          sugerencias.push({
-            punto,
-            query,
-            cifra: validacion.cifra,
-            cita: validacion.cita,
-            fecha: validacion.fecha.etiqueta,
-            titulo: candidato.title ?? candidato.url!,
-            url: candidato.url!,
-            frase,
-          });
-          break;
+          if (sugerencia) {
+            sugerencias.push(sugerencia);
+            break;
+          }
         }
-
-        diarioPunto({
-          punto,
-          query,
-          candidatos: candidatos.length,
-          extraido,
-          aprobado,
-          motivo,
-        });
       } catch (err) {
         console.warn(`[tavily] sin sugerencia para "${punto}":`, err);
       }

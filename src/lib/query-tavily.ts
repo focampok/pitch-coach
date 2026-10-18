@@ -32,6 +32,7 @@ import type { Idioma } from "@/types/idioma";
 import { llamarModelo, type EsquemaJson } from "./modelo";
 import { MAX_ENTIDADES, MAX_ENTIDAD_CARACTERES } from "./entidades-tavily";
 import { recortarTexto } from "./texto-corto";
+import { esEntidadGeografica } from "./validar-sugerencia";
 
 /** Tope duro de la query completa, sumando todas las piezas. */
 export const MAX_QUERY_CARACTERES = 300;
@@ -113,14 +114,44 @@ export interface DatosQueryTavily {
 }
 
 /**
+ * Alcance de la query (§ pasada 3 del QA): la primera apunta a la INDUSTRIA en
+ * la REGIÓN del pitch; si no aprueba ninguna candidata, la segunda es la
+ * industria a escala GLOBAL (sin país ni segmento de cliente), porque la
+ * prensa económica publica el tamaño de mercado global mucho más que el de
+ * "software contable para tiendas pequeñas en Guatemala". Máximo 2 por punto.
+ */
+export type AlcanceQuery = "region" | "global";
+
+/** Queries que se intentan por punto, en orden. */
+export const ALCANCES_QUERY: readonly AlcanceQuery[] = ["region", "global"];
+
+/**
+ * Entidades que entran según el alcance: en `global` se quitan las que son
+ * solo geografía. Si no queda ninguna, se devuelven todas (mejor una query
+ * regional repetida que ninguna).
+ */
+export function entidadesSegunAlcance(
+  entidades: readonly string[],
+  alcance: AlcanceQuery,
+): string[] {
+  if (alcance === "region") return [...entidades];
+  const sinGeografia = entidades.filter((entidad) => !esEntidadGeografica(entidad));
+  return sinGeografia.length > 0 ? sinGeografia : [...entidades];
+}
+
+/**
  * Query de RESPALDO, pura y determinista. Solo entidades + nombre del punto
  * (+ tipos de pitch si no hay entidades). Nunca incluye el comentario negativo.
  *
  * Regla de ambigüedad: una entidad ambigua se agrega SOLO si ya hay otra entidad
  * o el tipo de pitch que la acompañe; sola nunca entra (choque de nombres).
  */
-export function construirQueryTavily(datos: DatosQueryTavily): string {
-  const { puntoNombre, entidades, tipoNombre, idioma } = datos;
+export function construirQueryTavily(
+  datos: DatosQueryTavily,
+  alcance: AlcanceQuery = "region",
+): string {
+  const { puntoNombre, tipoNombre, idioma } = datos;
+  const entidades = entidadesSegunAlcance(datos.entidades ?? [], alcance);
 
   const terminos: string[] = [];
   const vistos = new Set<string>();
@@ -156,6 +187,7 @@ export function construirQueryTavily(datos: DatosQueryTavily): string {
   }
 
   agregar(puntoNombre, MAX_ENTIDAD_CARACTERES);
+  if (alcance === "global") agregar(idioma === "en" ? "worldwide" : "mundial", MAX_ENTIDAD_CARACTERES);
 
   const query = `${PREFIJOS[idioma]} ${terminos.join(" ")}`.trim();
   return query.slice(0, MAX_QUERY_CARACTERES).trim();
@@ -198,12 +230,25 @@ export function validarRespuestaQuery(datos: unknown): string {
   return query;
 }
 
-function construirSystemQuery(idioma: Idioma): string {
+/** Frase del system según el alcance, por idioma. */
+const ENFOQUE_ALCANCE: Record<Idioma, Record<AlcanceQuery, string>> = {
+  en: {
+    region: "add the region or country of the pitch if one is listed among the entities.",
+    global: "GLOBAL scope, worldwide market: do NOT add any country or region.",
+  },
+  es: {
+    region: "agrega la región o el país del pitch si figura entre las entidades.",
+    global: "alcance GLOBAL, mercado mundial: NO agregues ningún país ni región.",
+  },
+};
+
+export function construirSystemQuery(idioma: Idioma, alcance: AlcanceQuery = "region"): string {
   if (idioma === "en") {
     return `You write ONE short web search phrase (max 12 words) to find a concrete FIGURE or statistic that backs up a point of a pitch.
 
 Rules:
 - The phrase must target a NUMERIC datum (market size, growth, price, users), never a concept or a methodology.
+- Build it from the INDUSTRY (the product category) plus the datum: ${ENFOQUE_ALCANCE.en[alcance]} Do NOT add the customer segment (e.g. "small shops", "freelancers"): it narrows the search until nothing is found.
 - Use only the terms you receive. Do not invent proper nouns, countries, or numbers.
 - FORBIDDEN: commentary or evaluation terms such as "lacks", "no data", "missing", "without figure", "does not mention".
 - Write it in ENGLISH, the language of this session, even if an entity is in another language. No punctuation, no quotes.
@@ -215,6 +260,7 @@ Reply ONLY with the requested structured JSON.`;
 
 Reglas:
 - La frase debe apuntar a un DATO numérico (tamaño de mercado, crecimiento, precio, usuarios), nunca a un concepto ni a una metodología.
+- Ármala con la INDUSTRIA (la categoría del producto) más el dato: ${ENFOQUE_ALCANCE.es[alcance]} NO agregues el segmento de cliente (p. ej. "tiendas pequeñas", "freelancers"): estrecha la búsqueda hasta que no aparece nada.
 - Usa solo los términos que recibes. No inventes nombres propios, países ni números.
 - PROHIBIDO: términos de comentario o evaluación como "carece", "no da", "falta", "sin cifra", "no se menciona".
 - Escríbela en ESPAÑOL, el idioma de esta sesión, aunque alguna entidad venga en otro idioma. Sin puntuación, sin comillas.
@@ -251,14 +297,16 @@ export function construirUserQuery(datos: DatosQueryTavily & { queBuscar?: strin
  */
 export async function redactarQueryConModelo(
   datos: DatosQueryTavily & { queBuscar?: string },
+  alcance: AlcanceQuery = "region",
 ): Promise<string | null> {
   if (!datos.entidades || datos.entidades.length === 0) return null;
+  const datosAlcance = { ...datos, entidades: entidadesSegunAlcance(datos.entidades, alcance) };
 
   try {
     const texto = await llamarModelo<string>(
       {
-        system: construirSystemQuery(datos.idioma),
-        user: construirUserQuery(datos),
+        system: construirSystemQuery(datos.idioma, alcance),
+        user: construirUserQuery(datosAlcance),
         idioma: datos.idioma,
         esquema: esquemaQueryRestringido(datos.idioma),
         nombreEsquema: NOMBRE_ESQUEMA_QUERY,

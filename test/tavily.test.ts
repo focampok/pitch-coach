@@ -15,11 +15,16 @@ import {
   limpiarTermino,
 } from "@/lib/tavily";
 import {
+  ALCANCES_QUERY,
   PREFIJOS,
+  construirSystemQuery,
   construirUserQuery,
+  entidadesSegunAlcance,
   esEntidadAmbigua,
   validarRespuestaQuery,
 } from "@/lib/query-tavily";
+import { enOtroIdioma, pareceEspanol, separarPorIdioma } from "@/lib/guardia-idioma";
+import { esEntidadGeografica } from "@/lib/validar-sugerencia";
 import { MAX_ENTIDADES, MAX_ENTIDAD_CARACTERES } from "@/lib/entidades-tavily";
 import { comparteEntidad, mismaRaiz, validarRespuestaValidacion } from "@/lib/validar-sugerencia";
 import {
@@ -154,6 +159,12 @@ interface RespuestasModelo {
   cifras?: string[];
   /** Nombres de esquema que deben FALLAR (para probar la degradación). */
   fallar?: string[];
+  /**
+   * Payloads por esquema que se consumen EN ORDEN, uno por llamada, antes de
+   * caer a la respuesta fija. Sirve para el reintento de la guardia de idioma
+   * (primera respuesta en español, segunda en inglés) y para las dos queries.
+   */
+  secuencia?: Partial<Record<string, unknown[]>>;
 }
 
 interface CuerpoModelo {
@@ -215,6 +226,8 @@ function respuestaSegunEsquema(nombre: string, respuestas: RespuestasModelo): Re
   if (respuestas.fallar?.includes(nombre)) {
     throw new Error(`esquema no disponible: ${nombre}`);
   }
+  const cola = respuestas.secuencia?.[nombre];
+  if (cola && cola.length > 0) return respuestaChat(cola.shift());
 
   switch (nombre) {
     case NOMBRE_ENTIDADES:
@@ -292,7 +305,7 @@ function fetchConDispatch(
 }
 
 /** Respuestas del camino feliz (entidades + query + validación + frase). */
-function respuestasOk(): RespuestasModelo {
+function respuestasOk(extra: Partial<RespuestasModelo> = {}): RespuestasModelo {
   return {
     entidades: ["energía solar", "Guatemala"],
     query: "tamaño del mercado energía solar Guatemala",
@@ -305,7 +318,16 @@ function respuestasOk(): RespuestasModelo {
       anio: "2024",
     },
     frase: FRASE_OK,
+    ...extra,
   };
+}
+
+/** Cuerpos de TODAS las llamadas a un esquema, en orden. */
+function cuerposDeEsquema(fetchMock: ReturnType<typeof vi.fn>, nombre: string): CuerpoModelo[] {
+  return fetchMock.mock.calls
+    .filter(([url]) => esModelo(String(url)))
+    .map(([, init]) => JSON.parse(String((init as { body?: string })?.body ?? "{}")) as CuerpoModelo)
+    .filter((body) => body.response_format?.json_schema?.name === nombre);
 }
 
 function cuerpoDe<T>(fetchMock: ReturnType<typeof vi.fn>, filtro: (url: string) => boolean): T {
@@ -866,8 +888,9 @@ describe("POST /api/enriquecer — Fase B (validación obligatoria)", () => {
     );
 
     expect(await res.json()).toEqual(EVIDENCIA_VACIA_VERIFICADA);
-    // Se intentó extraer los dos candidatos, pero nunca se pidió la frase.
-    expect(extraccionesDePunto(fetchMock)).toHaveLength(MAX_CANDIDATOS);
+    // Se intentó extraer los dos candidatos de CADA query (región y global),
+    // pero nunca se pidió la frase.
+    expect(extraccionesDePunto(fetchMock)).toHaveLength(MAX_CANDIDATOS * ALCANCES_QUERY.length);
     expect(
       fetchMock.mock.calls.some(([, init]) => {
         const body = JSON.parse(String((init as { body?: string })?.body ?? "{}")) as CuerpoModelo;
@@ -1378,7 +1401,7 @@ describe("entidades con industria (diagnóstico de la pasada 2: marca + países)
   const ENTIDADES_NUEVAS = ["accounting software", "small shops", "Colombia"];
 
   it("el extractor pide la industria en sustantivos comunes y prohíbe la marca", async () => {
-    const fetchMock = fetchConDispatch(respuestasOk());
+    const fetchMock = fetchConDispatch(respuestasOk({ entidades: ["solar energy", "Guatemala"] }));
     vi.stubGlobal("fetch", fetchMock);
     await POST_ENRIQUECER(
       peticion({
@@ -1392,7 +1415,7 @@ describe("entidades con industria (diagnóstico de la pasada 2: marca + países)
     expect(entidades.messages?.[0].content).toMatch(/NEVER the brand or product name/);
     expect(entidades.messages?.[0].content).toMatch(/industry or product category/);
     // El diario registra las entidades (mismos términos que viajan en la query).
-    expect(SALIDA_INFO()).toContain('[tavily] entidades=["energía solar","Guatemala"]');
+    expect(SALIDA_INFO()).toContain('[tavily] entidades=["solar energy","Guatemala"]');
   });
 
   it("con la industria en las entidades, una cifra contable de LATAM pasa el filtro determinista", () => {
@@ -1696,5 +1719,308 @@ describe("diario de diagnóstico (§6) y regla de privacidad", () => {
 
     // El diario de diagnóstico tampoco la arrastra.
     expect(SALIDA_INFO()).not.toContain(marca);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Pasada 3 del QA (en-US): entidades y cifras en español, 67 s en cifras,
+// query demasiado estrecha. Guardia de idioma, paralelismo y segunda query.
+// -----------------------------------------------------------------------------
+
+describe("guardia determinista de idioma (caso real de la pasada 3)", () => {
+  it("detecta los marcadores de español del caso real y deja pasar el inglés", () => {
+    expect(pareceEspanol("420 tiendas")).toBe(true);
+    expect(pareceEspanol("15 % mes a mes")).toBe(true);
+    expect(pareceEspanol("contabilidad software")).toBe(true);
+    expect(pareceEspanol("pequeñas tiendas")).toBe(true);
+    expect(pareceEspanol("420 shops")).toBe(false);
+    expect(pareceEspanol("15% month over month")).toBe(false);
+    expect(pareceEspanol("accounting software")).toBe(false);
+    expect(pareceEspanol("$500K")).toBe(false);
+    // Los nombres propios sin marcador pasan en los dos idiomas.
+    expect(pareceEspanol("Guatemala")).toBe(false);
+  });
+
+  it("solo actúa en sesión en inglés; en español nunca descarta", () => {
+    expect(enOtroIdioma("420 tiendas", "en")).toBe(true);
+    expect(enOtroIdioma("420 tiendas", "es")).toBe(false);
+    expect(enOtroIdioma("accounting software", "es")).toBe(false);
+    expect(separarPorIdioma(["contabilidad software", "accounting software", "Guatemala"], "en")).toEqual({
+      enIdioma: ["accounting software", "Guatemala"],
+      enOtro: ["contabilidad software"],
+    });
+  });
+
+  it("entidades en español en sesión en: reintenta UNA vez con refuerzo y usa la segunda respuesta", async () => {
+    const fetchMock = fetchConDispatch(
+      respuestasOk({
+        secuencia: {
+          [NOMBRE_ENTIDADES]: [
+            { entidades: ["contabilidad software", "pequeñas tiendas", "Guatemala"] },
+            { entidades: ["accounting software", "small shops", "Guatemala"] },
+          ],
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion: "Contable is a bookkeeping assistant for small shops in Guatemala.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+
+    const llamadas = cuerposDeEsquema(fetchMock, NOMBRE_ENTIDADES);
+    expect(llamadas).toHaveLength(2);
+    expect(llamadas[0].messages?.[0].content).not.toMatch(/LANGUAGE CHECK FAILED/);
+    expect(llamadas[1].messages?.[0].content).toMatch(/LANGUAGE CHECK FAILED/);
+    // El esquema y el user también piden inglés de forma explícita.
+    expect(llamadas[0].messages?.[1].content).toMatch(/Answer in ENGLISH/);
+    expect(JSON.stringify(llamadas[0].response_format)).toMatch(/WRITTEN IN ENGLISH/);
+    expect(SALIDA_INFO()).toContain('[tavily] entidades=["accounting software","small shops","Guatemala"]');
+  });
+
+  it("entidades que siguen en español tras el reintento se descartan; el resto sigue", async () => {
+    const fetchMock = fetchConDispatch(
+      respuestasOk({
+        secuencia: {
+          [NOMBRE_ENTIDADES]: [
+            { entidades: ["contabilidad software", "Guatemala"] },
+            { entidades: ["contabilidad software", "accounting software", "Guatemala"] },
+          ],
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion: "Contable is a bookkeeping assistant for small shops in Guatemala.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+
+    expect(cuerposDeEsquema(fetchMock, NOMBRE_ENTIDADES)).toHaveLength(2);
+    expect(SALIDA_INFO()).toContain("[tavily] entidades descartadas por idioma=1");
+    expect(SALIDA_INFO()).toContain('[tavily] entidades=["accounting software","Guatemala"]');
+  });
+
+  it("cifras dichas en español en sesión en: reintento reforzado y, si persiste, se descartan", async () => {
+    const transcripcion =
+      "We already have four hundred and twenty stores and we grow fifteen percent month over month.";
+    const fetchMock = fetchConDispatch(
+      respuestasOk({
+        entidades: ["accounting software", "Guatemala"],
+        secuencia: {
+          [NOMBRE_CIFRAS]: [{ cifras: ["420 tiendas", "15 % mes a mes"] }, { cifras: ["420 tiendas", "15%"] }],
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({ tema: "capital", idioma: "en", transcripcion, puntosSinCumplir: [] }),
+    );
+    const json = (await res.json()) as { cifras: { cifra: string }[] };
+
+    const llamadas = cuerposDeEsquema(fetchMock, NOMBRE_CIFRAS);
+    expect(llamadas).toHaveLength(2);
+    expect(llamadas[0].messages?.[0].content).toMatch(/unit word written in ENGLISH/);
+    expect(llamadas[0].messages?.[1].content).toMatch(/Answer in ENGLISH/);
+    expect(JSON.stringify(llamadas[0].response_format)).toMatch(/IN ENGLISH/);
+    expect(llamadas[1].messages?.[0].content).toMatch(/LANGUAGE CHECK FAILED/);
+    // "420 tiendas" persistió → fuera; "15%" sí se muestra.
+    expect(json.cifras.map((c) => c.cifra)).toEqual(["15%"]);
+    expect(SALIDA_INFO()).toContain("[cifras] cifras descartadas por idioma=1");
+  });
+
+  it("en sesión en español no hay guardia: una sola llamada y las cifras se muestran", async () => {
+    const fetchMock = fetchConDispatch(
+      respuestasOk({ cifras: ["420 tiendas", "15 % mes a mes"] }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "es",
+        transcripcion: "Ya tenemos cuatrocientas veinte tiendas y crecemos quince por ciento mes a mes.",
+        puntosSinCumplir: [],
+      }),
+    );
+    const json = (await res.json()) as { cifras: { cifra: string }[] };
+    expect(cuerposDeEsquema(fetchMock, NOMBRE_CIFRAS)).toHaveLength(1);
+    expect(json.cifras.map((c) => c.cifra)).toEqual(["420 tiendas", "15 % mes a mes"]);
+  });
+});
+
+describe("verificación de cifras dichas en paralelo con diario [cifras]", () => {
+  it("busca las dos cifras a la vez y registra host y motivo por fuente, nunca la cifra ni la cita", async () => {
+    let enVuelo = 0;
+    let maximoEnVuelo = 0;
+    const fetchMock = fetchConDispatch(
+      respuestasOk({
+        entidades: ["solar energy", "Guatemala"],
+        cifras: ["420 shops", "15%"],
+        validacion: { util: false, relevante: false, sector: "", cifra: "", cita: "", anio: "" },
+      }),
+      {
+        busqueda: async () => {
+          enVuelo += 1;
+          maximoEnVuelo = Math.max(maximoEnVuelo, enVuelo);
+          await new Promise((resolver) => setTimeout(resolver, 5));
+          enVuelo -= 1;
+          return jsonResponse({ results: RESULTADOS_BUSQUEDA });
+        },
+        extraccion: (url) =>
+          url.includes("blog.test")
+            ? jsonResponse({ results: [] })
+            : jsonResponse({ results: [{ url, raw_content: CONTENIDO_EXTRAIDO }] }),
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion: "We have 420 shops and grow 15% month over month.",
+        puntosSinCumplir: [],
+      }),
+    );
+    const json = (await res.json()) as { cifras: { cifra: string; estado: string }[] };
+
+    expect(json.cifras).toEqual([
+      { cifra: "420 shops", estado: "sin_fuente" },
+      { cifra: "15%", estado: "sin_fuente" },
+    ]);
+    // Las dos búsquedas se solaparon: ya no van en serie.
+    expect(maximoEnVuelo).toBeGreaterThanOrEqual(2);
+
+    const diario = SALIDA_INFO();
+    expect(diario).toMatch(/\[cifras\] cifra=1 host=informe\.test motivo=no-relevante/);
+    expect(diario).toMatch(/\[cifras\] cifra=1 host=blog\.test motivo=sin-extraccion/);
+    expect(diario).toMatch(/\[cifras\] cifra=2 host=informe\.test motivo=no-relevante/);
+    expect(diario).not.toContain("420 shops");
+    expect(diario).not.toContain(MARCA_CONTENIDO);
+  });
+});
+
+describe("query a industria + región y respaldo global (máximo 2 queries por punto)", () => {
+  const ENTIDADES = ["accounting software", "small shops", "Guatemala"];
+
+  it("el system pide industria + región y prohíbe el segmento de cliente; el global quita el país", () => {
+    const region = construirSystemQuery("en", "region");
+    expect(region).toMatch(/INDUSTRY/);
+    expect(region).toMatch(/region or country of the pitch/);
+    expect(region).toMatch(/Do NOT add the customer segment/);
+    const global = construirSystemQuery("en", "global");
+    expect(global).toMatch(/GLOBAL scope/);
+    expect(global).toMatch(/do NOT add any country or region/);
+    expect(construirSystemQuery("es", "global")).toMatch(/alcance GLOBAL/);
+  });
+
+  it("entidadesSegunAlcance quita solo la geografía en el alcance global", () => {
+    expect(esEntidadGeografica("Guatemala")).toBe(true);
+    expect(esEntidadGeografica("Latin America")).toBe(true);
+    expect(esEntidadGeografica("Estados Unidos")).toBe(true);
+    expect(esEntidadGeografica("accounting software")).toBe(false);
+    expect(entidadesSegunAlcance(ENTIDADES, "region")).toEqual(ENTIDADES);
+    expect(entidadesSegunAlcance(ENTIDADES, "global")).toEqual(["accounting software", "small shops"]);
+    // Si todo era geografía, se conserva (mejor repetir que no buscar).
+    expect(entidadesSegunAlcance(["Guatemala"], "global")).toEqual(["Guatemala"]);
+  });
+
+  it("la query de respaldo global no lleva país y añade 'worldwide'", () => {
+    const datos = { puntoNombre: "Market", entidades: ENTIDADES, tipoNombre: "Capital", idioma: "en" as const };
+    expect(construirQueryTavily(datos, "region")).toBe(
+      `${PREFIJOS.en} accounting software small shops Guatemala Market`,
+    );
+    expect(construirQueryTavily(datos, "global")).toBe(
+      `${PREFIJOS.en} accounting software small shops Market worldwide`,
+    );
+  });
+
+  it("si la query regional no aprueba, corre UNA segunda query global y se queda con esa", async () => {
+    const respuestas = respuestasOk({
+      entidades: ENTIDADES,
+      secuencia: {
+        [NOMBRE_QUERY]: [
+          { query: "accounting software market size Guatemala" },
+          { query: "accounting software market size SMB" },
+        ],
+        [NOMBRE_VALIDACION]: [
+          // Query regional: ninguna de las dos candidatas sirve.
+          { util: false, relevante: false, sector: "", cifra: "", cita: "", anio: "" },
+          { util: false, relevante: false, sector: "", cifra: "", cita: "", anio: "" },
+          // Query global: la primera candidata aprueba.
+          {
+            util: true,
+            relevante: true,
+            sector: "accounting software",
+            cifra: "USD 20 billion in 2024",
+            cita: "The global accounting software market reached USD 20 billion in 2024",
+            anio: "2024",
+          },
+        ],
+      },
+      frase: "The global accounting software market reached 20 billion dollars in 2024.",
+    });
+    const fetchMock = fetchConDispatch(respuestas);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion: "Contable sells accounting software to small shops in Guatemala.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+    const json = (await res.json()) as { sugerencias: { query: string; cifra: string }[] };
+
+    expect(json.sugerencias.map((s) => s.cifra)).toEqual(["USD 20 billion in 2024"]);
+    expect(json.sugerencias[0].query).toMatch(/^accounting software market size SMB \d{4}$/);
+
+    // Exactamente 2 queries al modelo y 2 búsquedas para el punto.
+    const queries = cuerposDeEsquema(fetchMock, NOMBRE_QUERY);
+    expect(queries).toHaveLength(ALCANCES_QUERY.length);
+    expect(queries[0].messages?.[0].content).toMatch(/region or country/);
+    expect(queries[1].messages?.[0].content).toMatch(/GLOBAL scope/);
+    // En la global, el user ya no lista el país.
+    expect(queries[0].messages?.[1].content).toContain("Guatemala");
+    expect(queries[1].messages?.[1].content).not.toContain("Guatemala");
+    expect(busquedasDePunto(fetchMock).map((b) => b.query)).toEqual([
+      expect.stringMatching(/^accounting software market size Guatemala \d{4}$/),
+      expect.stringMatching(/^accounting software market size SMB \d{4}$/),
+    ]);
+
+    const diario = SALIDA_INFO();
+    expect(diario).toMatch(/\[tavily\] punto=mercado alcance=region candidatos=2 extraido=true aprobado=false/);
+    expect(diario).toMatch(/\[tavily\] punto=mercado alcance=global candidatos=2 extraido=true aprobado=true/);
+  });
+
+  it("si la query regional aprueba, no corre la segunda", async () => {
+    const fetchMock = fetchConDispatch(respuestasOk({ entidades: ["solar energy", "Guatemala"], validacion: {
+      util: true, relevante: true, sector: "solar energy", cifra: CIFRA_OK, cita: CITA_OK, anio: "2024",
+    } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await POST_ENRIQUECER(
+      peticion({
+        tema: "capital",
+        idioma: "en",
+        transcripcion: "We sell solar panels in Guatemala.",
+        puntosSinCumplir: [{ punto: "mercado" }],
+      }),
+    );
+    const json = (await res.json()) as { sugerencias: unknown[] };
+    expect(json.sugerencias).toHaveLength(1);
+    expect(cuerposDeEsquema(fetchMock, NOMBRE_QUERY)).toHaveLength(1);
+    expect(busquedasDePunto(fetchMock)).toHaveLength(1);
+    expect(SALIDA_INFO()).not.toContain("alcance=global");
   });
 });

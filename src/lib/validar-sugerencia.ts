@@ -227,6 +227,18 @@ function tokensDeEntidad(entidad: string): string[] {
   );
 }
 
+/**
+ * true si la entidad es solo geografía ("Guatemala", "Latin America",
+ * "Estados Unidos"): todos sus tokens están en la lista geográfica. Sirve para
+ * armar la query global (sin país) sin perder la industria.
+ */
+export function esEntidadGeografica(entidad: string): boolean {
+  const tokens = normalizarComparacion(entidad)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  return tokens.length > 0 && tokens.every((token) => PALABRAS_GEOGRAFICAS.has(token));
+}
+
 /** Letras de raíz que se comparan. Cubre plural y género sin un stemmer real. */
 const LETRAS_RAIZ = 6;
 
