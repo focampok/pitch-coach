@@ -44,7 +44,7 @@ The public Token Factory catalog was not downloaded again in this pass. This mor
 
 ## 3. What the code does today
 
-Real stack of this tree, not a guess for new ideas: **Next.js 16.3.1** (App Router), **React 19.2.8**, **TypeScript**, **Tailwind CSS 4**, **Vitest 3**. No database. No Nest. `package.json` does not declare a Nebius, Tavily, or ElevenLabs client: the calls are its own `fetch`.
+Real stack of this tree, not a guess for new ideas: **Next.js 16.4.3** (App Router), **React 19.2.8**, **TypeScript**, **Tailwind CSS 4**, **Vitest 3**. No database. No Nest. `package.json` does not declare a Nebius, Tavily, or ElevenLabs client: the calls are its own `fetch`.
 
 Inference does **not** run on a Nebius GPU or on an Endpoint. It runs in the Node process of the Next server (local with `npm run dev`, or the Railway container). The `Dockerfile` is production-only (Node 24 Alpine, standalone output) and `railway.toml` points that Dockerfile at a healthcheck `/`. The browser does not see the API key.
 

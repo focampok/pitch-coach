@@ -123,7 +123,7 @@ Pitch Coach stays account-free, with no server-side persistence, and the four pi
 
 - Live demo: [https://pitch-coach.focampo.com](https://pitch-coach.focampo.com) — a current browser with a microphone (or use the text field). The interface follows your browser language; switch with the ES / EN control. During judging the demo may cap practices per browser to protect shared credits.
 - Repository (MIT): [https://github.com/focampok/pitch-coach](https://github.com/focampok/pitch-coach)
-- Video: `VIDEO_URL`
+- Video: [https://youtu.be/0dFYcbygXGA](https://youtu.be/0dFYcbygXGA)
 
 ## Project history (submission period)
 

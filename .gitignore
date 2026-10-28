@@ -33,6 +33,12 @@ yarn-error.log*
 /clip.*
 /grabacion.*
 
+# demo video: raw captures, renders, frames, and the local transcriber
+video/raw/
+video/out/
+video/frames/
+video/.venv/
+
 # Railway (si genera archivos locales de config)
 .railway/
 next-env.d.ts

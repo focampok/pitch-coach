@@ -27,7 +27,7 @@ there, even if it costs functionality.
 | Browser | `src/instrumentation-client.ts` | client bundle |
 | Registration | `src/instrumentation.ts` | loads the config according to `NEXT_RUNTIME` |
 
-Version: `@sentry/nextjs@11.0.0` on Next 16.3.1 with Turbopack. It uses the
+Version: `@sentry/nextjs@11.0.0` on Next 16.4.3 with Turbopack. It uses the
 Next 16 pattern (`instrumentation-client.ts`) and not `sentry.client.config.ts`,
 which is the name from earlier versions.
 
